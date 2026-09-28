@@ -1,0 +1,88 @@
+{
+    "color":  [
+                  {
+                      "name":  "light_gray",
+                      "value":  "#33FFFFFF"
+                  },
+                  {
+                      "name":  "text_normal",
+                      "value":  "#E8EAED"
+                  },
+                  {
+                      "name":  "edit_blue",
+                      "value":  "#8AB4F8"
+                  },
+                  {
+                      "name":  "circle_black",
+                      "value":  "#73777F"
+                  },
+                  {
+                      "name":  "edit_black",
+                      "value":  "#B8BEC8"
+                  },
+                  {
+                      "name":  "key_item_gray",
+                      "value":  "#454950"
+                  },
+                  {
+                      "name":  "key_item_gray_pressed",
+                      "value":  "#606670"
+                  },
+                  {
+                      "name":  "shadow",
+                      "value":  "#101114"
+                  },
+                  {
+                      "name":  "key_item_normal",
+                      "value":  "#303339"
+                  },
+                  {
+                      "name":  "key_item_normal_pressed",
+                      "value":  "#535A65"
+                  },
+                  {
+                      "name":  "key_item_normal_text",
+                      "value":  "#B8BEC8"
+                  },
+                  {
+                      "name":  "start_window_background",
+                      "value":  "#1B1D21"
+                  },
+                  {
+                      "name":  "keyboard_background",
+                      "value":  "#1B1D21"
+                  },
+                  {
+                      "name":  "text_secondary",
+                      "value":  "#BCC2CC"
+                  },
+                  {
+                      "name":  "candidate_text",
+                      "value":  "#E8EAED"
+                  },
+                  {
+                      "name":  "candidate_accent",
+                      "value":  "#A8C7FA"
+                  },
+                  {
+                      "name":  "menu_background",
+                      "value":  "#202328"
+                  },
+                  {
+                      "name":  "candidate_selected",
+                      "value":  "#34465F"
+                  },
+                  {
+                      "name":  "candidate_background",
+                      "value":  "#202328"
+                  },
+                  {
+                      "name":  "text_error",
+                      "value":  "#FFB4AB"
+                  },
+                  {
+                      "name":  "key_text",
+                      "value":  "#F1F3F4"
+                  }
+              ]
+}

@@ -1,0 +1,22 @@
+kanonIME
+Copyright (c) 2026 ysk0518 and kanonIME contributors.
+Original kanonIME contributions are licensed under the MIT License (LICENSE).
+
+This project is derived in part from the OpenHarmony KikaInputMethod sample.
+Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+Those source files retain their original Apache License 2.0 notices.
+kanonIME modifications include HarmonyOS integration, input coordination,
+keyboard layouts, candidates, editing, clipboard support, themes, settings,
+resources and build packaging. Modified source files carry a change notice.
+See third_party/licenses/Apache-2.0-LICENSE.
+
+The packaged native conversion library includes Mozc, Abseil, Protobuf,
+utf8_range, and statically linked LLVM C++ runtime components.
+Mozc dictionary notices include NAIST/IPAdic, ICOT, and Okinawa dictionary data.
+Their original terms and copyright notices are retained in third_party/licenses.
+The SDK LLVM NOTICE is reproduced in full for runtime attribution; its listing
+does not imply that every SDK/toolchain component is bundled in kanonIME.
+
+Dependency versions, attribution, and the scope of the licenses are documented
+in third_party/README.md. Preserve LICENSE, NOTICE, and third_party/licenses
+when redistributing the sources or packaged native libraries.
