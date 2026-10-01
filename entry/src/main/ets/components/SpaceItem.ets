@@ -30,41 +30,20 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 export struct SpaceItem {
   private spaceWith: Resource | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  @StorageLink('kanonMode') mode: string = 'JP';
-  private langSwitched: boolean = false;
 
   build() {
     if (this.spaceWith) {
       Stack() {
-        Row() {
-          Text('space')
-            .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-          Text(this.mode === 'JP' ? 'あ' : 'A')
-            .fontSize(10)
-            .fontColor($r('app.color.key_item_normal_text'))
-            .margin({ left: 4 })
-        }
+        Text('space')
+          .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
+          .fontColor($r('app.color.key_text'))
       }
       .backgroundColor($r('app.color.key_item_normal'))
       .width(this.spaceWith)
       .borderRadius(4)
       .height('100%')
       .id('spaceItem')
-      .onClick(() => {
-        if (this.langSwitched) {
-          this.langSwitched = false;
-          return;
-        }
-        kanonIme.keySpace();
-      })
-      .gesture(
-        LongPressGesture({ duration: 250 })
-          .onAction(() => {
-            this.langSwitched = true;
-            kanonIme.switchMode();
-          })
-      )
+      .onClick(() => { kanonIme.keySpace(); })
       .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
       .stateStyles({
         normal: normalStyles, pressed: pressedStyles

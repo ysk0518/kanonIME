@@ -55,6 +55,19 @@ HarmonyOS向け日本語・英語キーボード。ArkTSのUIとIME連携、C++ 
 
 `build-profile.json5` は端末固有の署名設定を含むためGit管理から除外しています。共有する設定は `build-profile.example.json5` を更新してください。
 
+### 実機での反復確認
+
+`tools/fast-device.ps1` は接続中のUSB端末を優先して選び、ビルド・導入を一回で実行します。引数なしで両方実行します。Hvigorの継続起動を使うため、初回起動後の変更なしビルドは短くなります。
+
+```powershell
+powershell -NoProfile -File tools/fast-device.ps1
+powershell -NoProfile -File tools/fast-device.ps1 -Status
+powershell -NoProfile -File tools/fast-device.ps1 -SelectKanon -OpenPreview
+powershell -NoProfile -File tools/fast-device.ps1 -Tap '370,2035;1125,2400' -Screenshot 'convert-check'
+```
+
+`-Build`、`-Install` は個別にも指定できます。`-Target` で端末を明示できます。画像はGit管理外の `.local/screenshots` に保存します。`-OpenPreview` で入力方式の選択画面が出た場合は、端末上で選択してください。
+
 ## ネイティブ部分
 
 アプリのビルドには同梱済みの `.so` を使います。`libkanon_bridge.so` は辞書を含み約58 MBあります。

@@ -97,7 +97,7 @@ export struct KeyboardSettings {
               }.width('100%')
             }
           })
-          Text('🌐で言語を切り替えます。各言語の配列と、最後に使った言語を保存します。')
+          Text('地球儀は日本語／英語の切替です。12キー／QWERTYはキーボードメニューの「配列」で切り替えられます。')
             .fontSize(12).fontColor($r('app.color.text_secondary'))
           Divider().color($r('app.color.light_gray'))
           Row() {

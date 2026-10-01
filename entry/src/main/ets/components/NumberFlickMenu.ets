@@ -2,6 +2,7 @@ import inputMethodEngine from '@ohos.inputMethodEngine';
 import { MenuType } from '../model/KeyboardKeyData';
 import { numberFlickKeys } from '../model/NumberFlickData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
+import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { kanonIme } from '../kanon/KanonIme';
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
@@ -25,7 +26,7 @@ export struct NumberFlickMenu {
   @Builder
   control(label: string, action: number) {
     Text(label)
-      .fontSize(14).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
+      .fontSize(16).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
@@ -43,30 +44,32 @@ export struct NumberFlickMenu {
   }
 
   build() {
-    Column({ space: 6 }) {
+    Column({ space: FLICK_KEY_GAP }) {
       ForEach([0, 1, 2, 3], (row: number) => {
-        Row({ space: 6 }) {
+        Row({ space: FLICK_KEY_GAP }) {
           Column() {
             if (row === 3) { LanguageItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(row === 0 ? (this.layout === 'jp_flick' ? 'かな' : 'ABC') : row === 1 ? '記号' : '←', row) }
-          }.width('13%').height('100%')
+            else { this.control(row === 0 ? '記号' : row === 1 ? '←' :
+              (this.layout === 'jp_flick' ? 'かな' : 'ABC'), [1, 2, 0][row]) }
+          }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach(numberFlickKeys(this.kind()).slice(row * 3, row * 3 + 3), (values: string[], index: number) => {
             Column() {
               if (values[0].length > 0) {
-                FlickKey({ values: values, textInput: true, showDirections: true, guideAbove: row === 3,
+                FlickKey({ values: values, textInput: true,
                   keyId: `number_flick_${row * 3 + index}` })
               }
             }.layoutWeight(1).height('100%')
           }, (_values: string[], index: number) => `${row * 3 + index}:${this.kind()}`)
           Column() {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
-            else { this.control(row === 1 ? 'space' : row === 2 ? '→' :
+            else { this.control(row === 1 ? '→' : row === 2 ? 'space' :
               this.enterKeyType === EnterKeyType.Send ? '送信' :
-              this.enterKeyType === EnterKeyType.Search ? '検索' : '↵', row + 4) }
-          }.width('13%').height('100%')
+              this.enterKeyType === EnterKeyType.Search ? '検索' : '↵', row === 1 ? 6 : row === 2 ? 5 : 7) }
+          }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
         }.layoutWeight(1).width('100%')
       })
     }
-    .padding(6).width('100%').height('100%').constraintSize({ maxWidth: 720 })
+    .padding({ left: FLICK_SIDE_PADDING, right: FLICK_SIDE_PADDING, top: 6, bottom: 6 })
+    .width('100%').height('100%').constraintSize({ maxWidth: 720 })
   }
 }

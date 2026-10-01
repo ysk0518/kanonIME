@@ -16,12 +16,27 @@
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { SubMenuType } from '../model/KeyboardKeyData';
+import { DEFAULT_LAYOUT_ORDER, languageLayouts, layoutLanguage } from '../common/KeyboardConfig';
+import { kanonIme } from '../kanon/KanonIme';
 
 @Preview
 @Component
 export struct Submenu {
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
+  @StorageLink('kanonLayout') layout: string = 'jp_flick';
+  @StorageLink('kanonLayoutOrder') layoutOrder: string = DEFAULT_LAYOUT_ORDER;
+
+  private async switchLayout(): Promise<void> {
+    const next: string = this.layout === 'jp_flick' ? 'jp_qwerty' :
+      this.layout === 'jp_qwerty' ? 'jp_flick' :
+      this.layout === 'en_flick' ? 'en_qwerty' : 'en_flick';
+    const order: string[] = languageLayouts(this.layoutOrder).map((id: string) =>
+      layoutLanguage(id) === layoutLanguage(this.layout) ? next : id);
+    if (await kanonIme.applyLayoutConfig(order.join(','))) {
+      this.submenuType = SubMenuType.NORMAL;
+    }
+  }
 
   build() {
     Grid() {
@@ -72,19 +87,20 @@ export struct Submenu {
       }
       GridItem() {
         Column() {
-          Text('G-01')
+          Text('配列')
             .fontColor($r('app.color.text_normal'))
             .fontSize(this.inputStyle.editFontSize)
-            .opacity(0.6)
-            .margin({ top: 8 })
+          Text(this.layout.endsWith('flick') ? '12キー → QWERTY' : 'QWERTY → 12キー')
+            .fontColor($r('app.color.text_secondary'))
+            .fontSize(11)
+            .margin({ top: 4 })
         }
         .width('100%')
         .height('50%')
         .justifyContent(FlexAlign.Center)
-        .id('btnG01')
-        .onClick(() => {
-          this.submenuType = SubMenuType.G01;
-        })
+        .accessibilityText(this.layout.endsWith('flick') ? 'QWERTYに切り替え' : '12キーに切り替え')
+        .id('keyboard_layout_toggle')
+        .onClick(() => { this.switchLayout(); })
       }
       GridItem() {
         Column() {
