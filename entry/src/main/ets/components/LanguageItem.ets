@@ -25,7 +25,7 @@ export struct LanguageItem {
       .borderRadius(this.keyRadius)
       .enabled(nextLanguageLayout(this.layoutOrder, this.layout) !== this.layout)
       .opacity(nextLanguageLayout(this.layoutOrder, this.layout) === this.layout ? 0.4 : 1)
-      .accessibilityText('言語切り替え')
+      .accessibilityText(this.layout.startsWith('jp_') ? '英語に切り替え' : '日本語に切り替え')
       .id('languageItem')
       .onClick(async () => {
         await kanonIme.switchMode();

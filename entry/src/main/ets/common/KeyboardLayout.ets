@@ -1,4 +1,9 @@
 // All dimensions in this module are vp. Convert to px only at the IME panel boundary.
+// The native phone keyboard uses narrower action columns than its three text columns.
+export const FLICK_ACTION_COLUMN_WIDTH: string = '17%';
+export const FLICK_KEY_GAP: number = 6;
+export const FLICK_SIDE_PADDING: number = 8;
+
 export function clampSize(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }

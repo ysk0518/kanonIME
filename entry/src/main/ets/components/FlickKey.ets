@@ -11,8 +11,6 @@ export struct FlickKey {
   @Prop modifier: boolean = false;
   @Prop english: boolean = false;
   @Prop textInput: boolean = false;
-  @Prop showDirections: boolean = false;
-  @Prop guideAbove: boolean = false;
   @Prop keyId: string = '';
   @Prop uppercase: boolean = false;
   @Prop displayLabel: string = '';
@@ -24,19 +22,12 @@ export struct FlickKey {
   private startX: number = 0;
   private startY: number = 0;
   private keyWidth: number = 0;
-  private keyHeight: number = 0;
   private previewX: number = 0;
   private previewY: number = 0;
 
   private showPreview(): void {
     if (!this.previewEnabled || this.modifier) { this.hidePreview(); return; }
     const value: string = this.values[this.flickDirection] ?? '';
-    if (this.showDirections && this.values.slice(1).some((item: string) => item.length > 0)) {
-      showKeyPreview(this.values[0], value, this.previewX, this.previewY + 64,
-        this.guideAbove ? 'number_guide_above' : 'number_guide',
-        this.values, this.flickDirection, this.keyHeight, this.flickDistance);
-      return;
-    }
     showKeyPreview(this.values[0], value === ' ' ? 'space' : this.english && this.uppercase ? value.toUpperCase() : value,
       this.previewX, this.previewY, 'flick');
   }
@@ -102,9 +93,9 @@ export struct FlickKey {
   build() {
     Stack({ alignContent: Alignment.Center }) {
       Text(this.label())
-        .fontSize(this.modifier ? 14 : this.label().length > 1 ? 18 : 24)
+        .fontSize(this.modifier ? 18 : this.label().length > 1 ? 17 : 20)
         .maxFontScale(1.3).maxLines(1)
-        .minFontSize(10).maxFontSize(this.modifier ? 14 : this.label().length > 1 ? 18 : 24)
+        .minFontSize(10).maxFontSize(this.modifier ? 18 : this.label().length > 1 ? 17 : 20)
         .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
         .width('90%').height('70%').textAlign(TextAlign.Center)
         .fontWeight(this.active ? FontWeight.Medium : FontWeight.Normal)
@@ -118,7 +109,6 @@ export struct FlickKey {
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_oldArea: Area, area: Area) => {
       this.keyWidth = Number(area.width);
-      this.keyHeight = Number(area.height);
     })
     .id(this.keyId.length > 0 ? this.keyId : `flick_${this.values[0]}`)
   }

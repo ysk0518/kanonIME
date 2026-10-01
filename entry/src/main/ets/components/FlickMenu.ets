@@ -1,17 +1,18 @@
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
 import { LanguageItem } from './LanguageItem';
+import { ConvertSpaceItem } from './ConvertSpaceItem';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { kanonIme } from '../kanon/KanonIme';
 import { MenuType } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
+import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 
 @Component
 export struct FlickMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @Consume menuType: number;
-  @StorageLink('kanonState') imeState: string = 'JP_EMPTY';
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
   @State private englishUpper: boolean = false;
   private keys: string[][] = [
@@ -31,7 +32,7 @@ export struct FlickMenu {
   @Builder
   control(label: string, action: number) {
     Text(label)
-      .fontSize(14).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
+      .fontSize(16).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .fontColor(action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text'))
       .fontWeight(action === 8 && this.englishUpper ? FontWeight.Medium : FontWeight.Normal)
@@ -58,13 +59,13 @@ export struct FlickMenu {
   }
 
   build() {
-    Column({ space: 6 }) {
+    Column({ space: FLICK_KEY_GAP }) {
       ForEach([0, 1, 2, 3], (row: number) => {
-        Row({ space: 6 }) {
+        Row({ space: FLICK_KEY_GAP }) {
           Column() {
             if (row === 3) { LanguageItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(['?123', '記号', '←'][row], row) }
-          }.width('13%').height('100%')
+            else { this.control(['記号', '←', '?123'][row], [1, 2, 0][row]) }
+          }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach((this.layout === 'en_flick' ? this.englishKeys : this.keys).slice(row * 3, row * 3 + 3),
             (values: string[], index: number) => {
             Column() {
@@ -73,7 +74,8 @@ export struct FlickMenu {
               } else {
                 FlickKey({ values: values, modifier: values[0] === '小゛゜',
                   english: this.layout === 'en_flick', uppercase: this.englishUpper,
-                  displayLabel: this.layout === 'en_flick' ? this.englishLabels[row * 3 + index] : '',
+                  displayLabel: this.layout === 'en_flick' ? this.englishLabels[row * 3 + index] :
+                    row === 3 && index === 2 ? '、。?!' : '',
                   onLetter: () => { this.englishUpper = false; } })
               }
             }
@@ -81,17 +83,18 @@ export struct FlickMenu {
           }, (values: string[]) => values[0])
           Column() {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
-            else { this.control(row === 1 ? (this.layout === 'en_flick' ? '-' : '変換') : row === 2 ? '→' :
-              this.layout !== 'en_flick' && this.imeState !== 'JP_EMPTY' ? '確定' :
+            else if (row === 2 && this.layout !== 'en_flick') { ConvertSpaceItem() }
+            else { this.control(row === 1 ? '→' : row === 2 ? '-' :
               this.enterKeyType === EnterKeyType.Send ? '送信' :
-              this.enterKeyType === EnterKeyType.Search ? '検索' : '↵', row + 4) }
-          }.width('13%').height('100%')
+              this.enterKeyType === EnterKeyType.Search ? '検索' :
+              'Enter', row === 1 ? 6 : row === 2 ? 5 : 7) }
+          }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
         }
         .layoutWeight(1)
         .width('100%')
       })
     }
-    .padding({ left: 6, right: 6, top: 6, bottom: 6 })
+    .padding({ left: FLICK_SIDE_PADDING, right: FLICK_SIDE_PADDING, top: 6, bottom: 6 })
     .width('100%')
     .constraintSize({ maxWidth: 720 })
     .height('100%')

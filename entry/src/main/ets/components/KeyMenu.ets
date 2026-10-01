@@ -23,6 +23,7 @@ import { KeyItemNumber } from './KeyItemNumber';
 import { SpaceItem } from './SpaceItem';
 import { ReturnItem } from './ReturnItem';
 import { LanguageItem } from './LanguageItem';
+import { kanonIme } from '../kanon/KanonIme';
 
 @Styles function pressedStyles() {
   .backgroundColor($r('app.color.key_item_gray_pressed'))
@@ -36,6 +37,7 @@ import { LanguageItem } from './LanguageItem';
 @Component
 export struct KeyMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
+  @StorageLink('kanonLayout') layout: string = 'jp_qwerty';
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
   private keyList: keySourceListType[] = keySourceListData;
@@ -51,14 +53,30 @@ export struct KeyMenu {
       .layoutWeight(1)
 
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
-        Stack() {
-        }.width('4%').height(0)
+        if (this.layout !== 'jp_qwerty') {
+          Stack() {}.width('4%').height(0)
+        }
 
         ForEach(this.keyList.slice(10, 19), (item: keySourceListType) => {
           KeyItemNumber({ keyValue: item })
         }, (item: keySourceListType) => item.content)
-        Stack() {
-        }.width('4%').height(0)
+        if (this.layout === 'jp_qwerty') {
+          Stack() {
+            Text('ー')
+              .fontSize(this.inputStyle.en_fontSize)
+              .fontColor($r('app.color.key_text'))
+          }
+          .width(this.inputStyle.basicButtonWidth)
+          .height('100%')
+          .backgroundColor($r('app.color.key_item_normal'))
+          .borderRadius(4)
+          .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
+          .accessibilityText('長音符')
+          .id('qwerty_long_vowel')
+          .onClick(() => { kanonIme.keyKana('ー'); })
+        } else {
+          Stack() {}.width('4%').height(0)
+        }
       }
       .width('100%')
       .layoutWeight(1)

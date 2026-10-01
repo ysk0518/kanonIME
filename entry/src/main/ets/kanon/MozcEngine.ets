@@ -156,14 +156,22 @@ export class MozcEngine implements EnginePort {
       return this.errUpdate(sessionId, epoch, seq, true);
     }
     this.lastOut = out;
+    const ordered: Cand[] = out.candidates.slice();
+    if (this.phase === 'composing' && out.preedit.length > 0) {
+      const exact: number = ordered.findIndex((c: Cand): boolean => c.value === out.preedit);
+      if (exact > 0) {
+        const raw: Cand = ordered.splice(exact, 1)[0];
+        ordered.unshift(raw);
+      }
+    }
     const labels: CandidateLabel[] = [];
-    for (let i: number = 0; i < out.candidates.length; i++) {
-      const c: Cand = out.candidates[i];
+    for (let i: number = 0; i < ordered.length; i++) {
+      const c: Cand = ordered[i];
       labels.push({ id: c.id, label: c.value ?? '' });
     }
     this.lastIds = [];
-    for (let i: number = 0; i < out.candidates.length; i++) {
-      this.lastIds.push(out.candidates[i].id);
+    for (let i: number = 0; i < ordered.length; i++) {
+      this.lastIds.push(ordered[i].id);
     }
     this.lastPreedit = out.preedit;
     this.lastLens = out.candlens.join(',');
@@ -375,17 +383,16 @@ export class MozcEngine implements EnginePort {
         return u;
       }
       if (this.phase === 'converting' && this.lastIds.length > 0) {
-        // 変換表示中のSpaceは強調だけを次へ進める（確定しない）。
+        // SELECT_CANDIDATE は Mozc 側で候補欄を閉じるため、巡回中は呼ばない。
         this.selIdx = (this.selIdx + 1) % this.lastIds.length;
-        let out: ConvOut = new ConvOut();
-        out.ok = false;
-        try {
-          out = parseOut(await api.executeAsync('selectCandidate', '', this.lastIds[this.selIdx]));
-        } catch (e) {
-          out.ok = false;
-        }
         this.revision++;
-        return this.fromOut(sessionId, epoch, seq, out, []);
+        const u: EngineUpdate = this.fromOut(sessionId, epoch, seq, this.lastOut, []);
+        const selected: string = this.lastOut.candidates[this.selIdx].value;
+        this.lastPreedit = selected;
+        u.hasPreedit = selected.length > 0;
+        u.preeditLen = selected.length;
+        u.caretUtf16 = selected.length;
+        return u;
       }
       const out: ConvOut = await this.callSpace();
       if (out.ok && out.ncand > 0) {
@@ -414,12 +421,13 @@ export class MozcEngine implements EnginePort {
         this.revision++;
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      let done: ConvOut = new ConvOut();
-      done.ok = false;
-      try {
-        done = parseOut(await api.executeAsync('submit', '', 0));
-      } catch (e) {
-        done.ok = false;
+      let done: ConvOut = sel;
+      if (done.result.length === 0) {
+        try {
+          done = parseOut(await api.executeAsync('submit', '', 0));
+        } catch (e) {
+          done.ok = false;
+        }
       }
       this.buffer = '';
       this.inputUnits = [];
@@ -498,19 +506,21 @@ export class MozcEngine implements EnginePort {
         u.effects = effects;
         return u;
       }
+      let selected: ConvOut = new ConvOut();
       if (this.phase === 'converting' && this.selIdx < this.lastIds.length) {
         // 変換表示中のEnterは強調中の候補を選んでから確定する。
         try {
-          parseOut(await api.executeAsync('selectCandidate', '', this.lastIds[this.selIdx]));
+          selected = parseOut(await api.executeAsync('selectCandidate', '', this.lastIds[this.selIdx]));
         } catch (e) {
         }
       }
-      let done: ConvOut = new ConvOut();
-      done.ok = false;
-      try {
-        done = parseOut(await api.executeAsync('submit', '', 0));
-      } catch (e) {
-        done.ok = false;
+      let done: ConvOut = selected;
+      if (done.result.length === 0) {
+        try {
+          done = parseOut(await api.executeAsync('submit', '', 0));
+        } catch (e) {
+          done.ok = false;
+        }
       }
       this.buffer = '';
       this.inputUnits = [];
