@@ -21,7 +21,8 @@ import { KeyItemGray } from './KeyItemGray';
 import { ReturnItem } from './ReturnItem';
 import { MenuKey, symbolSourceListData, sourceListType } from '../model/KeyboardKeyData';
 import { SpaceItem } from './SpaceItem';
-import { LanguageItem } from './LanguageItem';
+import { LayoutItem } from './LayoutItem';
+import { ModeCycleItem } from './ModeCycleItem';
 
 // 符号键盘
 @Component
@@ -59,8 +60,8 @@ export struct SymbolMenu {
       .layoutWeight(1)
 
       Row({ space: 4 }) {
-        LanguageItem()
-        KeyItemGray({ keyValue: MenuKey.NORMAL_KEY })
+        LayoutItem()
+        ModeCycleItem()
         KeyItem({ keyValue: { content: '<', title: '<', upperContent: '<' } })
         KeyItem({ keyValue: { content: '>', title: '>', upperContent: '>' } })
         Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(1).height('100%')

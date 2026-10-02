@@ -26,7 +26,6 @@ export interface sourceListType {
 
 export enum MenuKey {
   NUMBER_KEY = '?123',
-  NORMAL_KEY = 'ABC',
   SPECIAL_KEY = '=/\<'
 }
 
@@ -34,14 +33,8 @@ export enum SubMenuType {
   NORMAL = 0,
   MENU = 1,
   EDIT = 2,
-  /** Kanon M1/G-01実証画面。既存のEDIT等には影響しない。 */
-  G01 = 3,
-  /** Kanon M2実変換プローブ画面。 */
-  M2 = 4,
-  /** Kanon M3契約試験画面。 */
-  M3 = 5,
-  SETTINGS = 6,
-  CLIPBOARD = 7
+  CLIPBOARD = 3,
+  SETTINGS = 4
 }
 
 export enum MenuType {

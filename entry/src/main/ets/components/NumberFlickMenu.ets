@@ -6,12 +6,12 @@ import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '..
 import { kanonIme } from '../kanon/KanonIme';
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
-import { LanguageItem } from './LanguageItem';
+import { LayoutItem } from './LayoutItem';
+import { ModeCycleItem } from './ModeCycleItem';
 
 @Component
 export struct NumberFlickMenu {
   @Consume menuType: number;
-  @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
@@ -31,11 +31,10 @@ export struct NumberFlickMenu {
       .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
       .backgroundColor($r('app.color.key_item_gray'))
-      .enabled(this.kind() === 'general' || (action !== 0 && action !== 1 && action !== 5))
-      .opacity(this.kind() !== 'general' && (action === 0 || action === 1 || action === 5) ? 0.4 : 1)
+      .enabled(this.kind() === 'general' || (action !== 1 && action !== 5))
+      .opacity(this.kind() !== 'general' && (action === 1 || action === 5) ? 0.4 : 1)
       .onClick(() => {
-        if (action === 0) { this.menuType = MenuType.NORMAL; }
-        else if (action === 1) { this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { this.menuType = MenuType.SPECIAL; }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 5) { kanonIme.keyText(' '); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
@@ -48,9 +47,9 @@ export struct NumberFlickMenu {
       ForEach([0, 1, 2, 3], (row: number) => {
         Row({ space: FLICK_KEY_GAP }) {
           Column() {
-            if (row === 3) { LanguageItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(row === 0 ? '記号' : row === 1 ? '←' :
-              (this.layout === 'jp_flick' ? 'かな' : 'ABC'), [1, 2, 0][row]) }
+            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6 }) }
+            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6 }) }
+            else { this.control(row === 0 ? '記号' : '←', row === 0 ? 1 : 2) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach(numberFlickKeys(this.kind()).slice(row * 3, row * 3 + 3), (values: string[], index: number) => {
             Column() {

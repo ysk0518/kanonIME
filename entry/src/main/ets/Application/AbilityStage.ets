@@ -26,7 +26,7 @@ const TAG: string = 'AbilityStage->';
 
 export default class MyAbilityStage extends AbilityStage {
   onCreate(): void {
-    initializeKeyboardConfig();
+    initializeKeyboardConfig(this.context);
     clipboardStore.initialize();
     keyboardController.updateFontScale(this.context.config.fontSizeScale ?? 1);
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);

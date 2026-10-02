@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "pages/PrivatePreview",
-    "pages/ClipboardPermission"
+    "pages/ClipboardPermission",
+    "pages/SettingsPage"
   ]
 }

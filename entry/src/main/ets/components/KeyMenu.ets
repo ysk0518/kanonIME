@@ -15,14 +15,14 @@
  */
 
 import { DeleteItem } from './DeleteItem';
-import { MenuKey, KeyState, keySourceListType, keySourceListData } from '../model/KeyboardKeyData';
+import { KeyState, keySourceListType, keySourceListData } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { KeyItem } from './KeyItem';
-import { KeyItemGray } from './KeyItemGray';
 import { KeyItemNumber } from './KeyItemNumber';
 import { SpaceItem } from './SpaceItem';
 import { ReturnItem } from './ReturnItem';
-import { LanguageItem } from './LanguageItem';
+import { LayoutItem } from './LayoutItem';
+import { ModeCycleItem } from './ModeCycleItem';
 import { kanonIme } from '../kanon/KanonIme';
 
 @Styles function pressedStyles() {
@@ -115,8 +115,8 @@ export struct KeyMenu {
       .layoutWeight(1)
 
       Row({ space: 4 }) {
-        LanguageItem()
-        KeyItemGray({ keyValue: MenuKey.NUMBER_KEY })
+        LayoutItem()
+        ModeCycleItem()
         KeyItem({ keyValue: { content: ',', title: ',', upperContent: ',' } })
         Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(1).height('100%')
         KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' } })

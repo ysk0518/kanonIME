@@ -1,6 +1,7 @@
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
-import { LanguageItem } from './LanguageItem';
+import { LayoutItem } from './LayoutItem';
+import { ModeCycleItem } from './ModeCycleItem';
 import { ConvertSpaceItem } from './ConvertSpaceItem';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { kanonIme } from '../kanon/KanonIme';
@@ -43,8 +44,7 @@ export struct FlickMenu {
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') : label)
       .borderRadius(6)
       .onClick(() => {
-        if (action === 0) { this.menuType = MenuType.NUMBER; }
-        else if (action === 1) { this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { this.menuType = MenuType.SPECIAL; }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 4) { kanonIme.keyDelete(); }
         else if (action === 5) {
@@ -63,8 +63,9 @@ export struct FlickMenu {
       ForEach([0, 1, 2, 3], (row: number) => {
         Row({ space: FLICK_KEY_GAP }) {
           Column() {
-            if (row === 3) { LanguageItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(['記号', '←', '?123'][row], [1, 2, 0][row]) }
+            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6 }) }
+            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6 }) }
+            else { this.control(row === 0 ? '記号' : '←', row === 0 ? 1 : 2) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach((this.layout === 'en_flick' ? this.englishKeys : this.keys).slice(row * 3, row * 3 + 3),
             (values: string[], index: number) => {

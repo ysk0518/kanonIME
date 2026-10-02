@@ -8,7 +8,7 @@ export struct KeyboardToolbar {
   @StorageLink('kanonToolbarHeight') toolbarHeight: number = 44;
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
   @StorageLink('kanonMode') mode: string = 'JP';
-  @StorageLink('kanonErr') err: string = 'ok';
+  @StorageLink('kanonNeedsRecovery') needsRecovery: boolean = false;
   @StorageLink('kanonEnglishUndo') englishUndo: boolean = false;
 
   build() {
@@ -26,7 +26,7 @@ export struct KeyboardToolbar {
       .accessibilityText(this.submenuType === SubMenuType.NORMAL ? 'キーボードメニュー' : 'キーボードに戻る')
       .id('keyboardMenu')
       KeyboardShortcuts().layoutWeight(1)
-      if (this.submenuType === SubMenuType.NORMAL && this.err !== 'ok') {
+      if (this.submenuType === SubMenuType.NORMAL && this.needsRecovery) {
         Column() {
         Text('再開').fontSize(13).fontColor($r('app.color.text_error')).width('100%').height(this.toolbarHeight)
           .textAlign(TextAlign.Center).onClick(() => { kanonIme.cancelCompose(); }).id('cand_mode')
