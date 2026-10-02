@@ -14,6 +14,7 @@ import { editorAdapter } from './EditorAdapter';
 import { EnglishCompletionUndo, englishPrediction } from './EnglishPrediction';
 import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout,
   writeSharedLayoutOrder } from '../common/KeyboardConfig';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 class KanonIme {
   private coord: ImeCoordinator = new ImeCoordinator(realEditorPort);
@@ -274,6 +275,7 @@ class KanonIme {
   }
 
   async keyText(ch: string): Promise<void> {
+    keyboardHaptics.key();
     await this.post('text', ch);
   }
 
@@ -284,10 +286,12 @@ class KanonIme {
   }
 
   async keyKana(kana: string): Promise<void> {
+    keyboardHaptics.key();
     await this.post('kana', kana);
   }
 
   async modifyKana(): Promise<void> {
+    keyboardHaptics.key();
     await this.post('modifyKana');
   }
 
@@ -325,6 +329,7 @@ class KanonIme {
   }
 
   async keySpace(): Promise<void> {
+    keyboardHaptics.key();
     if (this.getMode() === 'EN') {
       await this.post('text', ' ');
       return;
@@ -333,6 +338,7 @@ class KanonIme {
   }
 
   async keyReturn(): Promise<void> {
+    keyboardHaptics.key();
     if (this.getMode() === 'EN') {
       await this.post('enter');
       return;
@@ -343,7 +349,8 @@ class KanonIme {
     }
   }
 
-  async keyDelete(): Promise<void> {
+  async keyDelete(feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
     await this.post('backspace');
     await this.updateCursor();
   }
@@ -355,16 +362,19 @@ class KanonIme {
 
   /** カーソル移動（EditViewの矢印・行頭・行末）。単一キュー経由。 */
   async keyMove(direction: number): Promise<void> {
+    keyboardHaptics.key();
     await this.post('move', undefined, undefined, undefined, direction);
     await this.updateCursor();
   }
 
   async keyMoveBegin(): Promise<void> {
+    keyboardHaptics.key();
     await this.post('move', undefined, undefined, undefined, undefined, 'begin');
     await this.updateCursor();
   }
 
   async keyMoveEnd(): Promise<void> {
+    keyboardHaptics.key();
     await this.post('move', undefined, undefined, undefined, undefined, 'end');
     await this.updateCursor();
   }
@@ -379,12 +389,14 @@ class KanonIme {
   }
 
   async selectCandidate(id: number): Promise<void> {
+    keyboardHaptics.key();
     const rev: number = this.mode === 'EN' ? englishPrediction.getRevision() : this.coord.getCandidateRevision();
     await this.post('select', undefined, id, rev);
   }
 
   /** 先頭文節のみ確定（残りは未確定継続）。現行revを添える。 */
   async partialCommit(): Promise<void> {
+    keyboardHaptics.key();
     const rev: number = this.coord.getCandidateRevision();
     await this.post('partial', undefined, undefined, rev);
   }
@@ -398,6 +410,7 @@ class KanonIme {
   }
 
   async toggleLayout(): Promise<boolean> {
+    keyboardHaptics.key();
     const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
     const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
     const next: string = current === 'jp_flick' ? 'jp_qwerty' :

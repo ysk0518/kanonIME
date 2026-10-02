@@ -23,7 +23,7 @@ import { SpaceItem } from './SpaceItem';
 import { ReturnItem } from './ReturnItem';
 import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
-import { kanonIme } from '../kanon/KanonIme';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
   .backgroundColor($r('app.color.key_item_gray_pressed'))
@@ -61,19 +61,8 @@ export struct KeyMenu {
           KeyItemNumber({ keyValue: item })
         }, (item: keySourceListType) => item.content)
         if (this.layout === 'jp_qwerty') {
-          Stack() {
-            Text('ー')
-              .fontSize(this.inputStyle.en_fontSize)
-              .fontColor($r('app.color.key_text'))
-          }
-          .width(this.inputStyle.basicButtonWidth)
-          .height('100%')
-          .backgroundColor($r('app.color.key_item_normal'))
-          .borderRadius(4)
-          .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
-          .accessibilityText('長音符')
-          .id('qwerty_long_vowel')
-          .onClick(() => { kanonIme.keyKana('ー'); })
+          KeyItem({ keyValue: { content: 'ー', title: 'ー', upperContent: 'ー' },
+            kanaInput: true, keyId: 'qwerty_long_vowel' })
         } else {
           Stack() {}.width('4%').height(0)
         }
@@ -91,6 +80,7 @@ export struct KeyMenu {
         .backgroundColor($r('app.color.key_item_gray'))
         .borderRadius(4)
         .onClick(() => {
+          keyboardHaptics.key();
           if (this.keyState === KeyState.LOWER_CASE) {
             this.keyState = KeyState.ONCE_UPPER_CASE;
           } else if (this.keyState === KeyState.ONCE_UPPER_CASE) {

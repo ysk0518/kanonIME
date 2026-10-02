@@ -4,6 +4,8 @@ import common from '@ohos.app.ability.common';
 
 const CONFIG_FILE: string = 'kanon_keyboard_config';
 const LAYOUT_KEY: string = 'layout_order';
+const HAPTIC_KEY: string = 'haptic_level';
+export const DEFAULT_HAPTIC_LEVEL: number = 1;
 let sharedPreferences: preferences.Preferences | undefined = undefined;
 
 export function openKeyboardPreferences(context: common.Context): void {
@@ -29,6 +31,22 @@ export function refreshSharedLayoutOrder(): string {
     AppStorage.setOrCreate('kanonLayoutOrder', value);
   }
   return value ?? AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
+}
+
+export function readSharedHapticLevel(): number {
+  if (sharedPreferences === undefined) { return DEFAULT_HAPTIC_LEVEL; }
+  const value: number = sharedPreferences.getSync(HAPTIC_KEY, DEFAULT_HAPTIC_LEVEL) as number;
+  return value === 0 || value === 1 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL;
+}
+
+export function writeSharedHapticLevel(value: number): void {
+  if (sharedPreferences === undefined) { throw new Error('Keyboard preferences are unavailable'); }
+  sharedPreferences.putSync(HAPTIC_KEY, value === 0 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL);
+  sharedPreferences.flushSync();
+}
+
+export function refreshSharedHapticLevel(): void {
+  AppStorage.setOrCreate('kanonHapticLevel', readSharedHapticLevel());
 }
 
 export const DEFAULT_LAYOUT_ORDER: string = 'jp_flick,en_flick';
@@ -66,6 +84,7 @@ export function nextLanguageLayout(order: string, current: string): string {
 
 export function initializeKeyboardConfig(context: common.Context): void {
   openKeyboardPreferences(context);
+  refreshSharedHapticLevel();
   initializeShortcutConfig();
   PersistentStorage.persistProp('kanonLayoutOrder', DEFAULT_LAYOUT_ORDER);
   PersistentStorage.persistProp('kanonFlickDistance', DEFAULT_FLICK_DISTANCE);

@@ -1,5 +1,6 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
-  layoutLanguage, languageLayouts, readSharedLayoutOrder, writeSharedLayoutOrder } from '../common/KeyboardConfig';
+  layoutLanguage, languageLayouts, readSharedLayoutOrder, writeSharedLayoutOrder,
+  readSharedHapticLevel, writeSharedHapticLevel } from '../common/KeyboardConfig';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 import { ShortcutEditor } from './ShortcutEditor';
 
@@ -13,6 +14,8 @@ export struct KeyboardSettings {
   @State private flickDistance: number = DEFAULT_FLICK_DISTANCE;
   @State private longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @State private previewEnabled: boolean = true;
+  @State private hapticLevel: number = 1;
+  private savedSettingsKey: string = '';
   languageOnly: boolean = false;
   onClose: () => void = () => {};
 
@@ -27,6 +30,18 @@ export struct KeyboardSettings {
     this.flickDistance = AppStorage.get<number>('kanonFlickDistance') ?? DEFAULT_FLICK_DISTANCE;
     this.longPressMs = AppStorage.get<number>('kanonLongPressMs') ?? DEFAULT_LONG_PRESS_MS;
     this.previewEnabled = AppStorage.get<boolean>('kanonFlickPreviewEnabled') ?? true;
+    this.hapticLevel = readSharedHapticLevel();
+    this.savedSettingsKey = this.currentSettingsKey();
+  }
+
+  private currentSettingsKey(): string {
+    return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0',
+      this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
+      this.previewEnabled ? '1' : '0', this.hapticLevel.toString()].join('|');
+  }
+
+  private hasChanges(): boolean {
+    return this.savedSettingsKey.length > 0 && this.currentSettingsKey() !== this.savedSettingsKey;
   }
 
   private hasLanguage(language: string): boolean {
@@ -62,7 +77,7 @@ export struct KeyboardSettings {
   }
 
   private async save(): Promise<void> {
-    if (this.saving) { return; }
+    if (this.saving || !this.hasChanges()) { return; }
     this.saving = true;
     try {
       const order: string = languageLayouts(this.selectedLayouts.map((id: string) =>
@@ -72,7 +87,10 @@ export struct KeyboardSettings {
       AppStorage.setOrCreate('kanonFlickDistance', this.flickDistance);
       AppStorage.setOrCreate('kanonLongPressMs', this.longPressMs);
       AppStorage.setOrCreate('kanonFlickPreviewEnabled', this.previewEnabled);
+      writeSharedHapticLevel(this.hapticLevel);
+      AppStorage.setOrCreate('kanonHapticLevel', this.hapticLevel);
       AppStorage.setOrCreate('kanonShortcutOrder', shortcutOrder(this.selectedShortcuts.join(',')).join(','));
+      this.savedSettingsKey = this.currentSettingsKey();
       this.message = '保存しました';
     } catch (e) {
       this.message = '保存できませんでした。再度お試しください。';
@@ -93,7 +111,8 @@ export struct KeyboardSettings {
         if (!this.languageOnly) {
           Button(this.saving ? '保存中' : '保存')
             .fontSize(14).maxFontScale(1).height(40)
-            .enabled(!this.saving)
+            .enabled(!this.saving && this.hasChanges())
+            .opacity(this.saving || !this.hasChanges() ? 0.45 : 1)
             .onClick(() => this.save())
             .id('keyboard_config_save')
         }
@@ -154,6 +173,20 @@ export struct KeyboardSettings {
             .enabled(!this.saving)
             .onChange((value: number) => { this.longPressMs = value; })
             .id('keyboard_config_long_press')
+          Divider().color($r('app.color.light_gray'))
+          Text('キー操作の振動').fontSize(15).fontColor($r('app.color.text_normal'))
+          Row({ space: 8 }) {
+            ForEach([0, 1, 2], (level: number) => {
+              Button(level === 0 ? 'オフ' : level === 1 ? '弱' : '強')
+                .layoutWeight(1).enabled(!this.saving)
+                .fontColor(this.hapticLevel === level ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
+                .backgroundColor(this.hapticLevel === level ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+                .onClick(() => { this.hapticLevel = level; })
+                .id(`keyboard_config_haptic_${level}`)
+            })
+          }.width('100%')
+          Text('振動の強さは端末によって異なります。')
+            .fontSize(12).fontColor($r('app.color.text_secondary'))
           Divider().color($r('app.color.light_gray'))
           ShortcutEditor({ selectedShortcuts: $selectedShortcuts, disabled: this.saving })
           }

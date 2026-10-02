@@ -4,6 +4,7 @@ import { numberFlickKeys } from '../model/NumberFlickData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { kanonIme } from '../kanon/KanonIme';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
 import { LayoutItem } from './LayoutItem';
@@ -34,7 +35,7 @@ export struct NumberFlickMenu {
       .enabled(this.kind() === 'general' || (action !== 1 && action !== 5))
       .opacity(this.kind() !== 'general' && (action === 1 || action === 5) ? 0.4 : 1)
       .onClick(() => {
-        if (action === 1) { this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { keyboardHaptics.key(); this.menuType = MenuType.SPECIAL; }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 5) { kanonIme.keyText(' '); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }

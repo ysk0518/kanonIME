@@ -2,6 +2,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { languageLayouts, layoutLanguage, refreshSharedLayoutOrder } from '../common/KeyboardConfig';
 import { MenuType } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct ModeCycleItem {
@@ -24,6 +25,7 @@ export struct ModeCycleItem {
 
   private async cycle(): Promise<void> {
     if (this.numericOnly()) { return; }
+    keyboardHaptics.key();
     const configured: string[] = languageLayouts(refreshSharedLayoutOrder());
     const japanese: boolean = configured.some((id: string) => layoutLanguage(id) === 'JP');
     const english: boolean = configured.some((id: string) => layoutLanguage(id) === 'EN');

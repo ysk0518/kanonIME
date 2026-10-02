@@ -544,7 +544,7 @@ export class ImeCoordinator {
         // 確立済みpreviewは効果テキストで置換してから確定し、insertは重ねない。
         // 置換なしにfinish＋insertすると二重に入る。
         if (text.length > 0) {
-          const rep: OpResult = await this.editor.setPreview(text, this.previewStart, this.previewEnd);
+          const rep: OpResult = await this.editor.setPreview(text, -1, -1);
           if (!rep.ok) {
             return false;
           }
@@ -586,7 +586,11 @@ export class ImeCoordinator {
     if (!this.previewSupported) {
       return false;
     }
-    const r: OpResult = await this.editor.setPreview(text, start, end);
+    // Once a preview exists, replace the editor's current preview region.
+    // A host field can report success while its visible text length lags behind
+    // our tracked range, so an absolute range can silently target stale text.
+    const replacing: boolean = this.previewShown && this.previewStart >= 0;
+    const r: OpResult = await this.editor.setPreview(text, replacing ? -1 : start, replacing ? -1 : end);
     if (r.ok) {
       this.previewShown = true;
       this.previewStart = start;

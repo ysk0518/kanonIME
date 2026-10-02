@@ -32,6 +32,9 @@
         "name": "ohos.permission.READ_PASTEBOARD",
         "reason": "$string:clipboard_history_permission",
         "usedScene": { "abilities": ["EntryAbility", "ServiceExtAbility"], "when": "always" }
+      },
+      {
+        "name": "ohos.permission.VIBRATE"
       }
     ],
     "metadata": [
