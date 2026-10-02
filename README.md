@@ -33,15 +33,9 @@ HarmonyOS向け日本語・英語キーボード。ArkTSのUIとIME連携、C++ 
 
 現在の構成はWindows / DevEco Studio 6.1系 / HarmonyOS SDK 6.1.1 (API 24) / arm64です。
 
-1. 初回のみ、設定テンプレートをコピーします。既存の署名設定がある場合は上書きしないでください。
-
-   ```powershell
-   Copy-Item build-profile.example.json5 build-profile.json5
-   ```
-
-2. DevEco Studioでプロジェクトを開き、依存関係を同期します。
-3. Signing Configsで自分の端末向け署名を設定します。クリップボード履歴の `ohos.permission.READ_PASTEBOARD` に対応するProfileが必要です。
-4. DevEco Studioでビルドするか、インストール先に合わせて以下を実行します。
+1. DevEco Studioでリポジトリのルートを開き、依存関係を同期します。署名なしの `build-profile.json5` は同梱済みです。
+2. 実機へ導入する場合は、Signing Configsで自分の端末向け署名を設定します。クリップボード履歴の `ohos.permission.READ_PASTEBOARD` に対応するProfileが必要です。
+3. DevEco Studioでビルドするか、インストール先に合わせて以下を実行します。
 
    ```powershell
    $env:DEVECO_SDK_HOME = 'C:/Program Files/Huawei/DevEco Studio/sdk'
@@ -49,14 +43,14 @@ HarmonyOS向け日本語・英語キーボード。ArkTSのUIとIME連携、C++ 
    & 'C:/Program Files/Huawei/DevEco Studio/tools/node/node.exe' 'C:/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js' assembleApp --no-daemon
    ```
 
-5. HDCで署名済みHAPを導入し、IMEを選択します。複数端末接続時は `-t <target>` を指定してください。
+4. HDCで署名済みHAPを導入し、IMEを選択します。複数端末接続時は `-t <target>` を指定してください。
 
    ```powershell
    hdc install entry/build/default/outputs/default/entry-default-signed.hap
    hdc shell ime -s local.yplic.kanon
    ```
 
-`build-profile.json5` は端末固有の署名設定を含むためGit管理から除外しています。共有する設定は `build-profile.example.json5` を更新してください。
+`build-profile.json5` は署名情報を含まない標準設定としてGit管理しています。DevEco Studioで署名を設定した場合は、このファイルに追加された端末固有の署名情報をコミットしないでください。安全な初期状態は `build-profile.example.json5` にも保存しています。
 
 ### 実機での反復確認
 
