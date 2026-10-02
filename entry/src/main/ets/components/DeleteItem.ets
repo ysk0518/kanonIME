@@ -55,9 +55,9 @@ export struct DeleteItem {
     }, delayMs);
   }
 
-  private async deleteOnce(): Promise<void> {
+  private async deleteOnce(feedback: boolean): Promise<void> {
     this.busy = true;
-    try { await kanonIme.keyDelete(); }
+    try { await kanonIme.keyDelete(feedback); }
     catch (e) { this.stopRepeat(); }
     finally { this.busy = false; }
   }
@@ -70,7 +70,7 @@ export struct DeleteItem {
       this.scheduleRepeat(25);
       return;
     }
-    await this.deleteOnce();
+    await this.deleteOnce(false);
     if (!this.pressing) {
       return;
     }
@@ -95,7 +95,7 @@ export struct DeleteItem {
         }
         this.pressing = true;
         this.pressStarted = Date.now();
-        this.deleteOnce();
+        this.deleteOnce(true);
         this.scheduleRepeat(250);
       } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
         this.stopRepeat();

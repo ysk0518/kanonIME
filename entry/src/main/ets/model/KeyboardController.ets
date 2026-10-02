@@ -28,7 +28,7 @@ import { GetHardKeyValue } from './HardKeyUtils';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
 import { StyleConfiguration } from '../common/StyleConfiguration';
 import { panelHeight, toolbarHeight } from '../common/KeyboardLayout';
-import { refreshSharedLayoutOrder } from '../common/KeyboardConfig';
+import { refreshSharedLayoutOrder, refreshSharedHapticLevel } from '../common/KeyboardConfig';
 
 interface CursorInfo {
   x: number;
@@ -71,6 +71,7 @@ export class InputHandler {
     // Kanon M1: EditorAdapterへ現クライアントを接続（editorEpoch更新＝REQ-02の世代管理）。
     editorAdapter.attach(textInputClient);
     refreshSharedLayoutOrder();
+    refreshSharedHapticLevel();
     englishPrediction.clear();
     AppStorage.setOrCreate('kanonList', [] as string[]);
     AppStorage.setOrCreate('kanonIdList', [] as number[]);

@@ -16,6 +16,7 @@
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { MenuKey, MenuType } from '../model/KeyboardKeyData';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
   .backgroundColor($r('app.color.key_item_gray_pressed'))
@@ -42,8 +43,10 @@ export struct KeyItemGray {
     .borderRadius(4)
     .onClick(() => {
       if (this.keyValue === MenuKey.NUMBER_KEY) {
+        keyboardHaptics.key();
         this.menuType = MenuType.NUMBER;
       } else if (this.keyValue === MenuKey.SPECIAL_KEY) {
+        keyboardHaptics.key();
         this.menuType = MenuType.SPECIAL;
       }
     })

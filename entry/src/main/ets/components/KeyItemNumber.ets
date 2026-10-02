@@ -21,14 +21,6 @@ import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
 
-@Styles function pressedStyles() {
-  .backgroundColor($r('app.color.key_item_normal_pressed'))
-}
-
-@Styles function normalStyles() {
-  .backgroundColor($r('app.color.key_item_normal'))
-}
-
 // 有大小写的按键组件
 @Component
 export struct KeyItemNumber {
@@ -38,6 +30,7 @@ export struct KeyItemNumber {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @Consume keyState: number;
   keyValue: keySourceListType | undefined = undefined;
+  @State private active: boolean = false;
   private finger: number = -1;
   private longPressTimer: number = -1;
   private longPressed: boolean = false;
@@ -72,6 +65,7 @@ export struct KeyItemNumber {
     this.clearLongPress();
     hideKeyPreview(this.previewOwner);
     this.finger = -1;
+    this.active = false;
     this.pendingText = '';
     this.alternateText = '';
     this.longPressed = false;
@@ -84,6 +78,7 @@ export struct KeyItemNumber {
     if (event.type === TouchType.Down && this.finger < 0 && event.changedTouches.length > 0 && this.keyValue) {
       const touch: TouchObject = event.changedTouches[0];
       this.finger = touch.id;
+      this.active = true;
       this.longPressed = false;
       this.startEpoch = editorAdapter.getEpoch();
       this.startKeyState = this.keyState;
@@ -106,10 +101,6 @@ export struct KeyItemNumber {
     }
     for (const touch of event.changedTouches) {
       if (touch.id !== this.finger) { continue; }
-      if (touch.x < -8 || touch.y < -8 || touch.x > this.keyWidth + 8 || touch.y > this.keyHeight + 8) {
-        this.cancelTouch();
-        return;
-      }
       if (event.type !== TouchType.Up) { continue; }
       const value: string = this.pendingText;
       const currentEditor: boolean = this.startEpoch === editorAdapter.getEpoch();
@@ -156,7 +147,7 @@ export struct KeyItemNumber {
           .fontWeight(FontWeight.Regular)
       }
     }
-    .backgroundColor($r('app.color.key_item_normal'))
+    .backgroundColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'))
     .borderRadius(4)
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_old: Area, area: Area) => {
@@ -171,8 +162,5 @@ export struct KeyItemNumber {
     .width(this.inputStyle.basicButtonWidth)
     .height('100%')
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
-    .stateStyles({
-      normal: normalStyles, pressed: pressedStyles
-    })
   }
 }

@@ -8,6 +8,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { MenuType } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct FlickMenu {
@@ -44,7 +45,7 @@ export struct FlickMenu {
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') : label)
       .borderRadius(6)
       .onClick(() => {
-        if (action === 1) { this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { keyboardHaptics.key(); this.menuType = MenuType.SPECIAL; }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 4) { kanonIme.keyDelete(); }
         else if (action === 5) {
@@ -52,7 +53,7 @@ export struct FlickMenu {
           else { kanonIme.keySpace(); }
         }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
-        else if (action === 8) { this.englishUpper = !this.englishUpper; }
+        else if (action === 8) { keyboardHaptics.key(); this.englishUpper = !this.englishUpper; }
         else { kanonIme.keyReturn(); }
       })
       .id(`flick_control_${action}`)
