@@ -86,7 +86,8 @@ if ($SelectKanon) {
   Write-Output 'IME: kanon'
 }
 if ($OpenPreview) {
-  Invoke-Device @('shell', 'aa', 'start', '-a', 'EntryAbility', '-b', 'local.yplic.kanon') | Out-Null
+  Invoke-Device @('shell', 'aa', 'start', '-a', 'EntryAbility', '-b', 'local.yplic.kanon',
+    '--pb', 'kanonPreview', 'true') | Out-Null
   Start-Sleep -Milliseconds 650
   Write-Output 'Preview: opened (keyboard chooser may appear)'
 }

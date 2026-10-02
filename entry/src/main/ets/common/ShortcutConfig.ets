@@ -23,7 +23,7 @@ export function shortcutIcon(id: string): Resource {
 }
 
 export function shortcutTarget(id: string): number {
-  return id === 'settings' ? SubMenuType.SETTINGS : id === 'clipboard' ? SubMenuType.CLIPBOARD : SubMenuType.EDIT;
+  return id === 'clipboard' ? SubMenuType.CLIPBOARD : id === 'edit' ? SubMenuType.EDIT : SubMenuType.NORMAL;
 }
 
 export function initializeShortcutConfig(): void {

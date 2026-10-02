@@ -45,8 +45,6 @@ export struct KeyItemGray {
         this.menuType = MenuType.NUMBER;
       } else if (this.keyValue === MenuKey.SPECIAL_KEY) {
         this.menuType = MenuType.SPECIAL;
-      } else if (this.keyValue === MenuKey.NORMAL_KEY) {
-        this.menuType = MenuType.NORMAL;
       }
     })
     .height('100%')

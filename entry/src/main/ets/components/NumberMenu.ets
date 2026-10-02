@@ -21,7 +21,8 @@ import { KeyItemGray } from './KeyItemGray';
 import { MenuKey, numberSourceListData, sourceListType } from '../model/KeyboardKeyData';
 import { SpaceItem } from './SpaceItem';
 import { ReturnItem } from './ReturnItem';
-import { LanguageItem } from './LanguageItem';
+import { LayoutItem } from './LayoutItem';
+import { ModeCycleItem } from './ModeCycleItem';
 
 // 数字键盘
 @Component
@@ -59,8 +60,8 @@ export struct NumberMenu {
       .layoutWeight(1)
 
       Row({ space: 4 }) {
-        LanguageItem()
-        KeyItemGray({ keyValue: MenuKey.NORMAL_KEY })
+        LayoutItem()
+        ModeCycleItem()
         KeyItem({ keyValue: { content: '_', title: '_', upperContent: '_' } })
         KeyItem({ keyValue: { content: ',', title: ',', upperContent: ',' } })
 

@@ -32,15 +32,13 @@ import { NumberFlickMenu } from '../components/NumberFlickMenu';
 import { StyleConfiguration, KeyStyle } from '../common/StyleConfiguration';
 import { SymbolMenu } from '../components/SymbolMenu';
 import { Submenu } from '../components/Submenu';
-import { G01ProbeView } from '../kanon/G01ProbeView';
-import { M2ProbeView } from '../kanon/M2ProbeView';
-import { M3ProbeView } from '../kanon/M3ProbeView';
 import { CandidateBar } from '../components/CandidateBar';
 import { TopMenu } from '../components/TopMenu';
-import { KeyboardSettings } from '../components/KeyboardSettings';
 import { ClipboardPanel } from '../components/ClipboardPanel';
+import { KeyboardSettings } from '../components/KeyboardSettings';
 import { FlickPreview } from '../components/FlickPreview';
 import { kanonIme } from '../kanon/KanonIme';
+import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 
 const TAG: string = 'index->';
 
@@ -50,7 +48,8 @@ struct Index {
   @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = 44;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
-  @StorageLink('kanonLayout') @Watch('layoutChanged') layout: string = 'jp_flick';
+  @StorageLink('kanonLayout') layout: string = 'jp_flick';
+  @StorageLink('kanonLayoutOrder') @Watch('configChanged') layoutOrder: string = DEFAULT_LAYOUT_ORDER;
   @StorageLink('kanonMode') mode: string = 'JP';
   @Provide menuType: number = MenuType.NORMAL;
   @StorageLink('kanonCandidatesExpanded') candidatesExpanded: boolean = false;
@@ -74,7 +73,7 @@ struct Index {
     }
   }
 
-  layoutChanged(): void { this.inputPatternChange(); }
+  configChanged(): void { kanonIme.prepare(); }
 
   aboutToAppear(): void {
     this.inputPatternChange();
@@ -104,16 +103,12 @@ struct Index {
               Submenu()
             } else if (this.submenuType === SubMenuType.EDIT) {
               EditView();
-            } else if (this.submenuType === SubMenuType.SETTINGS) {
-              KeyboardSettings({ onSaved: () => { this.submenuType = SubMenuType.NORMAL; } })
             } else if (this.submenuType === SubMenuType.CLIPBOARD) {
               ClipboardPanel()
-            } else if (this.submenuType === SubMenuType.M2) {
-              M2ProbeView();
-            } else if (this.submenuType === SubMenuType.M3) {
-              M3ProbeView();
+            } else if (this.submenuType === SubMenuType.SETTINGS) {
+              KeyboardSettings({ languageOnly: true, onClose: () => { this.submenuType = SubMenuType.NORMAL; } })
             } else {
-              G01ProbeView();
+              Submenu()
             }
           } else if (!this.candidatesExpanded) {
             if (this.menuType === MenuType.NORMAL) {

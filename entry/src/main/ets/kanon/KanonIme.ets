@@ -12,7 +12,8 @@ import { MozcEngine } from './MozcEngine';
 import { InputHandler } from '../model/KeyboardController';
 import { editorAdapter } from './EditorAdapter';
 import { EnglishCompletionUndo, englishPrediction } from './EnglishPrediction';
-import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout } from '../common/KeyboardConfig';
+import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout,
+  writeSharedLayoutOrder } from '../common/KeyboardConfig';
 
 class KanonIme {
   private coord: ImeCoordinator = new ImeCoordinator(realEditorPort);
@@ -60,6 +61,7 @@ class KanonIme {
     AppStorage.setOrCreate('kanonMode', s.mode);
     AppStorage.setOrCreate('kanonState', s.state);
     AppStorage.setOrCreate('kanonErr', s.lastError);
+    AppStorage.setOrCreate('kanonNeedsRecovery', s.needsRecovery);
     AppStorage.setOrCreate('kanonCand', s.mode === 'EN' ? englishPrediction.getItems().length : s.candidateCount);
     AppStorage.setOrCreate('kanonRev', s.mode === 'EN' ? englishPrediction.getRevision() : this.coord.getCandidateRevision());
     try {
@@ -105,7 +107,16 @@ class KanonIme {
       await this.ensure();
       await this.syncEpoch();
       if (requestEpoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
-      if (kind === 'prepare') { return this.coord.getSnapshot(); }
+      if (kind === 'prepare') {
+        const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
+        const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
+        const selected: string[] = languageLayouts(configured);
+        const preferred: string = selected.find((id: string) => layoutLanguage(id) === layoutLanguage(current)) ?? selected[0];
+        if (preferred !== current || this.coord.getSnapshot().mode !== layoutLanguage(preferred)) {
+          return await this.changeLayout('config', configured, requestEpoch);
+        }
+        return this.coord.getSnapshot();
+      }
       if (kind !== 'backspace' && kind !== 'select' && kind !== 'undoEnglish') { englishPrediction.dropUndo(); }
       if (kind === 'cycle' || kind === 'config') {
         return await this.changeLayout(kind, text ?? '', requestEpoch);
@@ -386,6 +397,18 @@ class KanonIme {
     await this.post('cycle');
   }
 
+  async toggleLayout(): Promise<boolean> {
+    const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
+    const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
+    const next: string = current === 'jp_flick' ? 'jp_qwerty' :
+      current === 'jp_qwerty' ? 'jp_flick' :
+      current === 'en_flick' ? 'en_qwerty' : 'en_flick';
+    const flick: boolean = next.endsWith('_flick');
+    const order: string[] = languageLayouts(configured).map((id: string) =>
+      `${id.startsWith('en_') ? 'en' : 'jp'}_${flick ? 'flick' : 'qwerty'}`);
+    return this.applyLayoutConfig(order.join(','));
+  }
+
   async prepare(): Promise<void> {
     await this.post('prepare');
   }
@@ -421,6 +444,7 @@ class KanonIme {
     }
     if (kind === 'config' && epoch === realEditorPort.getEpoch()) {
       AppStorage.setOrCreate('kanonLayoutOrder', order.join(','));
+      writeSharedLayoutOrder(order.join(','));
     }
     const snapshot: ImeSnapshot = this.coord.getSnapshot();
     this.publish(snapshot);

@@ -16,38 +16,44 @@
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { SubMenuType } from '../model/KeyboardKeyData';
-import { DEFAULT_LAYOUT_ORDER, languageLayouts, layoutLanguage } from '../common/KeyboardConfig';
-import { kanonIme } from '../kanon/KanonIme';
+import InputMethodExtensionContext from '@ohos.InputMethodExtensionContext';
+import { openKeyboardSettings } from '../common/SettingsLauncher';
 
 @Preview
 @Component
 export struct Submenu {
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  @StorageLink('kanonLayout') layout: string = 'jp_flick';
-  @StorageLink('kanonLayoutOrder') layoutOrder: string = DEFAULT_LAYOUT_ORDER;
+  @State private settingsError: boolean = false;
 
-  private async switchLayout(): Promise<void> {
-    const next: string = this.layout === 'jp_flick' ? 'jp_qwerty' :
-      this.layout === 'jp_qwerty' ? 'jp_flick' :
-      this.layout === 'en_flick' ? 'en_qwerty' : 'en_flick';
-    const order: string[] = languageLayouts(this.layoutOrder).map((id: string) =>
-      layoutLanguage(id) === layoutLanguage(this.layout) ? next : id);
-    if (await kanonIme.applyLayoutConfig(order.join(','))) {
+  private async showSettings(): Promise<void> {
+    const context: InputMethodExtensionContext = this.getUIContext().getHostContext() as InputMethodExtensionContext;
+    if (await openKeyboardSettings(context)) {
+      this.settingsError = false;
       this.submenuType = SubMenuType.NORMAL;
-    }
+    } else { this.settingsError = true; }
   }
 
   build() {
-    Grid() {
+    Column() {
+      Grid() {
       GridItem() {
         Text('設定')
           .fontColor($r('app.color.text_normal'))
           .fontSize(this.inputStyle.editFontSize)
           .width('100%')
-          .height('50%')
+          .height('100%')
           .textAlign(TextAlign.Center)
           .id('keyboardSettings')
+          .onClick(() => { this.showSettings(); })
+      }
+      GridItem() {
+        Text('使用する言語')
+          .fontColor($r('app.color.text_normal'))
+          .fontSize(this.inputStyle.editFontSize)
+          .width('100%').height('100%')
+          .textAlign(TextAlign.Center)
+          .id('keyboardLanguageSettings')
           .onClick(() => { this.submenuType = SubMenuType.SETTINGS; })
       }
       GridItem() {
@@ -60,7 +66,7 @@ export struct Submenu {
             .width(24).height(24)
         }
         .width('100%')
-        .height('50%')
+        .height('100%')
         .justifyContent(FlexAlign.Center)
         .onClick(() => { this.submenuType = SubMenuType.CLIPBOARD; })
         .id('clipboard_open')
@@ -71,75 +77,34 @@ export struct Submenu {
             .fillColor($r('app.color.key_text'))
             .size({ width: this.inputStyle.editPicSize, height: this.inputStyle.editPicSize })
             .objectFit(ImageFit.Cover)
-          Text($r('app.string.edit'))
+          Text('テキスト編集')
             .fontColor($r('app.color.text_normal'))
             .fontSize(this.inputStyle.editFontSize)
             .opacity(0.6)
             .margin({ top: 8 })
         }
         .width('100%')
-        .height('50%')
+        .height('100%')
         .justifyContent(FlexAlign.Center)
         .id('btnEdit')
         .onClick(() => {
           this.submenuType = SubMenuType.EDIT;
         })
       }
-      GridItem() {
-        Column() {
-          Text('配列')
-            .fontColor($r('app.color.text_normal'))
-            .fontSize(this.inputStyle.editFontSize)
-          Text(this.layout.endsWith('flick') ? '12キー → QWERTY' : 'QWERTY → 12キー')
-            .fontColor($r('app.color.text_secondary'))
-            .fontSize(11)
-            .margin({ top: 4 })
-        }
-        .width('100%')
-        .height('50%')
-        .justifyContent(FlexAlign.Center)
-        .accessibilityText(this.layout.endsWith('flick') ? 'QWERTYに切り替え' : '12キーに切り替え')
-        .id('keyboard_layout_toggle')
-        .onClick(() => { this.switchLayout(); })
       }
-      GridItem() {
-        Column() {
-          Text('M2')
-            .fontColor($r('app.color.text_normal'))
-            .fontSize(this.inputStyle.editFontSize)
-            .opacity(0.6)
-            .margin({ top: 8 })
-        }
-        .width('100%')
-        .height('50%')
-        .justifyContent(FlexAlign.Center)
-        .id('btnM2')
-        .onClick(() => {
-          this.submenuType = SubMenuType.M2;
-        })
-      }
-      GridItem() {
-        Column() {
-          Text('M3')
-            .fontColor($r('app.color.text_normal'))
-            .fontSize(this.inputStyle.editFontSize)
-            .opacity(0.6)
-            .margin({ top: 8 })
-        }
-        .width('100%')
-        .height('50%')
-        .justifyContent(FlexAlign.Center)
-        .id('btnM3')
-        .onClick(() => {
-          this.submenuType = SubMenuType.M3;
-        })
+      .width('100%')
+      .layoutWeight(1)
+      .columnsTemplate('1fr 1fr')
+      .rowsTemplate('1fr 1fr')
+      .columnsGap(12)
+      .rowsGap(12)
+      if (this.settingsError) {
+        Text('設定を開けませんでした。アプリアイコンから設定を開けます。')
+          .fontSize(12).fontColor($r('app.color.text_error')).padding(8)
       }
     }
     .width('100%')
     .height('100%')
-    .columnsTemplate('1fr 1fr 1fr')
-    .columnsGap(12)
-    .rowsGap(12)
     .backgroundColor($r('app.color.menu_background'))
   }
 }

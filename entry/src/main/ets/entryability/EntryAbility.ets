@@ -22,9 +22,11 @@ import window from '@ohos.window';
 
 export default class EntryAbility extends UIAbility {
   private clipboardPermission: boolean = false;
+  private preview: boolean = false;
   private mainStage: window.WindowStage | undefined;
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.clipboardPermission = want.parameters?.['kanonClipboardPermission'] === true;
+    this.preview = want.parameters?.['kanonPreview'] === true;
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
@@ -37,7 +39,8 @@ export default class EntryAbility extends UIAbility {
     // Main window is created, set main page for this ability
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
-    windowStage.loadContent(this.clipboardPermission ? 'pages/ClipboardPermission' : 'pages/PrivatePreview', (err) => {
+    windowStage.loadContent(this.clipboardPermission ? 'pages/ClipboardPermission' :
+      this.preview ? 'pages/PrivatePreview' : 'pages/SettingsPage', (err) => {
       if (err.code) {
         hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
         return;
@@ -55,6 +58,12 @@ export default class EntryAbility extends UIAbility {
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     if (want.parameters?.['kanonClipboardPermission'] === true && this.mainStage) {
       this.mainStage.loadContent('pages/ClipboardPermission');
+    } else if (want.parameters?.['kanonSettings'] === true && this.mainStage) {
+      this.mainStage.loadContent('pages/SettingsPage');
+    } else if (want.parameters?.['kanonPreview'] === true && this.mainStage) {
+      this.mainStage.loadContent('pages/PrivatePreview');
+    } else if (this.mainStage) {
+      this.mainStage.loadContent('pages/SettingsPage');
     }
   }
 
