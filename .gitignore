@@ -13,7 +13,6 @@
 **/local.properties
 **/.idea/
 *.iml
-/build-profile.json5
 *.p12
 *.p7b
 *.cer
