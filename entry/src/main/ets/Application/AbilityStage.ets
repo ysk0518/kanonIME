@@ -21,6 +21,7 @@ import { initializeKeyboardConfig } from '../common/KeyboardConfig';
 import { clipboardStore } from '../common/ClipboardStore';
 import { Configuration as AbilityConfiguration } from '@ohos.app.ability.Configuration';
 import { keyboardController } from '../model/KeyboardController';
+import { BusinessError } from '@ohos.base';
 
 const TAG: string = 'AbilityStage->';
 
@@ -29,7 +30,11 @@ export default class MyAbilityStage extends AbilityStage {
     initializeKeyboardConfig(this.context);
     clipboardStore.initialize();
     keyboardController.updateFontScale(this.context.config.fontSizeScale ?? 1);
-    this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+    try {
+      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
+    } catch (error) {
+      Log.showInfo(TAG, `setColorMode failed code=${(error as BusinessError).code}`);
+    }
     AppStorage.setOrCreate<number>('windowWidth', -1);
     AppStorage.setOrCreate<number>('windowHeight', -1);
     Log.showInfo(TAG, '[Demo] MyAbilityStage onCreate');

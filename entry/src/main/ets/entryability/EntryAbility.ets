@@ -19,6 +19,7 @@ import hilog from '@ohos.hilog';
 import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
+import { BusinessError } from '@ohos.base';
 
 export default class EntryAbility extends UIAbility {
   private clipboardPermission: boolean = false;
@@ -56,14 +57,18 @@ export default class EntryAbility extends UIAbility {
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    if (want.parameters?.['kanonClipboardPermission'] === true && this.mainStage) {
-      this.mainStage.loadContent('pages/ClipboardPermission');
-    } else if (want.parameters?.['kanonSettings'] === true && this.mainStage) {
-      this.mainStage.loadContent('pages/SettingsPage');
-    } else if (want.parameters?.['kanonPreview'] === true && this.mainStage) {
-      this.mainStage.loadContent('pages/PrivatePreview');
-    } else if (this.mainStage) {
-      this.mainStage.loadContent('pages/SettingsPage');
+    const stage: window.WindowStage | undefined = this.mainStage;
+    if (!stage) { return; }
+    const page: string = want.parameters?.['kanonClipboardPermission'] === true ? 'pages/ClipboardPermission' :
+      want.parameters?.['kanonPreview'] === true ? 'pages/PrivatePreview' : 'pages/SettingsPage';
+    try {
+      stage.loadContent(page, (err) => {
+        if (err.code) {
+          hilog.error(0x0000, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
+        }
+      });
+    } catch (error) {
+      hilog.error(0x0000, 'testTag', 'Failed to load the content. Code: %{public}d', (error as BusinessError).code);
     }
   }
 

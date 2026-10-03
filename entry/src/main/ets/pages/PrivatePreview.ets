@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-import inputMethod from '@ohos.inputMethod';
 import Log from '../model/Log';
-import { BusinessError } from '@ohos.base';
 
 const TAG: string = 'PrivatePreview->';
 
@@ -29,15 +27,6 @@ struct PrivatePreview {
   @StorageLink('isTextPreviewSupported') isTextPreviewSupported: boolean = true;
   controllerPrivate: TextInputController = new TextInputController();
   controllerPreview: TextInputController = new TextInputController();
-
-  aboutToAppear() {
-    this.addLog(`private preview aboutToAppear begin!`);
-    inputMethod.getSetting().showOptionalInputMethods().then((data: boolean) => {
-      console.log('onPageShow Succeeded in showing optionalInputMethods.');
-    }).catch((err: BusinessError) => {
-      console.error(`onPageShow Failed to showOptionalInputMethods code=${err.code}`);
-    })
-  }
 
   onPageShow() {
     this.addLog(`private command onPageShow!`);
