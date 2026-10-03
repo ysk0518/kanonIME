@@ -15,7 +15,6 @@
  */
 
 import inputMethodEngine from '@ohos.inputMethodEngine';
-import { InputHandler } from '../model/KeyboardController';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
@@ -111,7 +110,7 @@ export struct EditView {
           .margin({ left: this.inputStyle.editButtonSize })
           .id('cursor_all')
           .onClick(() => {
-            InputHandler.getInstance().sendExtendAction(inputMethodEngine.ExtendAction.SELECT_ALL);
+            kanonIme.keySelectAll();
           })
         }
 
@@ -141,7 +140,7 @@ export struct EditView {
 
   moveOrSelect(direction: inputMethodEngine.Direction): void {
     if (this.isSelection) {
-      InputHandler.getInstance().selectByMovement(direction);
+      kanonIme.keySelectMove(direction as number);
     } else {
       // カーソル移動はKanon単一キュー経由（REQ-05・世代管理）。
       kanonIme.keyMove(direction as number);
@@ -150,7 +149,7 @@ export struct EditView {
 
   moveOrSelectBegin(): void {
     if (this.isSelection) {
-      InputHandler.getInstance().selectToBegin();
+      kanonIme.keySelectEdge('begin');
     } else {
       kanonIme.keyMoveBegin();
     }
@@ -158,7 +157,7 @@ export struct EditView {
 
   moveOrSelectEnd(): void {
     if (this.isSelection) {
-      InputHandler.getInstance().selectToEnd();
+      kanonIme.keySelectEdge('end');
     } else {
       kanonIme.keyMoveEnd();
     }

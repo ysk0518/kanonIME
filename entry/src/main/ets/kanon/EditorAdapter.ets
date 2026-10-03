@@ -17,6 +17,7 @@ const OP_TIMEOUT_MS: number = 3000;
 /** クライアント不在時は -1、タイムアウトは -3。 */
 const CODE_NO_CLIENT: number = -1;
 const CODE_TIMEOUT: number = -3;
+const CODE_UNRESOLVED_WRITE: number = -6;
 
 export interface EditorResult {
   op: string;
@@ -51,10 +52,16 @@ export class EditorAdapter {
   private client: inputMethodEngine.InputClient | undefined = undefined;
   private queue: Promise<void> = Promise.resolve();
   private editorEpoch: number = 0;
+  private unresolvedWriteEpoch: number = -1;
+  private selectionStart: number = -1;
+  private selectionEnd: number = -1;
 
   attach(client: inputMethodEngine.InputClient): number {
     this.client = client;
     this.editorEpoch++;
+    this.unresolvedWriteEpoch = -1;
+    this.selectionStart = -1;
+    this.selectionEnd = -1;
     // 旧世代の未解決操作は破棄する（REQ-02）。固まったキューもここで切り直す。
     this.queue = Promise.resolve();
     Log.showInfo(TAG, `kanon: attach epoch=${this.editorEpoch}`);
@@ -64,6 +71,9 @@ export class EditorAdapter {
   detach(): number {
     this.client = undefined;
     this.editorEpoch++;
+    this.unresolvedWriteEpoch = -1;
+    this.selectionStart = -1;
+    this.selectionEnd = -1;
     Log.showInfo(TAG, `kanon: detach epoch=${this.editorEpoch}`);
     return this.editorEpoch;
   }
@@ -72,10 +82,20 @@ export class EditorAdapter {
     return this.editorEpoch;
   }
 
-  private withTimeout<T>(op: string, p: Promise<T>): Promise<T | undefined> {
+  updateSelection(start: number, end: number): void {
+    this.selectionStart = start;
+    this.selectionEnd = end;
+  }
+
+  hasSelection(): boolean {
+    return this.selectionStart >= 0 && this.selectionEnd >= 0 && this.selectionStart !== this.selectionEnd;
+  }
+
+  private withTimeout<T>(op: string, p: Promise<T>, onTimeout?: () => void): Promise<T | undefined> {
     return new Promise<T | undefined>((resolve: (v: T | undefined) => void, reject: (e: BusinessError) => void) => {
       const timerId: number = setTimeout((): void => {
         Log.showInfo(TAG, `kanon: ${op} timeout`);
+        if (onTimeout !== undefined) { onTimeout(); }
         resolve(undefined);
       }, OP_TIMEOUT_MS);
       p.then((v: T): void => {
@@ -88,19 +108,35 @@ export class EditorAdapter {
     });
   }
 
-  private enqueue(op: string, fn: (client: inputMethodEngine.InputClient) => Promise<string>): Promise<EditorResult> {
+  private enqueue(op: string, fn: (client: inputMethodEngine.InputClient) => Promise<string | null>): Promise<EditorResult> {
     const epoch: number = this.editorEpoch;
     const run: Promise<EditorResult> = this.queue.then(async (): Promise<EditorResult> => {
       if (epoch !== this.editorEpoch) { return { op: op, ok: false, code: -4, detail: 'stale-epoch' }; }
+      if (this.unresolvedWriteEpoch === epoch) {
+        return { op: op, ok: false, code: CODE_UNRESOLVED_WRITE, detail: 'unresolved-write' };
+      }
       const client: inputMethodEngine.InputClient | undefined = this.client;
       if (client === undefined) {
         Log.showInfo(TAG, `kanon: ${op} no-client`);
         return { op: op, ok: false, code: CODE_NO_CLIENT, detail: 'no-client' };
       }
       try {
-        const raced: string | undefined = await this.withTimeout<string>(op, fn(client));
+        const pending: Promise<string | null> = fn(client);
+        const raced: string | null | undefined = await this.withTimeout<string | null>(op, pending, (): void => {
+          if (epoch !== this.editorEpoch) { return; }
+          this.unresolvedWriteEpoch = epoch;
+          pending.then((): void => {
+            if (this.unresolvedWriteEpoch === epoch) { this.unresolvedWriteEpoch = -1; }
+          }).catch((): void => {
+            if (this.unresolvedWriteEpoch === epoch) { this.unresolvedWriteEpoch = -1; }
+          });
+        });
         if (raced === undefined) {
           return { op: op, ok: false, code: CODE_TIMEOUT, detail: 'timeout' };
+        }
+        if (raced === null) {
+          Log.showInfo(TAG, `kanon: ${op} rejected`);
+          return { op: op, ok: false, code: -5, detail: 'rejected' };
         }
         const detail: string = raced;
         Log.showInfo(TAG, `kanon: ${op} ok ${detail}`);
@@ -131,8 +167,8 @@ export class EditorAdapter {
   setPreview(text: string, start: number, end: number): Promise<EditorResult> {
     const len: number = text.length;
     return this.enqueue('setPreview', async (client: inputMethodEngine.InputClient): Promise<string> => {
-      // 自動範囲は入力欄側でpreviewが解除された時に挿入へ戻り、前の読みが残る。
-      // Coordinatorが追跡するUTF-16範囲を明示して、常に前の未確定だけを置き換える。
+      // (-1,-1) is the documented range for replacing or clearing the entire preview.
+      // A nonnegative range addresses positions inside the preview, not document coordinates.
       const range: inputMethodEngine.Range = { start: start, end: end };
       await client.setPreviewText(text, range);
       return `len=${len} range=[${start},${end}]`;
@@ -148,9 +184,9 @@ export class EditorAdapter {
 
   insert(text: string): Promise<EditorResult> {
     const len: number = text.length;
-    return this.enqueue('insert', async (client: inputMethodEngine.InputClient): Promise<string> => {
-      await client.insertText(text);
-      return `len=${len}`;
+    return this.enqueue('insert', async (client: inputMethodEngine.InputClient): Promise<string | null> => {
+      const inserted: boolean = await client.insertText(text);
+      return inserted ? `len=${len}` : null;
     });
   }
 
@@ -160,17 +196,17 @@ export class EditorAdapter {
    * nの単位は文字（サロゲートペアは分割されず1文字として消えることを確認）。
    */
   deleteBackward(length: number): Promise<EditorResult> {
-    return this.enqueue('deleteBackward', async (client: inputMethodEngine.InputClient): Promise<string> => {
-      await client.deleteBackward(length);
-      return `len=${length}`;
+    return this.enqueue('deleteBackward', async (client: inputMethodEngine.InputClient): Promise<string | null> => {
+      const deleted: boolean = await client.deleteBackward(length);
+      return deleted ? `len=${length}` : null;
     });
   }
 
   /** G-01実証済み: カーソル左をn文字削除（Backspace用）。単位は文字。カーソル位置はUTF-16単位。 */
   deleteForward(length: number): Promise<EditorResult> {
-    return this.enqueue('deleteForward', async (client: inputMethodEngine.InputClient): Promise<string> => {
-      await client.deleteForward(length);
-      return `len=${length}`;
+    return this.enqueue('deleteForward', async (client: inputMethodEngine.InputClient): Promise<string | null> => {
+      const deleted: boolean = await client.deleteForward(length);
+      return deleted ? `len=${length}` : null;
     });
   }
 
@@ -178,6 +214,20 @@ export class EditorAdapter {
     return this.enqueue('moveCursor', async (client: inputMethodEngine.InputClient): Promise<string> => {
       await client.moveCursor(direction);
       return `dir=${direction}`;
+    });
+  }
+
+  selectByMovement(direction: number): Promise<EditorResult> {
+    return this.enqueue('selectByMovement', async (client: inputMethodEngine.InputClient): Promise<string> => {
+      await client.selectByMovement({ direction: direction });
+      return `dir=${direction}`;
+    });
+  }
+
+  selectAll(): Promise<EditorResult> {
+    return this.enqueue('selectAll', async (client: inputMethodEngine.InputClient): Promise<string> => {
+      await client.sendExtendAction(inputMethodEngine.ExtendAction.SELECT_ALL);
+      return 'done';
     });
   }
 
@@ -206,6 +256,9 @@ export class EditorAdapter {
     const epoch: number = this.editorEpoch;
     const run: Promise<EditorValue<T>> = this.queue.then(async (): Promise<EditorValue<T>> => {
       if (epoch !== this.editorEpoch) { return { ok: false, code: -4, value: undefined }; }
+      if (this.unresolvedWriteEpoch === epoch) {
+        return { ok: false, code: CODE_UNRESOLVED_WRITE, value: undefined };
+      }
       const client: inputMethodEngine.InputClient | undefined = this.client;
       if (client === undefined) {
         Log.showInfo(TAG, `kanon: ${op} no-client`);
@@ -246,16 +299,12 @@ export class EditorAdapter {
     });
   }
 
-  /** G-01実証済み: getForward=カーソル前、getBackward=カーソル後。長さはUTF-16単位。
-   * 実機追加知見（AT-11）: getForward(n)は直前nではなく先頭側nを返す。
-   * 末尾判定は100単位取りの末尾2で行うこと。 */
-  queryAround(beforeLen: number, afterLen: number): Promise<EditorValue<string[]>> {
-    return this.enqueueValue('qAround', async (client: inputMethodEngine.InputClient): Promise<string[]> => {
-      const before: string = await client.getForward(beforeLen);
-      const after: string = await client.getBackward(afterLen);
-      return [before, after];
+  queryForward(length: number): Promise<EditorValue<string>> {
+    return this.enqueueValue('qForward', async (client: inputMethodEngine.InputClient): Promise<string> => {
+      return await client.getForward(length);
     });
   }
+
 }
 
 export const editorAdapter: EditorAdapter = new EditorAdapter();
