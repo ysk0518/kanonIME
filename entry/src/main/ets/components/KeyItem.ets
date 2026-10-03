@@ -23,7 +23,7 @@ import { editorAdapter } from '../kanon/EditorAdapter';
 // 无大小写的按键组件
 @Component
 export struct KeyItem {
-  private keyValue: keySourceListType | undefined = undefined;
+  keyValue: keySourceListType | undefined = undefined;
   kanaInput: boolean = false;
   keyId: string = '';
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();

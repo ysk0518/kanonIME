@@ -84,7 +84,9 @@ export class InputHandler {
   public hideKeyboardSelf(): void {
     this.addLog('hideKeyboardSelf');
     if (this.mKbController !== undefined) {
-      this.mKbController.hide();
+      try { this.mKbController.hide(); } catch (error) {
+        this.addLog(`hideKeyboardSelf failed code=${(error as BusinessError).code}`);
+      }
     } else {
       this.addLog('hideKeyboardSelf this.mKbController is undefined');
     }
@@ -127,6 +129,10 @@ class KeyboardController {
   private isKeyboardShow: boolean = false;
   private inputHandle: InputHandler = InputHandler.getInstance();
   private mKeyboardDelegate: inputMethodEngine.KeyboardDelegate | undefined;
+  private displayChanged: (displayId: number) => void = (displayId: number): void => {
+    this.inputHandle.addLog('screenChangeEvent');
+    this.resizePanel();
+  };
   private inputStopped: () => void = () => {
     if (!this.active) { return; }
     this.inputHandle.addLog('keyboard inputStop');
@@ -214,44 +220,43 @@ class KeyboardController {
   }
 
   private applyPanelRect(panel: inputMethodEngine.Panel): void {
-    const screen: display.Display = display.getDefaultDisplaySync();
-    const density: number = screen.densityPixels > 0 ? screen.densityPixels : 1;
-    const shortPx: number = Math.min(screen.width, screen.height);
-    const longPx: number = Math.max(screen.width, screen.height);
-    const fontScale: number = AppStorage.get<number>('kanonFontScale') ?? 1;
-    const portraitHeight: number = Math.round(panelHeight(shortPx / density, longPx / density, fontScale) * density);
-    const landscapeHeight: number = Math.round(panelHeight(longPx / density, shortPx / density, fontScale) * density);
-    // Fixed panels are positioned by HarmonyOS, including system navigation area.
-    // Register both orientations together instead of racing resize() and moveTo().
-    panel.adjustPanelRect(inputMethodEngine.PanelFlag.FLG_FIXED, {
-      portraitRect: { left: 0, top: 0, width: shortPx, height: portraitHeight },
-      landscapeRect: { left: 0, top: 0, width: longPx, height: landscapeHeight }
-    });
-    AppStorage.setOrCreate('windowWidth', screen.width);
-    AppStorage.setOrCreate('windowHeight', screen.height);
-    AppStorage.setOrCreate('isLandscape', screen.width > screen.height);
-    const initialHeight: number = screen.width > screen.height ? landscapeHeight : portraitHeight;
-    if (!this.panelReady) {
-      AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(Math.min(720, screen.width / density),
-        Math.max(1, initialHeight / density - toolbarHeight(fontScale))));
+    try {
+      const screen: display.Display = display.getDefaultDisplaySync();
+      const density: number = screen.densityPixels > 0 ? screen.densityPixels : 1;
+      const shortPx: number = Math.min(screen.width, screen.height);
+      const longPx: number = Math.max(screen.width, screen.height);
+      const fontScale: number = AppStorage.get<number>('kanonFontScale') ?? 1;
+      const portraitHeight: number = Math.round(panelHeight(shortPx / density, longPx / density, fontScale) * density);
+      const landscapeHeight: number = Math.round(panelHeight(longPx / density, shortPx / density, fontScale) * density);
+      // Fixed panels are positioned by HarmonyOS, including system navigation area.
+      // Register both orientations together instead of racing resize() and moveTo().
+      panel.adjustPanelRect(inputMethodEngine.PanelFlag.FLG_FIXED, {
+        portraitRect: { left: 0, top: 0, width: shortPx, height: portraitHeight },
+        landscapeRect: { left: 0, top: 0, width: longPx, height: landscapeHeight }
+      });
+      AppStorage.setOrCreate('windowWidth', screen.width);
+      AppStorage.setOrCreate('windowHeight', screen.height);
+      AppStorage.setOrCreate('isLandscape', screen.width > screen.height);
+      const initialHeight: number = screen.width > screen.height ? landscapeHeight : portraitHeight;
+      if (!this.panelReady) {
+        AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(Math.min(720, screen.width / density),
+          Math.max(1, initialHeight / density - toolbarHeight(fontScale))));
+      }
+    } catch (error) {
+      Log.showInfo(TAG, `panel-layout failed code=${(error as BusinessError).code}`);
     }
   }
 
   private resizePanel(): void {
     const panel: inputMethodEngine.Panel | undefined = this.panel;
     if (!this.active || !this.panelReady || !panel) { return; }
-    try { this.applyPanelRect(panel); } catch (error) {
-      Log.showInfo(TAG, `panel-layout failed code=${(error as BusinessError).code}`);
-    }
+    this.applyPanelRect(panel);
   }
 
   private registerListener(): void {
     this.inputHandle.addLog('registerListener');
 
-    display.on('change', () => {
-      this.inputHandle.addLog('screenChangeEvent');
-      this.resizePanel();
-    });
+    display.on('change', this.displayChanged);
     InputMethodEngine.on('inputStart', (kbController: inputMethodEngine.KeyboardController, textInputClient: inputMethodEngine.InputClient) => {
       this.inputHandle.addLog('keyboard inputStart');
       this.inputHandle.onInputStart(kbController, textInputClient);
@@ -443,7 +448,9 @@ class KeyboardController {
     InputMethodEngine.off('inputStart');
     InputMethodEngine.off('inputStop', this.inputStopped);
     InputMethodEngine.off('privateCommand');
-    display.off('change');
+    try { display.off('change', this.displayChanged); } catch (error) {
+      Log.showInfo(TAG, `display-listener-release failed code=${(error as BusinessError).code}`);
+    }
     if (this.mKeyboardDelegate) {
       this.mKeyboardDelegate.off('keyDown');
       this.mKeyboardDelegate.off('keyUp');

@@ -9,20 +9,32 @@ export const DEFAULT_HAPTIC_LEVEL: number = 1;
 let sharedPreferences: preferences.Preferences | undefined = undefined;
 
 export function openKeyboardPreferences(context: common.Context): void {
-  sharedPreferences = preferences.getPreferencesSync(context,
-    { name: CONFIG_FILE, storageType: preferences.StorageType.GSKV });
+  try {
+    sharedPreferences = preferences.getPreferencesSync(context,
+      { name: CONFIG_FILE, storageType: preferences.StorageType.GSKV });
+  } catch (error) {
+    sharedPreferences = undefined;
+  }
 }
 
 export function readSharedLayoutOrder(): string | undefined {
   if (sharedPreferences === undefined) { return undefined; }
-  const value: string = sharedPreferences.getSync(LAYOUT_KEY, '') as string;
-  return value.length > 0 ? value : undefined;
+  try {
+    const value: string = sharedPreferences.getSync(LAYOUT_KEY, '') as string;
+    return value.length > 0 ? value : undefined;
+  } catch (error) {
+    return undefined;
+  }
 }
 
 export function writeSharedLayoutOrder(value: string): void {
   if (sharedPreferences === undefined) { throw new Error('Keyboard preferences are unavailable'); }
-  sharedPreferences.putSync(LAYOUT_KEY, languageLayouts(value).join(','));
-  sharedPreferences.flushSync();
+  try {
+    sharedPreferences.putSync(LAYOUT_KEY, languageLayouts(value).join(','));
+    sharedPreferences.flushSync();
+  } catch (error) {
+    throw new Error('Failed to save keyboard layout preferences');
+  }
 }
 
 export function refreshSharedLayoutOrder(): string {
@@ -35,14 +47,22 @@ export function refreshSharedLayoutOrder(): string {
 
 export function readSharedHapticLevel(): number {
   if (sharedPreferences === undefined) { return DEFAULT_HAPTIC_LEVEL; }
-  const value: number = sharedPreferences.getSync(HAPTIC_KEY, DEFAULT_HAPTIC_LEVEL) as number;
-  return value === 0 || value === 1 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL;
+  try {
+    const value: number = sharedPreferences.getSync(HAPTIC_KEY, DEFAULT_HAPTIC_LEVEL) as number;
+    return value === 0 || value === 1 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL;
+  } catch (error) {
+    return DEFAULT_HAPTIC_LEVEL;
+  }
 }
 
 export function writeSharedHapticLevel(value: number): void {
   if (sharedPreferences === undefined) { throw new Error('Keyboard preferences are unavailable'); }
-  sharedPreferences.putSync(HAPTIC_KEY, value === 0 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL);
-  sharedPreferences.flushSync();
+  try {
+    sharedPreferences.putSync(HAPTIC_KEY, value === 0 || value === 2 ? value : DEFAULT_HAPTIC_LEVEL);
+    sharedPreferences.flushSync();
+  } catch (error) {
+    throw new Error('Failed to save keyboard haptic preferences');
+  }
 }
 
 export function refreshSharedHapticLevel(): void {
@@ -100,7 +120,9 @@ export function initializeKeyboardConfig(context: common.Context): void {
   const order: string[] = selected.map((id: string) => `${id.startsWith('en_') ? 'en' : 'jp'}_${suffix}`);
   const current: string = `${restored.startsWith('en_') ? 'en' : 'jp'}_${suffix}`;
   AppStorage.setOrCreate('kanonLayoutOrder', order.join(','));
-  if (stored === undefined) { writeSharedLayoutOrder(order.join(',')); }
+  if (stored === undefined && sharedPreferences !== undefined) {
+    try { writeSharedLayoutOrder(order.join(',')); } catch (error) { /* AppStorage keeps the active layout. */ }
+  }
   AppStorage.setOrCreate('kanonLastLayout', current);
   AppStorage.setOrCreate('kanonLayout', current);
   AppStorage.setOrCreate('kanonMode', layoutLanguage(current));
