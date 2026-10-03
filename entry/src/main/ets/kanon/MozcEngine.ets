@@ -296,10 +296,17 @@ export class MozcEngine implements EnginePort {
         // 数字・記号・大文字は未確定へ混ぜず直接効果にする。保留があれば先に確定する。
         const effects: CommitEffect[] = [];
         if (this.buffer.length > 0) {
-          const flushed: ConvOut = parseOut(await api.executeAsync('submit', '', 0));
-          if (flushed.ok && flushed.result.length > 0) {
-            effects.push({ effectId: `f${this.revision}`, text: flushed.result });
+          let committed: string = '';
+          if (this.phase === 'composing' && this.lastPreedit.length > 0) {
+            committed = this.lastPreedit;
+            await api.executeAsync('reset', '', 0);
+          } else {
+            const flushed: ConvOut = parseOut(await api.executeAsync('submit', '', 0));
+            if (flushed.ok) { committed = flushed.result; }
           }
+          // An empty commit must not discard the pending reading when punctuation is entered.
+          if (committed.length === 0) { return this.errUpdate(sessionId, epoch, seq, true); }
+          effects.push({ effectId: `f${this.revision}`, text: committed });
           this.buffer = '';
           this.inputUnits = [];
           this.kanaUnits = [];

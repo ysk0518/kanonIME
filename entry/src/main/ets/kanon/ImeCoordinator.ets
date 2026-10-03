@@ -11,28 +11,37 @@ export interface OpResult {
   code: number;
 }
 
+export interface TextReadResult {
+  ok: boolean;
+  code: number;
+  value: string | undefined;
+}
+
 /** Coordinatorが必要とする編集側の最小面。実EditorAdapterはM4で包む。 */
 export interface EditorPort {
   getEpoch(): number;
+  hasSelection(): boolean;
   setPreview(text: string, start: number, end: number): Promise<OpResult>;
   finishPreview(): Promise<OpResult>;
   insert(text: string): Promise<OpResult>;
   deleteForward(length: number): Promise<OpResult>;
+  deleteBackward(length: number): Promise<OpResult>;
   moveCursor(direction: number): Promise<OpResult>;
+  selectByMovement(direction: number): Promise<OpResult>;
+  selectAll(): Promise<OpResult>;
   selectRange(start: number, end: number): Promise<OpResult>;
   queryPreviewSupported(): Promise<boolean>;
   /** カーソル位置（UTF-16）。失敗時は-1。 */
   queryCursor(): Promise<number>;
-  /**
-   * カーソル直前の最大length単位を返す。サロゲートペア判定専用。
-   * 内容の保持・記録はしないこと（REQ-07）。失敗時は''。
-   */
+  /** カーソル前の文字列。内容の保持・記録はしない（REQ-07）。失敗時は空文字。 */
   queryBefore(length: number): Promise<string>;
+  /** 空文字と読み取り失敗を区別する必要がある編集判定用。 */
+  queryBeforeResult(length: number): Promise<TextReadResult>;
 }
 
 /** UIイベント。1イベント→1 EngineUpdateが契約。 */
 export interface UiEvent {
-  kind: string; // 'text' | 'paste' | 'backspace' | 'convert' | 'submit' | 'cancel' | 'move' | 'select' | 'reset' | 'mode'
+  kind: string; // text / paste / backspace / convert / submit / cancel / move / selectMove / selectEdge / selectAll / forwardDelete / select / reset / mode
   text?: string;
   candidateId?: number;
   expectedRevision?: number;
@@ -219,6 +228,11 @@ export class ImeCoordinator {
     return `${epoch}:${effectId}`;
   }
 
+  /** API が明確に拒否した操作は再送しないが、後続入力は止めない。 */
+  private needsHoldAfterFailure(code: number): boolean {
+    return code !== -1 && code !== -4 && code !== -5;
+  }
+
   private async handleSerial(epoch: number, event: UiEvent): Promise<void> {
     if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
     if (event.kind === 'reset') {
@@ -248,7 +262,8 @@ export class ImeCoordinator {
       await this.doModeSwitch(epoch, event);
       return;
     }
-    if (event.kind === 'move') {
+    if (event.kind === 'move' || event.kind === 'selectMove' || event.kind === 'selectEdge' ||
+      event.kind === 'selectAll' || event.kind === 'forwardDelete') {
       await this.doMove(epoch, event);
       return;
     }
@@ -265,7 +280,7 @@ export class ImeCoordinator {
       if (value.length === 0) { this.lastError = 'paste-empty'; return; }
       const result: OpResult = await this.editor.insert(value);
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
-      if (!result.ok) { this.needsRecovery = true; }
+      if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
     }
     if (this.mode === 'EN') {
@@ -291,25 +306,13 @@ export class ImeCoordinator {
       this.lastError = 'undo-stale';
       return;
     }
-    // 追加されたASCII文字だけを1文字ずつ削除する。各削除の反映を見てから次へ進む。
-    for (let remaining: number = word.length; remaining > prefixLength; remaining--) {
-      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
-      const result: OpResult = await this.editor.deleteForward(1);
-      if (!result.ok) { this.lastError = `edit-${result.code}`; this.needsRecovery = true; return; }
-      const expected: number = cursor - (word.length - remaining) - 1;
-      let applied: boolean = false;
-      for (let attempt: number = 0; attempt < 7; attempt++) {
-        const index: number = await this.editor.queryCursor();
-        const text: string = await this.editor.queryBefore(expected);
-        if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
-        if (index === expected && text.length === expected && text.endsWith(word.substring(0, remaining - 1))) {
-          applied = true;
-          break;
-        }
-        await this.sleepMs(50);
-      }
-      if (!applied) { this.lastError = 'undo-edit-unconfirmed'; this.needsRecovery = true; return; }
-    }
+    // 追加された末尾だけを範囲選択し、削除APIの結果で成否を判断する。
+    const start: number = cursor - (word.length - prefixLength);
+    const selected: OpResult = await this.editor.selectRange(start, cursor);
+    if (!selected.ok) { this.lastError = `edit-${selected.code}`; this.needsRecovery = true; return; }
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+    const deleted: OpResult = await this.editor.deleteForward(1);
+    if (!deleted.ok) { this.lastError = `edit-${deleted.code}`; this.needsRecovery = true; return; }
     this.lastError = 'ok';
   }
 
@@ -324,116 +327,38 @@ export class ImeCoordinator {
       }
       const r: OpResult = await this.editor.insert(t);
       this.lastError = r.ok ? 'ok' : `edit-${r.code}`;
-      if (!r.ok) {
+      if (!r.ok && this.needsHoldAfterFailure(r.code)) {
         this.needsRecovery = true;
       }
       return;
     }
     if (event.kind === 'backspace') {
-      // deleteForwardは複数単位を一度に消せない実機挙動のため1単位ずつ。
-      // 連続削除は適用確認しながら進める（直列・二重標的の取りこぼし防止）。
-      if (!(await this.directDelete(await this.backspaceUnits()))) {
-        this.lastError = 'edit-fail';
-        this.needsRecovery = true;
-      } else {
-        this.lastError = 'ok';
-      }
+      const result: OpResult = await this.directDelete();
+      this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
+      if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
     }
     this.lastError = 'en-ignore';
   }
 
-  /** Backspaceの削除単位。直前がサロゲートペアなら2、通常1（AT-11）。 */
-  private async backspaceUnits(): Promise<number> {
-    try {
-      // getForward(n)は先頭側n単位を返す実機挙動のため、100単位取りの
-      // 末尾2で判定する。100で打ち切られる長文は判定不能で1とする。
-      const t: string = await this.editor.queryBefore(100);
-      if (t.length >= 100) {
-        return 1;
-      }
-      // 末尾2がペアでもカーソルが末尾になければ対象がずれる。
-      // カーソル照会が末尾一致のときのみ2単位にする。
-      try {
-        const cur: number = await this.editor.queryCursor();
-        if (cur >= 0 && cur === t.length && t.length >= 2) {
-          const hi: number = t.charCodeAt(t.length - 2);
-          const lo: number = t.charCodeAt(t.length - 1);
-          if (hi >= 0xD800 && hi <= 0xDBFF && lo >= 0xDC00 && lo <= 0xDFFF) {
-            return 2;
-          }
-        }
-        return 1;
-      } catch (e) {
-        return 1;
-      }
-    } catch (e) {
-    }
-    return 1;
-  }
-
-  private sleepMs(ms: number): Promise<void> {
-    return new Promise<void>((resolve: () => void) => {
-      setTimeout((): void => {
-        resolve();
-      }, ms);
-    });
-  }
-
-  private async beforeLength(): Promise<number> {
-    try {
-      const b: string = await this.editor.queryBefore(100);
-      return b.length;
-    } catch (e) {
-      return -1;
-    }
-  }
-
-  /**
-   * 直接削除n単位。空欄は何もせず成功。1単位ずつ消し、
-   * 縮小確認後に次へ進む（適用遅延による二重標的を防ぐ）。
-   */
-  private async directDelete(n: number): Promise<boolean> {
-    for (let i: number = 0; i < n; i++) {
-      const before: number = await this.beforeLength();
-      if (before === 0) {
-        return true;
-      }
-      const r: OpResult = await this.editor.deleteForward(1);
-      if (!r.ok) {
-        return false;
-      }
-      if (before < 0) {
-        continue;
-      }
-      let shrunk: boolean = false;
-      for (let t: number = 0; t < 7; t++) {
-        const now: number = await this.beforeLength();
-        if (now >= 0 && now < before) {
-          shrunk = true;
-          break;
-        }
-        await this.sleepMs(50);
-      }
-      if (!shrunk) {
-        return false;
+  /** API の削除結果を採用し、読み取り失敗を空欄と誤認しない。 */
+  private async directDelete(): Promise<OpResult> {
+    if (!this.editor.hasSelection()) {
+      const before: TextReadResult = await this.editor.queryBeforeResult(1);
+      if (before.ok && before.value === '') {
+        return { ok: true, code: 0 };
       }
     }
-    return true;
+    return await this.editor.deleteForward(1);
   }
 
   private async doEngineEvent(epoch: number, event: UiEvent): Promise<void> {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
-    // 直前がサロゲートペアなら2単位で消す（AT-11: 壊れた半分を残さない）。
-    // 複数単位の一括削除は効かないため1単位ずつ直列に消す。
-    // 連続削除は適用確認しながら進める（直列・二重標的の取りこぼし防止）。
+    // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
     if (event.kind === 'backspace' && this.state === 'JP_EMPTY') {
-      if (!(await this.directDelete(await this.backspaceUnits()))) {
-        this.lastError = 'edit-fail';
-        this.needsRecovery = true;
-      } else {
-        this.lastError = 'ok';
-      }
+      const result: OpResult = await this.directDelete();
+      this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
+      if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
     }
     // 未確定なしのEnterは欄のアクション側へ返す。エンジンを空振りさせない。
@@ -522,7 +447,9 @@ export class ImeCoordinator {
     this.candidateCount = update.candidateCount;
     this.candidateRevision = update.candidateRevision;
     this.candidateItems = update.candidates;
-    this.previewShown = update.hasPreedit && this.previewSupported;
+    // The engine's preedit may contain only a pending QWERTY consonant.
+    // Track the preview actually sent to the editor, not the engine state.
+    if (!update.hasPreedit) { this.previewShown = false; }
     if (this.candidateCount > 0) {
       this.state = 'JP_CONVERTING';
     } else if (this.preeditLen > 0) {
@@ -541,17 +468,10 @@ export class ImeCoordinator {
     if (epoch !== this.editor.getEpoch()) { return false; }
     if (this.previewShown) {
       if (this.previewStart >= 0) {
-        // 確立済みpreviewは効果テキストで置換してから確定し、insertは重ねない。
-        // 置換なしにfinish＋insertすると二重に入る。
-        if (text.length > 0) {
-          const rep: OpResult = await this.editor.setPreview(text, -1, -1);
-          if (!rep.ok) {
-            return false;
-          }
-        }
-        if (epoch !== this.editor.getEpoch()) { return false; }
-        const fin: OpResult = await this.editor.finishPreview();
-        if (!fin.ok) {
+        // The platform's documented candidate flow inserts the chosen text while
+        // the preview is active. This also closes the old preview before a new one.
+        const committed: OpResult = await this.editor.insert(text);
+        if (!committed.ok) {
           return false;
         }
         this.previewShown = false;
@@ -586,16 +506,14 @@ export class ImeCoordinator {
     if (!this.previewSupported) {
       return false;
     }
-    // Once a preview exists, replace the editor's current preview region.
-    // A host field can report success while its visible text length lags behind
-    // our tracked range, so an absolute range can silently target stale text.
-    const replacing: boolean = this.previewShown && this.previewStart >= 0;
-    const r: OpResult = await this.editor.setPreview(text, replacing ? -1 : start, replacing ? -1 : end);
+    // (-1,-1) targets the entire preview, including when it is first created.
+    // start/end are document coordinates for our own tracking, not API range offsets.
+    const r: OpResult = await this.editor.setPreview(text, -1, -1);
     if (r.ok) {
-      this.previewShown = true;
-      this.previewStart = start;
+      this.previewShown = text.length > 0;
+      this.previewStart = text.length > 0 ? start : -1;
       // endは置換前の範囲。確定置換用には結果の範囲を保持する。
-      this.previewEnd = start + text.length;
+      this.previewEnd = text.length > 0 ? start + text.length : -1;
     }
     return r.ok;
   }
@@ -675,7 +593,18 @@ export class ImeCoordinator {
     }
     const edge: string = event.edge ? event.edge as string : '';
     let r: OpResult;
-    if (edge === 'begin') {
+    if (event.kind === 'selectAll') {
+      r = await this.editor.selectAll();
+    } else if (event.kind === 'forwardDelete') {
+      r = await this.editor.deleteBackward(1);
+    } else if (event.kind === 'selectMove') {
+      const dir: number = event.direction === undefined ? 0 : event.direction as number;
+      r = await this.editor.selectByMovement(dir);
+    } else if (event.kind === 'selectEdge') {
+      const cursor: number = await this.editor.queryCursor();
+      if (cursor < 0) { this.lastError = 'edit-cursor'; return; }
+      r = await this.editor.selectRange(edge === 'begin' ? 0 : cursor, edge === 'begin' ? cursor : 1000);
+    } else if (edge === 'begin') {
       r = await this.editor.selectRange(0, 0);
     } else if (edge === 'end') {
       r = await this.editor.selectRange(1000, 1000);
@@ -684,7 +613,7 @@ export class ImeCoordinator {
       r = await this.editor.moveCursor(dir);
     }
     this.lastError = r.ok ? 'ok' : `edit-${r.code}`;
-    if (!r.ok) {
+    if (!r.ok && this.needsHoldAfterFailure(r.code)) {
       this.needsRecovery = true;
     }
   }

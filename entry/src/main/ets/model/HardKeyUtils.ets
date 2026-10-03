@@ -31,7 +31,7 @@ export function GetHardKeyValue(keyCode: number, isShift: boolean): string {
   keyList.set(2013, 'KEYCODE_DPAD_DOWN');
   keyList.set(2014, 'KEYCODE_DPAD_LEFT');
   keyList.set(2015, 'KEYCODE_DPAD_RIGHT');
-  keyList.set(2016, 'KEYCODE_DPAD_CENTER');
+  keyList.set(2016, 'KEYCODE_ENTER');
   keyList.set(2017, 'a');
   keyList.set(2018, 'b');
   keyList.set(2019, 'c');
@@ -64,6 +64,7 @@ export function GetHardKeyValue(keyCode: number, isShift: boolean): string {
   keyList.set(2047, 'KEYCODE_SHIFT_LEFT');
   keyList.set(2048, 'KEYCODE_SHIFT_RIGHT');
   keyList.set(2050, ' ');
+  keyList.set(2054, 'KEYCODE_ENTER');
   keyList.set(2055, 'KEYCODE_DEL');
   keyList.set(2058, '=');
   keyList.set(2071, 'KEYCODE_FORWARD_DEL');
@@ -72,6 +73,7 @@ export function GetHardKeyValue(keyCode: number, isShift: boolean): string {
   keyList.set(2066, '+');
   keyList.set(2121, '(');
   keyList.set(2122, ')');
+  keyList.set(2119, 'KEYCODE_ENTER');
 
   if (keyList.has(keyCode)) {
     let value = keyList.get(keyCode);

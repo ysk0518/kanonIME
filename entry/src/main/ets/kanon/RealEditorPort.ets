@@ -4,8 +4,8 @@
  * 結果の写像のみ。本文・候補は運ばない（REQ-07）。
  */
 
-import { editorAdapter, EditorResult } from './EditorAdapter';
-import { EditorPort, OpResult } from './ImeCoordinator';
+import { editorAdapter, EditorResult, EditorValue } from './EditorAdapter';
+import { EditorPort, OpResult, TextReadResult } from './ImeCoordinator';
 
 function toOp(r: EditorResult): OpResult {
   return { ok: r.ok, code: r.code };
@@ -14,6 +14,10 @@ function toOp(r: EditorResult): OpResult {
 class RealEditorPort implements EditorPort {
   getEpoch(): number {
     return editorAdapter.getEpoch();
+  }
+
+  hasSelection(): boolean {
+    return editorAdapter.hasSelection();
   }
 
   async setPreview(text: string, start: number, end: number): Promise<OpResult> {
@@ -32,8 +36,21 @@ class RealEditorPort implements EditorPort {
     return toOp(await editorAdapter.deleteForward(length));
   }
 
+  async deleteBackward(length: number): Promise<OpResult> {
+    return toOp(await editorAdapter.deleteBackward(length));
+  }
+
   async moveCursor(direction: number): Promise<OpResult> {
     return toOp(await editorAdapter.moveCursor(direction));
+  }
+
+
+  async selectByMovement(direction: number): Promise<OpResult> {
+    return toOp(await editorAdapter.selectByMovement(direction));
+  }
+
+  async selectAll(): Promise<OpResult> {
+    return toOp(await editorAdapter.selectAll());
   }
 
   async selectRange(start: number, end: number): Promise<OpResult> {
@@ -66,15 +83,19 @@ class RealEditorPort implements EditorPort {
 
   async queryBefore(length: number): Promise<string> {
     try {
-      const v = await editorAdapter.queryAround(length, 0);
+      const v = await editorAdapter.queryForward(length);
       if (!v.ok || v.value === undefined) {
         return '';
       }
-      const before: string = (v.value as string[])[0];
-      return before === undefined ? '' : before;
+      return v.value;
     } catch (e) {
       return '';
     }
+  }
+
+  async queryBeforeResult(length: number): Promise<TextReadResult> {
+    const result: EditorValue<string> = await editorAdapter.queryForward(length);
+    return { ok: result.ok, code: result.code, value: result.value };
   }
 }
 

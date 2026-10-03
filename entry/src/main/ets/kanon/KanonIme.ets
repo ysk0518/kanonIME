@@ -2,14 +2,13 @@
  * Kanon IME: KanonIme (M4)
  * 実キーボードとCoordinatorの接続点。KeyboardViewは意味のあるイベントだけを投げる（§6）。
  * - 入力先の世代変化を検出してonEditorChangedする。旧欄への書込はCoordinatorが遮断する。
- * - 未確定previewの表示更新はG-01順序（setPreview上書き→確定時finish＋insert）に準拠。
+ * - 未確定previewは全体置換で更新し、候補確定時は1回だけinsertする。
  * - ログは符号・件数・長さのみ。本文・候補は扱わない（REQ-07）。
  */
 
 import { CandidateLabel, ImeCoordinator, ImeSnapshot, UiEvent } from './ImeCoordinator';
 import { realEditorPort } from './RealEditorPort';
 import { MozcEngine } from './MozcEngine';
-import { InputHandler } from '../model/KeyboardController';
 import { editorAdapter } from './EditorAdapter';
 import { EnglishCompletionUndo, englishPrediction } from './EnglishPrediction';
 import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout,
@@ -203,6 +202,12 @@ class KanonIme {
       finally { englishPrediction.editing = false; }
       const s: ImeSnapshot = this.coord.getSnapshot();
       if (epoch !== realEditorPort.getEpoch()) { englishPrediction.clear(); return s; }
+      if (!english && kind === 'submit' && s.lastError === 'empty-submit') {
+        const attr = await editorAdapter.queryAttribute();
+        if (attr.ok && attr.value !== undefined && epoch === realEditorPort.getEpoch()) {
+          await editorAdapter.sendEnterAction(attr.value.enterKeyType);
+        }
+      }
       if (english && s.lastError === 'ok' && this.predictionAllowed()) {
         if (kind === 'text') { englishPrediction.text(text ?? '', cursor); }
         else if (kind === 'backspace') { englishPrediction.backspace(); }
@@ -217,17 +222,19 @@ class KanonIme {
         this.compLen = 0;
       }
       if (s.preeditLen === 0 && this.compIdx >= 0) {
-        if (kind === 'submit' || kind === 'select' || kind === 'move' ||
+        if ((s.lastError === 'ok' && s.commitLength > 0) ||
+          kind === 'submit' || kind === 'select' || kind === 'move' ||
+          kind === 'selectMove' || kind === 'selectEdge' || kind === 'selectAll' || kind === 'forwardDelete' ||
           kind === 'partial' ||
           (kind === 'mode' && s.mode !== this.mode)) {
-          // 確定時はapplyCommitがpreviewをfinish済み。範囲追跡だけ閉じる。
+          // 確定時はapplyCommitがpreviewを確定済み。範囲追跡だけ閉じる。
           // 切替成功時もsubmit確定済みのため同じ。
           this.compIdx = -1;
           this.compLen = 0;
         } else {
-          // 空遷移（未確定消滅・取消・切替）で欄に残ったpreviewを範囲置換で消す。
+          // 空遷移（未確定消滅・取消・切替）で欄に残ったpreview全体を消す。
           try {
-            await realEditorPort.setPreview('', this.compIdx, this.compIdx + this.compLen);
+            await realEditorPort.setPreview('', -1, -1);
           } catch (e) {
           }
           this.compIdx = -1;
@@ -274,8 +281,8 @@ class KanonIme {
     }
   }
 
-  async keyText(ch: string): Promise<void> {
-    keyboardHaptics.key();
+  async keyText(ch: string, feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
     await this.post('text', ch);
   }
 
@@ -328,8 +335,8 @@ class KanonIme {
     }
   }
 
-  async keySpace(): Promise<void> {
-    keyboardHaptics.key();
+  async keySpace(feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
     if (this.getMode() === 'EN') {
       await this.post('text', ' ');
       return;
@@ -337,21 +344,24 @@ class KanonIme {
     await this.post('convert');
   }
 
-  async keyReturn(): Promise<void> {
-    keyboardHaptics.key();
+  async keyReturn(feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
     if (this.getMode() === 'EN') {
       await this.post('enter');
       return;
     }
-    const s: ImeSnapshot = await this.post('submit');
-    if (s.lastError === 'empty-submit') {
-      InputHandler.getInstance().sendKeyFunction();
-    }
+    await this.post('submit');
   }
 
   async keyDelete(feedback: boolean = true): Promise<void> {
     if (feedback) { keyboardHaptics.key(); }
     await this.post('backspace');
+    await this.updateCursor();
+  }
+
+  async keyDeleteForward(feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
+    await this.post('forwardDelete');
     await this.updateCursor();
   }
 
@@ -361,9 +371,27 @@ class KanonIme {
   }
 
   /** カーソル移動（EditViewの矢印・行頭・行末）。単一キュー経由。 */
-  async keyMove(direction: number): Promise<void> {
-    keyboardHaptics.key();
+  async keyMove(direction: number, feedback: boolean = true): Promise<void> {
+    if (feedback) { keyboardHaptics.key(); }
     await this.post('move', undefined, undefined, undefined, direction);
+    await this.updateCursor();
+  }
+
+  async keySelectMove(direction: number): Promise<void> {
+    keyboardHaptics.key();
+    await this.post('selectMove', undefined, undefined, undefined, direction);
+    await this.updateCursor();
+  }
+
+  async keySelectEdge(edge: string): Promise<void> {
+    keyboardHaptics.key();
+    await this.post('selectEdge', undefined, undefined, undefined, undefined, edge);
+    await this.updateCursor();
+  }
+
+  async keySelectAll(): Promise<void> {
+    keyboardHaptics.key();
+    await this.post('selectAll');
     await this.updateCursor();
   }
 
