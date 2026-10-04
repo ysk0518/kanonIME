@@ -1,6 +1,6 @@
 # kanonIME 入力先 API 契約
 
-更新: 2026-10-03。対象は HarmonyOS の `inputMethodEngine.InputClient` と kanon の `EditorAdapter` 境界。
+更新: 2026-10-04。対象は HarmonyOS の `inputMethodEngine.InputClient` と kanon の `EditorAdapter` 境界。
 
 この文書は [KANON_SPEC.md](KANON_SPEC.md) の REQ-01〜07 を、実装時に確認できる API 契約へ落としたもの。根拠は DevEco Studio 同梱 SDK の `default/openharmony/ets/api/@ohos.inputMethodEngine.d.ts` と [KANON_VALIDATION.md](KANON_VALIDATION.md) の G-01。SDK が明記しない挙動を「仕様」と呼ばず、実機観測または未確認として扱う。
 
@@ -57,7 +57,7 @@
 | 対応済み | 編集メニューと物理キー | 入力・削除・移動・選択を共通キューに統合し、旧 `InputHandler` の直接編集とサンプル予測コードを削除 |
 | 再確認中 | QWERTY の子音残り | Huawei の検索欄で `k→i` が `ｋき` になる事例を観測した。診断時、2回の `setPreviewTextSync(..., {-1,-1})` は成功を返していた。空欄からの `k→i` と「き」候補確定→`k→i` の連続5回は `き` / `きき…` と正常だったため、常時起こる変換規則の誤りとは確定できない。同期版への切替、候補確定前のプレビュー消去、明示的なプレビュー内範囲指定はいずれも改善を確認できず、元の非同期版へ戻した。再発時は同一操作でエンジンの未確定長、API完了順、入力先の `textChange` と `selectionChange` の順序を記録し、プレビューが確定文字へ変わる瞬間を特定する |
 | 中 | `selectionChange` の到着順 | 選択、削除、プレビュー変更が短時間に重なる場合の通知順は未確認 |
-| 中 | コンテナ内の入力欄 | EasyAbroad の一部欄で非同期 API が応答しないことを観測。対象 API と同期版の差は再現時のログで確定する |
+| 対応済み | コンテナ内の入力欄 | EasyAbroad 内 Chrome / FULL は同じソース・同じ署名で release → debug → release を比較し、release で非同期API応答と入力が成功、debug で `IInputMethodAgent` の `operation not permitted` とタイムアウトを再現。実機用ビルドを release 標準に変更し、この実機での入力問題は解決扱いとする。OS内部の厳密な拒否条件は未確定。対照結果は [EASYABROAD_IME_FULL_CAUSE_HYPOTHESES.md](EASYABROAD_IME_FULL_CAUSE_HYPOTHESES.md) |
 | 低 | サロゲートペアの削除単位 | G-01 では `deleteBackward(1)` が絵文字を分割しないことを観測。`deleteForward(1)` と全入力先への一般化は未確認 |
 
 この差分表は実装や実機観測で更新する。未確認の項目を SDK の保証として実装しない。

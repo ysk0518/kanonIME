@@ -6,6 +6,7 @@ param(
   [string]$Tap = '',
   [string]$Screenshot = '',
   [string]$Target = '',
+  [ValidateSet('release', 'debug')][string]$BuildMode = 'release',
   [switch]$Status
 )
 
@@ -44,7 +45,7 @@ if ($Build) {
   $previousErrorAction = $ErrorActionPreference
   try {
     $ErrorActionPreference = 'Continue'
-    & $devEcoNode $devEcoHvigor assembleHap *> $buildLog
+    & $devEcoNode $devEcoHvigor assembleHap --mode module -p product=default -p module=entry@default -p "buildMode=$BuildMode" *> $buildLog
     $buildExitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
@@ -54,7 +55,7 @@ if ($Build) {
     Get-Content -LiteralPath $buildLog -Tail 45
     throw "Build failed. Full log: $buildLog"
   }
-  Write-Output ('Build: {0:N1}s' -f $watch.Elapsed.TotalSeconds)
+  Write-Output ('Build ({0}): {1:N1}s' -f $BuildMode, $watch.Elapsed.TotalSeconds)
 }
 
 if ($Install -or $SelectKanon -or $OpenPreview -or $Tap -or $Screenshot -or $Status) {
@@ -76,6 +77,20 @@ if ($Install -or $SelectKanon -or $OpenPreview -or $Tap -or $Screenshot -or $Sta
 
 if ($Install) {
   if (!(Test-Path -LiteralPath $hapPath)) { throw "Signed HAP not found: $hapPath" }
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $hapArchive = [IO.Compression.ZipFile]::OpenRead($hapPath)
+  try {
+    $manifestEntry = $hapArchive.GetEntry('module.json')
+    if ($null -eq $manifestEntry) { throw 'HAP module.json not found.' }
+    $manifestReader = [IO.StreamReader]::new($manifestEntry.Open())
+    try { $hapManifest = $manifestReader.ReadToEnd() | ConvertFrom-Json }
+    finally { $manifestReader.Dispose() }
+    if ($hapManifest.app.debug -isnot [bool]) { throw 'HAP debug attribute is missing or invalid.' }
+    $expectedDebug = $BuildMode -eq 'debug'
+    if ($hapManifest.app.debug -ne $expectedDebug) {
+      throw "HAP build mode differs from $BuildMode. Rebuild with -Build -Install -BuildMode $BuildMode."
+    }
+  } finally { $hapArchive.Dispose() }
   $watch = [System.Diagnostics.Stopwatch]::StartNew()
   Invoke-Device @('install', '-r', $hapPath) | Out-Null
   $watch.Stop()
