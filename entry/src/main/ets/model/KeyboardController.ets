@@ -136,6 +136,14 @@ class KeyboardController {
   private isKeyboardShow: boolean = false;
   private inputHandle: InputHandler = InputHandler.getInstance();
   private mKeyboardDelegate: inputMethodEngine.KeyboardDelegate | undefined;
+  private privateCommandRegistered: boolean = false;
+  private privateCommandReceived: (record: Record<string, inputMethodEngine.CommandDataType>) => void =
+    (record: Record<string, inputMethodEngine.CommandDataType>): void => {
+      this.inputHandle.addLog('keyboard privateCommand' + JSON.stringify(record));
+      Object.keys(record).forEach((key: string) => {
+        this.inputHandle.addLog(`onPageShow private command key: ${key}, value: ${record[key]}`);
+      });
+    };
   private displayChanged: (displayId: number) => void = (displayId: number): void => {
     this.inputHandle.addLog('screenChangeEvent');
     this.resizePanel();
@@ -355,12 +363,8 @@ class KeyboardController {
 
     this.inputHandle.addLog('pre on privateCommand');
     try {
-      InputMethodEngine.on('privateCommand', (record : Record<string, inputMethodEngine.CommandDataType>) => {
-        this.inputHandle.addLog('keyboard privateCommand' + JSON.stringify(record));
-        Object.keys(record).forEach((key: string) => {
-          this.inputHandle.addLog(`onPageShow private command key: ${key}, value: ${record[key]}`);
-        })
-      });
+      InputMethodEngine.on('privateCommand', this.privateCommandReceived);
+      this.privateCommandRegistered = true;
     } catch (err) {
       let error = err as BusinessError;
       this.inputHandle.addLog(`on privateCommand sendPrivateCommand catch error: ${error.code} ${error.message}`);
@@ -533,7 +537,15 @@ class KeyboardController {
     InputMethodEngine.off('keyboardHide');
     InputMethodEngine.off('inputStart');
     InputMethodEngine.off('inputStop', this.inputStopped);
-    InputMethodEngine.off('privateCommand');
+    if (this.privateCommandRegistered) {
+      try {
+        InputMethodEngine.off('privateCommand', this.privateCommandReceived);
+      } catch (error) {
+        this.inputHandle.addLog(`private-command-listener-release failed code=${(error as BusinessError).code}`);
+      } finally {
+        this.privateCommandRegistered = false;
+      }
+    }
     try { display.off('change', this.displayChanged); } catch (error) {
       Log.showInfo(TAG, `display-listener-release failed code=${(error as BusinessError).code}`);
     }
