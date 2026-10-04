@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -19,16 +20,18 @@ import { MenuKey, MenuType } from '../model/KeyboardKeyData';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
-  .backgroundColor($r('app.color.key_item_gray_pressed'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 @Styles function normalStyles() {
-  .backgroundColor($r('app.color.key_item_gray'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 // 无大小写的灰色组件
 @Component
 export struct KeyItemGray {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyValue: string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @Consume menuType: number;
@@ -39,7 +42,7 @@ export struct KeyItemGray {
         Text(this.keyValue).fontSize(this.inputStyle.switchNumberFontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1).fontColor($r('app.color.key_text'))
       }
     }
-    .backgroundColor($r('app.color.key_item_gray'))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
     .onClick(() => {
       if (this.keyValue === MenuKey.NUMBER_KEY) {

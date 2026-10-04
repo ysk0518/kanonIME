@@ -18,6 +18,7 @@ import AbilityStage from "@ohos.app.ability.AbilityStage";
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import Log from '../model/Log';
 import { initializeKeyboardConfig } from '../common/KeyboardConfig';
+import { keyboardBackground } from '../common/KeyboardBackground';
 import { clipboardStore } from '../common/ClipboardStore';
 import { Configuration as AbilityConfiguration } from '@ohos.app.ability.Configuration';
 import { keyboardController } from '../model/KeyboardController';
@@ -28,6 +29,7 @@ const TAG: string = 'AbilityStage->';
 export default class MyAbilityStage extends AbilityStage {
   onCreate(): void {
     initializeKeyboardConfig(this.context);
+    keyboardBackground.initialize(this.context).catch(() => {});
     clipboardStore.initialize();
     keyboardController.updateFontScale(this.context.config.fontSizeScale ?? 1);
     try {
@@ -41,6 +43,7 @@ export default class MyAbilityStage extends AbilityStage {
   }
 
   onConfigurationUpdate(config: AbilityConfiguration): void {
+    if (config.colorMode !== undefined) { AppStorage.setOrCreate('kanonBackgroundThemeVersion', Date.now()); }
     if (config.fontSizeScale !== undefined) { keyboardController.updateFontScale(config.fontSizeScale); }
   }
 }

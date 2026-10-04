@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { languageLayouts, layoutLanguage, refreshSharedLayoutOrder } from '../common/KeyboardConfig';
 import { MenuType } from '../model/KeyboardKeyData';
@@ -6,6 +7,8 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct ModeCycleItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | number | undefined = undefined;
   keyRadius: number = 4;
   @Consume menuType: number;
@@ -54,7 +57,7 @@ export struct ModeCycleItem {
     }
     .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)
     .height('100%')
-    .backgroundColor($r('app.color.key_item_gray'))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(this.keyRadius)
     .enabled(!this.numericOnly())
     .opacity(this.numericOnly() ? 0.7 : 1)

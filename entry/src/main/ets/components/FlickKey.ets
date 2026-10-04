@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_FLICK_DISTANCE } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
@@ -7,6 +8,8 @@ import { keyVisualScale, keyPreviewSize } from '../common/KeyboardLayout';
 
 @Component
 export struct FlickKey {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonFlickDistance') flickDistance: number = DEFAULT_FLICK_DISTANCE;
   @StorageLink('kanonFlickPreviewEnabled') previewEnabled: boolean = true;
@@ -110,7 +113,7 @@ export struct FlickKey {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'))
+    .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(6)
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 2 })
     .onTouch((event: TouchEvent) => this.touch(event))

@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/PrivatePreview",
     "pages/ClipboardPermission",
-    "pages/SettingsPage"
+    "pages/SettingsPage",
+    "pages/BackgroundPage"
   ]
 }

@@ -3,9 +3,11 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
   readSharedHapticLevel, writeSharedHapticLevel } from '../common/KeyboardConfig';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 import { ShortcutEditor } from './ShortcutEditor';
+import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 
 @Component
 export struct KeyboardSettings {
+  @State private backgroundOpen: boolean = false;
   @State private selectedLayouts: string[] = [];
   @State private selectedFlick: boolean = true;
   @State private selectedShortcuts: string[] = [];
@@ -99,6 +101,9 @@ export struct KeyboardSettings {
 
   build() {
     Column({ space: 8 }) {
+      if (this.backgroundOpen) {
+        KeyboardBackgroundSettings({ onClose: () => { this.backgroundOpen = false; } })
+      } else {
       Row() {
         Button('‹')
           .width(44).height(44).fontSize(28).maxFontScale(1)
@@ -154,6 +159,12 @@ export struct KeyboardSettings {
           Divider().color($r('app.color.light_gray'))
           Text('高さはキーボード左上のメニュー →「サイズ」で変更できます。')
             .fontSize(12).fontColor($r('app.color.text_secondary'))
+          Button('背景画像を変更').width('100%').enabled(!this.saving && !this.hasChanges())
+            .onClick(() => { this.backgroundOpen = true; }).id('keyboard_config_background')
+          if (this.hasChanges()) {
+            Text('背景画像を開く前に、変更した設定を保存してください。')
+              .fontSize(12).fontColor($r('app.color.text_secondary'))
+          }
           Row() {
             Text('入力キーの文字プレビュー').fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
             Toggle({ type: ToggleType.Switch, isOn: this.previewEnabled })
@@ -198,6 +209,7 @@ export struct KeyboardSettings {
       }
       .layoutWeight(1)
       .width('100%')
+      }
     }
     .padding(12)
     .width('100%')

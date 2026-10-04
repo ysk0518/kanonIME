@@ -26,9 +26,9 @@ export struct Submenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @State private settingsError: boolean = false;
 
-  private async showSettings(): Promise<void> {
+  private async showSettings(background: boolean = false): Promise<void> {
     const context: InputMethodExtensionContext = this.getUIContext().getHostContext() as InputMethodExtensionContext;
-    if (await openKeyboardSettings(context)) {
+    if (await openKeyboardSettings(context, background)) {
       this.settingsError = false;
       this.submenuType = SubMenuType.NORMAL;
     } else { this.settingsError = true; }
@@ -62,6 +62,11 @@ export struct Submenu {
           .width('100%').height('100%').textAlign(TextAlign.Center)
           .onClick(() => { this.submenuType = SubMenuType.SIZE; })
           .id('keyboardSizeSettings')
+      }
+      GridItem() {
+        Text('背景画像').fontColor($r('app.color.text_normal')).fontSize(this.inputStyle.editFontSize)
+          .width('100%').height('100%').textAlign(TextAlign.Center)
+          .onClick(() => this.showSettings(true)).id('keyboardBackgroundSettings')
       }
       GridItem() {
         Column({ space: 8 }) {

@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -23,6 +24,8 @@ import { editorAdapter } from '../kanon/EditorAdapter';
 // 无大小写的按键组件
 @Component
 export struct KeyItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyValue: keySourceListType | undefined = undefined;
   kanaInput: boolean = false;
   keyId: string = '';
@@ -61,7 +64,7 @@ export struct KeyItem {
           .fontColor($r('app.color.key_text'))
       }
     }
-    .backgroundColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'))
+    .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
     .width(this.inputStyle.basicButtonWidth)
     .height('100%')

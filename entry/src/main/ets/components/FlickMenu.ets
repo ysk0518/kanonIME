@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
 import { LayoutItem } from './LayoutItem';
@@ -12,6 +13,8 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct FlickMenu {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @Consume menuType: number;
@@ -41,7 +44,7 @@ export struct FlickMenu {
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      .backgroundColor(action === 8 && this.englishUpper ? $r('app.color.candidate_selected') : $r('app.color.key_item_gray'))
+      .backgroundColor(backgroundKeyColor(action === 8 && this.englishUpper ? $r('app.color.candidate_selected') : $r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') : label)
       .borderRadius(6)
       .onClick(() => {
