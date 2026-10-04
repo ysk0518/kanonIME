@@ -1,6 +1,14 @@
 {
   "string": [
     {
+      "name": "keyboard_convert",
+      "value": "変換"
+    },
+    {
+      "name": "keyboard_space",
+      "value": "空白"
+    },
+    {
       "name": "settings_defaults_pending",
       "value": "このタブの設定を初期値に戻しました。「保存」で反映します。"
     },

@@ -9,9 +9,11 @@ export struct ConvertSpaceItem {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonState') imeState: string = 'JP_EMPTY';
   @StorageLink('kanonList') candidates: string[] = [];
+  @StorageLink('kanonMode') imeMode: string = 'JP';
 
   build() {
-    Text(this.imeState !== 'JP_EMPTY' || this.candidates.length > 0 ? '変換' : '空白')
+    Text((this.imeMode === 'JP' && this.imeState !== 'JP_EMPTY') || this.candidates.length > 0 ?
+      $r('app.string.keyboard_convert') : $r('app.string.keyboard_space'))
       .fontSize(16)
       .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1)
