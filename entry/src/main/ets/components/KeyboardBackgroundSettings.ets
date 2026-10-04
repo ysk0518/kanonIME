@@ -287,66 +287,68 @@ export struct KeyboardBackgroundSettings {
         Text('キーボードの背景').fontSize(20).fontColor($r('app.color.text_normal')).layoutWeight(1)
         Button('保存').enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
       }.width('100%').height(56)
+      Column({ space: 12 }) {
+        Row({ space: 8 }) {
+          ForEach([false, true], (qwerty: boolean) => {
+            Button(`${this.previewQwerty === qwerty ? '✓ ' : ''}${qwerty ? 'QWERTY' : '12キー'}`)
+              .layoutWeight(1).height(36).enabled(!this.busy)
+              .fontColor(this.previewQwerty === qwerty ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
+              .backgroundColor(this.previewQwerty === qwerty ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+              .accessibilityText(`${qwerty ? 'QWERTY' : '12キー'}のプレビュー${this.previewQwerty === qwerty ? '、選択中' : ''}`)
+              .onClick(() => { this.previewQwerty = qwerty; })
+              .id(qwerty ? 'background_preview_qwerty' : 'background_preview_flick')
+          })
+        }.width('100%')
+        Stack() {
+          KeyboardBackgroundCanvas({
+            source: backgroundImageUri(this.draft), poster: backgroundPosterUri(this.draft),
+            play: this.draft.animate, active: this.foreground && !this.busy,
+            zoom: this.draft.zoom, x: this.draft.x, y: this.draft.y, photoBrightness: this.draft.brightness,
+            onGeometry: (width: number, height: number) => {
+              this.travelX = width;
+              this.travelY = height;
+            }
+          }).width('100%').height(160)
+          BackgroundKeyPreview({ qwerty: this.previewQwerty,
+            keyOpacity: this.draft.photo.length > 0 ? this.draft.keyOpacity : 100 })
+            .width('100%').height(160)
+          BackgroundGestureHint({ source: this.draft.photo,
+            available: this.showGestureHint && this.loaded && !this.busy && this.foreground })
+            .width('100%').height(160)
+        }.width('100%').height(160).clip(true).borderRadius(12)
+          .backgroundColor($r('app.color.keyboard_background')).id('background_preview')
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) { this.showGestureHint = false; }
+          })
+          .priorityGesture(GestureGroup(GestureMode.Parallel,
+            PinchGesture({ fingers: 2, distance: 3 })
+              .onActionStart((event: GestureEvent) => {
+                this.dragging = false;
+                this.pinchZoom = this.draft.zoom;
+                this.scalePhoto(event);
+              })
+              .onActionUpdate((event: GestureEvent) => this.scalePhoto(event))
+              .onActionEnd((event: GestureEvent) => this.scalePhoto(event)),
+            PanGesture({ fingers: 1, direction: PanDirection.All, distance: 3 })
+            .onActionStart((event: GestureEvent) => {
+              this.dragging = event.fingerList.length === 1;
+              this.dragX = this.draft.x;
+              this.dragY = this.draft.y;
+              this.dragTravelX = this.travelX;
+              this.dragTravelY = this.travelY;
+              this.movePhoto(event);
+            })
+            .onActionUpdate((event: GestureEvent) => this.movePhoto(event))
+            .onActionEnd((event: GestureEvent) => {
+              this.movePhoto(event);
+              this.dragging = false;
+            })
+            .onActionCancel(() => { this.dragging = false; })))
+        Text('ドラッグで位置、2本指のピンチで拡大・縮小を調整できます。')
+          .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
+      }.width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
       Scroll() {
         Column({ space: 12 }) {
-          Row({ space: 8 }) {
-            ForEach([false, true], (qwerty: boolean) => {
-              Button(`${this.previewQwerty === qwerty ? '✓ ' : ''}${qwerty ? 'QWERTY' : '12キー'}`)
-                .layoutWeight(1).height(36).enabled(!this.busy)
-                .fontColor(this.previewQwerty === qwerty ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-                .backgroundColor(this.previewQwerty === qwerty ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-                .accessibilityText(`${qwerty ? 'QWERTY' : '12キー'}のプレビュー${this.previewQwerty === qwerty ? '、選択中' : ''}`)
-                .onClick(() => { this.previewQwerty = qwerty; })
-                .id(qwerty ? 'background_preview_qwerty' : 'background_preview_flick')
-            })
-          }.width('100%')
-          Stack() {
-            KeyboardBackgroundCanvas({
-              source: backgroundImageUri(this.draft), poster: backgroundPosterUri(this.draft),
-              play: this.draft.animate, active: this.foreground && !this.busy,
-              zoom: this.draft.zoom, x: this.draft.x, y: this.draft.y, photoBrightness: this.draft.brightness,
-              onGeometry: (width: number, height: number) => {
-                this.travelX = width;
-                this.travelY = height;
-              }
-            }).width('100%').height(160)
-            BackgroundKeyPreview({ qwerty: this.previewQwerty,
-              keyOpacity: this.draft.photo.length > 0 ? this.draft.keyOpacity : 100 })
-              .width('100%').height(160)
-            BackgroundGestureHint({ source: this.draft.photo,
-              available: this.showGestureHint && this.loaded && !this.busy && this.foreground })
-              .width('100%').height(160)
-          }.width('100%').height(160).clip(true).borderRadius(12)
-            .backgroundColor($r('app.color.keyboard_background')).id('background_preview')
-            .onTouch((event: TouchEvent) => {
-              if (event.type === TouchType.Down) { this.showGestureHint = false; }
-            })
-            .priorityGesture(GestureGroup(GestureMode.Parallel,
-              PinchGesture({ fingers: 2, distance: 3 })
-                .onActionStart((event: GestureEvent) => {
-                  this.dragging = false;
-                  this.pinchZoom = this.draft.zoom;
-                  this.scalePhoto(event);
-                })
-                .onActionUpdate((event: GestureEvent) => this.scalePhoto(event))
-                .onActionEnd((event: GestureEvent) => this.scalePhoto(event)),
-              PanGesture({ fingers: 1, direction: PanDirection.All, distance: 3 })
-              .onActionStart((event: GestureEvent) => {
-                this.dragging = event.fingerList.length === 1;
-                this.dragX = this.draft.x;
-                this.dragY = this.draft.y;
-                this.dragTravelX = this.travelX;
-                this.dragTravelY = this.travelY;
-                this.movePhoto(event);
-              })
-              .onActionUpdate((event: GestureEvent) => this.movePhoto(event))
-              .onActionEnd((event: GestureEvent) => {
-                this.movePhoto(event);
-                this.dragging = false;
-              })
-              .onActionCancel(() => { this.dragging = false; })))
-          Text('ドラッグで位置、2本指のピンチで拡大・縮小を調整できます。')
-            .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
           TextInput({ placeholder: 'ここをタップしてキーボードで確認' })
             .id('background_keyboard_check')
           Text('確認用キーボードにも調整中の値が反映されます。「保存」で確定します。')
@@ -414,7 +416,7 @@ export struct KeyboardBackgroundSettings {
             onChange: (value: number) => this.setAdjustment('keyOpacity', value) })
           if (this.message.length > 0) { Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')) }
         }.width('100%').padding(16)
-      }.layoutWeight(1).width('100%')
+      }.layoutWeight(1).width('100%').id('background_settings_scroll')
     }.width('100%').height('100%').backgroundColor($r('app.color.menu_background'))
   }
 }
