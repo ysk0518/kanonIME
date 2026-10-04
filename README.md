@@ -40,7 +40,7 @@ HarmonyOS向け日本語・英語キーボード。ArkTSのUIとIME連携、C++ 
    ```powershell
    $env:DEVECO_SDK_HOME = 'C:/Program Files/Huawei/DevEco Studio/sdk'
    $env:JAVA_HOME = 'C:/Program Files/Huawei/DevEco Studio/jbr'
-   & 'C:/Program Files/Huawei/DevEco Studio/tools/node/node.exe' 'C:/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js' assembleApp --no-daemon
+   & 'C:/Program Files/Huawei/DevEco Studio/tools/node/node.exe' 'C:/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js' assembleApp -p buildMode=release --no-daemon
    ```
 
 4. HDCで署名済みHAPを導入し、IMEを選択します。複数端末接続時は `-t <target>` を指定してください。
@@ -54,7 +54,7 @@ HarmonyOS向け日本語・英語キーボード。ArkTSのUIとIME連携、C++ 
 
 ### 実機での反復確認
 
-`tools/fast-device.ps1` は接続中のUSB端末を優先して選び、ビルド・導入を一回で実行します。引数なしで両方実行します。Hvigorの継続起動を使うため、初回起動後の変更なしビルドは短くなります。
+`tools/fast-device.ps1` は接続中のUSB端末を優先して選び、リリースビルド・導入を一回で実行します。引数なしで両方実行します。Hvigorの継続起動を使うため、初回起動後の変更なしビルドは短くなります。
 
 ```powershell
 powershell -NoProfile -File tools/fast-device.ps1
@@ -64,6 +64,10 @@ powershell -NoProfile -File tools/fast-device.ps1 -Tap '370,2035;1125,2400' -Scr
 ```
 
 `-Build`、`-Install` は個別にも指定できます。`-Target` で端末を明示できます。画像はGit管理外の `.local/screenshots` に保存します。`-OpenPreview` で入力方式の選択画面が出た場合は、端末上で選択してください。
+
+EasyAbroad 内 Chrome の FULL モードは、同じソース・同じデバッグ署名Profileの比較で、デバッグビルド（`app.debug=true`）ではブローカーの `IInputMethodAgent` 通信が `operation not permitted` となり、リリースビルド（`app.debug=false`）では応答と入力が成功しました。実機確認ではリリースビルドを使ってください。DevEco Studio から導入する場合も build mode を `release` にします。署名Profileの種別を変更する必要は、この比較ではありませんでした。製品版OS内部の拒否条件は未確認です。
+
+デバッガーを使うときは `-BuildMode debug` を明示できます。`-Install` はHAPのデバッグ属性が指定したモードと一致することを確認してから導入するため、古いデバッグHAPを意図せず再導入することを防ぎます。
 通常のアプリ起動では設定ページを開きます。入力確認用ページは `-OpenPreview` で開けます。
 
 ## ネイティブ部分
