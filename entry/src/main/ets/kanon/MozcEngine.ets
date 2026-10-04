@@ -328,9 +328,10 @@ export class MozcEngine implements EnginePort {
       const literal: boolean = !isRomanLower(t) && roman.length === 0;
       const unit: string = roman.length > 0 ? roman : t;
       let units: CompositionInput[] = this.inputUnits.slice();
-      // A literal after conversion continues the displayed candidate without
-      // committing it to the editor. The selected text becomes literal input.
-      const retainConversion: boolean = literal && this.phase === 'converting';
+      // Continue the displayed conversion for every input kind. Rebuild it as
+      // literal input before appending kana, roman keys or symbols, so starting
+      // a new composition cannot replace the highlighted text or commit it.
+      const retainConversion: boolean = this.phase === 'converting';
       if (retainConversion) {
         units = literalInputs(this.lastPreedit);
         const restored: ConvOut = await this.replay(units);

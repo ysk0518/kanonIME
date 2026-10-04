@@ -6,7 +6,7 @@ import { BackgroundPhotoError } from './KeyboardBackground';
 /** GIF delays use hundredths of a second, as does PackingOptionsForSequence. */
 function frameDelays(bytes: Uint8Array): number[] {
   if (bytes.length < 13 || bytes[0] !== 71 || bytes[1] !== 73 || bytes[2] !== 70) {
-    throw new BackgroundPhotoError('GIFを読み込めませんでした');
+    throw new BackgroundPhotoError($r('app.string.background_error_gif_read_failed'));
   }
   let position: number = 13 + ((bytes[10] & 128) ? 3 * Math.pow(2, (bytes[10] & 7) + 1) : 0);
   let delay: number = 10;
@@ -18,7 +18,7 @@ function frameDelays(bytes: Uint8Array): number[] {
       const label: number = bytes[position++];
       if (label === 249) {
         if (position + 6 > bytes.length || bytes[position] !== 4 || bytes[position + 5] !== 0) {
-          throw new BackgroundPhotoError('GIFを読み込めませんでした');
+          throw new BackgroundPhotoError($r('app.string.background_error_gif_read_failed'));
         }
         delay = bytes[position + 2] + bytes[position + 3] * 256;
         if (delay === 0) { delay = 10; }
@@ -32,7 +32,7 @@ function frameDelays(bytes: Uint8Array): number[] {
       position++; // LZW minimum code size.
       delays.push(delay);
       delay = 10;
-      if (delays.length > 120) { throw new BackgroundPhotoError('GIFは120フレーム以下にしてください'); }
+      if (delays.length > 120) { throw new BackgroundPhotoError($r('app.string.background_error_gif_frame_limit')); }
     } else { break; }
     // Image data and non-control extensions are length-prefixed sub-blocks.
     while (position < bytes.length) {
@@ -41,7 +41,7 @@ function frameDelays(bytes: Uint8Array): number[] {
       position += length;
     }
   }
-  throw new BackgroundPhotoError('GIFのデータが不完全です');
+  throw new BackgroundPhotoError($r('app.string.background_error_gif_incomplete'));
 }
 
 export class GifBackgroundStats {
@@ -79,7 +79,7 @@ export async function restoreBackgroundGif(original: string): Promise<Background
   try {
     const stats: GifBackgroundStats = inspectBackgroundGif(original);
     if (stats.bytes > 5000000 || Math.max(stats.width, stats.height) > 1280 || stats.frames === 0) {
-      throw new BackgroundPhotoError('元のGIFを読み込めませんでした');
+      throw new BackgroundPhotoError($r('app.string.background_error_original_read_failed'));
     }
     source = image.createImageSource(new util.Base64Helper().decodeSync(original).buffer);
     const scale: number = Math.min(1, 480 / Math.max(stats.width, stats.height));
@@ -89,7 +89,7 @@ export async function restoreBackgroundGif(original: string): Promise<Background
     packer = image.createImagePacker();
     let poster: ArrayBuffer = await packer.packToData(pixels, { format: 'image/jpeg', quality: 75 });
     if (poster.byteLength > 250000) { poster = await packer.packToData(pixels, { format: 'image/jpeg', quality: 35 }); }
-    if (poster.byteLength > 250000) { throw new BackgroundPhotoError('元のGIFの静止画を生成できませんでした'); }
+    if (poster.byteLength > 250000) { throw new BackgroundPhotoError($r('app.string.background_error_original_poster_failed')); }
     const config = new BackgroundConfig();
     config.format = 'gif';
     config.photo = original;
@@ -102,7 +102,7 @@ export async function restoreBackgroundGif(original: string): Promise<Background
     return config;
   } catch (error) {
     if (error instanceof BackgroundPhotoError) { throw error; }
-    throw new BackgroundPhotoError('元のGIFを復元できませんでした');
+    throw new BackgroundPhotoError($r('app.string.background_error_original_restore_failed'));
   } finally {
     if (pixels) { try { await pixels.release(); } catch (error) {} }
     if (packer) { try { await packer.release(); } catch (error) {} }
@@ -117,14 +117,14 @@ export async function processBackgroundGif(original: string, resolution: number,
   const frames: image.PixelMap[] = [];
   try {
     const bytes: Uint8Array = new util.Base64Helper().decodeSync(original);
-    if (bytes.byteLength > 5000000) { throw new BackgroundPhotoError('GIFは5MB以下にしてください'); }
+    if (bytes.byteLength > 5000000) { throw new BackgroundPhotoError($r('app.string.background_error_gif_too_large')); }
     const delays: number[] = frameDelays(bytes);
-    if (delays.length === 0) { throw new BackgroundPhotoError('GIFにフレームがありません'); }
+    if (delays.length === 0) { throw new BackgroundPhotoError($r('app.string.background_error_gif_no_frames')); }
     source = image.createImageSource(bytes.buffer);
     const info: image.ImageInfo = await source.getImageInfo();
     if (info.mimeType !== 'image/gif' || info.size.width <= 0 || info.size.height <= 0 ||
       Math.max(info.size.width, info.size.height) > 1280 || await source.getFrameCount() !== delays.length) {
-      throw new BackgroundPhotoError('GIFは長辺1280px以下・120フレーム以下にしてください');
+      throw new BackgroundPhotoError($r('app.string.background_error_gif_dimensions_limit'));
     }
     const target: number = Math.max(1, Math.min(1280, Math.round(resolution)));
     const maxFps: number = Math.max(1, Math.min(100, Math.round(fps)));
@@ -150,11 +150,11 @@ export async function processBackgroundGif(original: string, resolution: number,
       else { indices.push(0); ticks.push(duration); }
     }
     if (ticks.some((delay: number) => delay > 65535)) {
-      throw new BackgroundPhotoError('GIFのフレーム間隔が長すぎます');
+      throw new BackgroundPhotoError($r('app.string.background_error_gif_delay_too_long'));
     }
     // Native sequence encoding retains output frames. Bound that memory before decoding.
     if (width * height * 4 * indices.length > 128000000) {
-      throw new BackgroundPhotoError('変換に必要なメモリが多いため、解像度またはFPS上限を下げてください');
+      throw new BackgroundPhotoError($r('app.string.background_error_gif_memory_limit'));
     }
     for (let index: number = 0; index < indices.length; index++) {
       const pixels: image.PixelMap = await source.createPixelMap({ index: indices[index],
@@ -171,11 +171,11 @@ export async function processBackgroundGif(original: string, resolution: number,
       disposalTypes: frames.map(() => 2), loopCount: 0
     });
     if (encoded.byteLength > 5000000) {
-      throw new BackgroundPhotoError('変換後のGIFが5MBを超えました。解像度またはFPS上限を下げてください');
+      throw new BackgroundPhotoError($r('app.string.background_error_gif_output_too_large'));
     }
     let poster: ArrayBuffer = await packer.packToData(frames[0], { format: 'image/jpeg', quality: 75 });
     if (poster.byteLength > 250000) { poster = await packer.packToData(frames[0], { format: 'image/jpeg', quality: 35 }); }
-    if (poster.byteLength > 250000) { throw new BackgroundPhotoError('静止画の容量が大きすぎます。解像度を下げてください'); }
+    if (poster.byteLength > 250000) { throw new BackgroundPhotoError($r('app.string.background_error_poster_too_large')); }
     const config = new BackgroundConfig();
     config.format = 'gif';
     config.photo = new util.Base64Helper().encodeToStringSync(new Uint8Array(encoded));
@@ -188,7 +188,7 @@ export async function processBackgroundGif(original: string, resolution: number,
     return config;
   } catch (error) {
     if (error instanceof BackgroundPhotoError) { throw error; }
-    throw new BackgroundPhotoError('GIFを調整できませんでした。別の画像か小さい設定値で試してください');
+    throw new BackgroundPhotoError($r('app.string.background_error_gif_processing_failed'));
   } finally {
     for (let index: number = 0; index < frames.length; index++) {
       try { await frames[index].release(); } catch (error) {}

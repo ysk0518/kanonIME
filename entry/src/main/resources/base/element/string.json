@@ -1,56 +1,528 @@
 {
-    "string":  [
-                   {
-                       "name": "clipboard_history_permission",
-                       "value": "コピーしたテキストをキーボードの履歴に保存し、選んで貼り付けるため"
-                   },
-                   {
-                       "name":  "entry_desc",
-                       "value":  "kanon の日本語・英語キーボード"
-                   },
-                   {
-                       "name":  "extension_ability_descripter",
-                       "value":  "kanon の日本語・英語キーボード"
-                   },
-                   {
-                       "name":  "MainAbility_desc",
-                       "value":  "description"
-                   },
-                   {
-                       "name":  "MainAbility_label",
-                       "value":  "kanon"
-                   },
-                   {
-                       "name":  "selection",
-                       "value":  "Selection"
-                   },
-                   {
-                       "name":  "edit",
-                       "value":  "Edit"
-                   },
-                   {
-                       "name":  "EntryAbility_desc",
-                       "value":  "description"
-                   },
-                   {
-                       "name":  "EntryAbility_label",
-                       "value":  "kanon"
-                   },
-                   {
-                       "name":  "Private_data",
-                       "value":  "Private data"
-                   },
-                   {
-                       "name":  "Preview_Text",
-                       "value":  "Preview Text"
-                   },
-                   {
-                       "name":  "Private_tip",
-                       "value":  "Please input account number"
-                   },
-                   {
-                       "name":  "Preview_tip",
-                       "value":  "Please input preview content"
-                   }
-               ]
+  "string": [
+    {
+      "name": "settings_defaults_pending",
+      "value": "このタブの設定を初期値に戻しました。「保存」で反映します。"
+    },
+    {
+      "name": "settings_reset_input_scope",
+      "value": "配列・フリック感度・長押し時間を初期値に戻します。"
+    },
+    {
+      "name": "settings_reset_appearance_scope",
+      "value": "文字プレビューを初期値に戻します。背景画像とサイズは、それぞれの編集画面で変更できます。"
+    },
+    {
+      "name": "settings_reset_feedback_scope",
+      "value": "振動とショートカット配置を初期値に戻します。"
+    },
+    {
+      "name": "clipboard_history_permission",
+      "value": "コピーしたテキストをキーボードの履歴に保存し、選んで貼り付けるため"
+    },
+    {
+      "name": "entry_desc",
+      "value": "kanon の日本語・英語キーボード"
+    },
+    {
+      "name": "extension_ability_descripter",
+      "value": "kanon の日本語・英語キーボード"
+    },
+    {
+      "name": "MainAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "MainAbility_label",
+      "value": "kanon"
+    },
+    {
+      "name": "selection",
+      "value": "Selection"
+    },
+    {
+      "name": "edit",
+      "value": "Edit"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "kanon"
+    },
+    {
+      "name": "Private_data",
+      "value": "Private data"
+    },
+    {
+      "name": "Preview_Text",
+      "value": "Preview Text"
+    },
+    {
+      "name": "Private_tip",
+      "value": "Please input account number"
+    },
+    {
+      "name": "Preview_tip",
+      "value": "Please input preview content"
+    },
+    {
+      "name": "common_back",
+      "value": "戻る"
+    },
+    {
+      "name": "common_save",
+      "value": "保存"
+    },
+    {
+      "name": "common_saving",
+      "value": "保存中"
+    },
+    {
+      "name": "common_saved",
+      "value": "保存しました"
+    },
+    {
+      "name": "common_save_failed",
+      "value": "保存できませんでした。再度お試しください。"
+    },
+    {
+      "name": "common_reset",
+      "value": "初期値に戻す"
+    },
+    {
+      "name": "settings_title",
+      "value": "キーボード設定"
+    },
+    {
+      "name": "settings_languages",
+      "value": "使用する言語"
+    },
+    {
+      "name": "settings_japanese",
+      "value": "日本語"
+    },
+    {
+      "name": "settings_english",
+      "value": "英語"
+    },
+    {
+      "name": "settings_use_japanese",
+      "value": "日本語"
+    },
+    {
+      "name": "settings_use_english",
+      "value": "英語"
+    },
+    {
+      "name": "settings_language_applied",
+      "value": "言語設定を適用しました"
+    },
+    {
+      "name": "settings_language_failed",
+      "value": "言語設定を適用できませんでした"
+    },
+    {
+      "name": "settings_layout",
+      "value": "デフォルトの配列"
+    },
+    {
+      "name": "settings_layout_help",
+      "value": "「あA1」で日本語・英語・数字を切り替えます。左下の配列キーを押すと、使用中の日英両方を12キー／QWERTYに切り替えます。"
+    },
+    {
+      "name": "settings_size_help",
+      "value": "高さはキーボード左上のメニュー →「サイズ」で変更できます。"
+    },
+    {
+      "name": "settings_background",
+      "value": "背景の変更"
+    },
+    {
+      "name": "settings_save_before_background",
+      "value": "背景画像を開く前に、変更した設定を保存してください。"
+    },
+    {
+      "name": "settings_key_preview",
+      "value": "入力キーの文字プレビュー"
+    },
+    {
+      "name": "settings_flick_sensitivity",
+      "value": "フリック感度"
+    },
+    {
+      "name": "settings_flick_help",
+      "value": "左へ動かすと短い指の動きで文字を選べます。"
+    },
+    {
+      "name": "settings_haptics",
+      "value": "キー操作の振動"
+    },
+    {
+      "name": "settings_haptics_off",
+      "value": "オフ"
+    },
+    {
+      "name": "settings_haptics_weak",
+      "value": "弱"
+    },
+    {
+      "name": "settings_haptics_strong",
+      "value": "強"
+    },
+    {
+      "name": "settings_haptics_help",
+      "value": "振動の強さは端末によって異なります。"
+    },
+    {
+      "name": "background_load_failed",
+      "value": "背景設定を読み込めませんでした"
+    },
+    {
+      "name": "background_saved",
+      "value": "保存しました。キーボードに反映済みです"
+    },
+    {
+      "name": "background_image_read_failed",
+      "value": "画像を読み込めませんでした。別の画像を選んでください"
+    },
+    {
+      "name": "background_gif_stats_failed",
+      "value": "GIFの情報を取得できませんでした"
+    },
+    {
+      "name": "background_gif_reset_done",
+      "value": "GIF設定を標準に戻しました。「保存」で確定します"
+    },
+    {
+      "name": "background_gif_applied",
+      "value": "GIFを調整しました。「保存」で確定します"
+    },
+    {
+      "name": "background_gif_failed",
+      "value": "GIFを調整できませんでした"
+    },
+    {
+      "name": "background_sync_pending",
+      "value": "画像は保存済みです。確認用の入力欄でkanonを開いて、反映を確認してください"
+    },
+    {
+      "name": "background_sync_failed",
+      "value": "反映できませんでした。もう一度保存してください"
+    },
+    {
+      "name": "background_title",
+      "value": "キーボードの背景"
+    },
+    {
+      "name": "background_gesture_help",
+      "value": "ドラッグで位置、2本指のピンチで拡大・縮小を調整できます。"
+    },
+    {
+      "name": "background_check_placeholder",
+      "value": "ここをタップしてキーボードで確認"
+    },
+    {
+      "name": "background_live_help",
+      "value": "確認用キーボードにも調整中の値が反映されます。「保存」で確定します。"
+    },
+    {
+      "name": "background_processing",
+      "value": "処理中…"
+    },
+    {
+      "name": "background_pick",
+      "value": "画像選択"
+    },
+    {
+      "name": "background_animate",
+      "value": "アニメーションを再生"
+    },
+    {
+      "name": "background_animate_accessibility",
+      "value": "背景GIFのアニメーションを再生"
+    },
+    {
+      "name": "background_gif_limits",
+      "value": "GIFは5MB以下・長辺1280px以下・120フレーム以下に対応しています。"
+    },
+    {
+      "name": "background_gif_resolution",
+      "value": "GIFの解像度（長辺）"
+    },
+    {
+      "name": "background_gif_fps",
+      "value": "GIFのFPS上限"
+    },
+    {
+      "name": "background_gif_processing",
+      "value": "GIFを調整中…"
+    },
+    {
+      "name": "background_gif_apply",
+      "value": "適用"
+    },
+    {
+      "name": "background_gif_reset",
+      "value": "初期値に戻す"
+    },
+    {
+      "name": "background_gif_apply_help",
+      "value": "設定値を選んで「適用」を押すと反映します。元の画像より大きくは拡大せず、再生速度を保ってフレームを間引きます。"
+    },
+    {
+      "name": "background_zoom",
+      "value": "拡大率"
+    },
+    {
+      "name": "background_x",
+      "value": "横位置"
+    },
+    {
+      "name": "background_y",
+      "value": "縦位置"
+    },
+    {
+      "name": "background_brightness",
+      "value": "明るさ"
+    },
+    {
+      "name": "background_key_opacity",
+      "value": "キーの不透明度"
+    },
+    {
+      "name": "shortcut_title",
+      "value": "上部ショートカット"
+    },
+    {
+      "name": "shortcut_order_help",
+      "value": "上から順に、キーボードの左から表示します。変更後は「保存」を押してください。"
+    },
+    {
+      "name": "shortcut_delete",
+      "value": "削除"
+    },
+    {
+      "name": "shortcut_hidden_help",
+      "value": "非表示の機能も、左上のメニューから開けます。"
+    },
+    {
+      "name": "shortcut_reset",
+      "value": "初期配置"
+    },
+    {
+      "name": "shortcut_clipboard",
+      "value": "クリップボード"
+    },
+    {
+      "name": "shortcut_edit",
+      "value": "テキスト編集"
+    },
+    {
+      "name": "settings_tab_input",
+      "value": "入力"
+    },
+    {
+      "name": "settings_tab_appearance",
+      "value": "外観"
+    },
+    {
+      "name": "settings_tab_feedback",
+      "value": "操作感"
+    },
+    {
+      "name": "settings_layout_flick",
+      "value": "12キー"
+    },
+    {
+      "name": "settings_layout_qwerty",
+      "value": "QWERTY"
+    },
+    {
+      "name": "settings_flick_selected",
+      "value": "12キー、選択中"
+    },
+    {
+      "name": "settings_qwerty_selected",
+      "value": "QWERTY、選択中"
+    },
+    {
+      "name": "settings_language_immediate",
+      "value": "言語のオン・オフはすぐに反映されます。"
+    },
+    {
+      "name": "settings_language_location",
+      "value": "使用する言語は、キーボード左上のメニュー →「使用する言語」で変更できます。"
+    },
+    {
+      "name": "settings_long_press_seconds",
+      "value": "記号入力までの長押し：%s秒"
+    },
+    {
+      "name": "background_flick_preview",
+      "value": "12キーのプレビュー"
+    },
+    {
+      "name": "background_flick_selected",
+      "value": "12キーのプレビュー、選択中"
+    },
+    {
+      "name": "background_qwerty_preview",
+      "value": "QWERTYのプレビュー"
+    },
+    {
+      "name": "background_qwerty_selected",
+      "value": "QWERTYのプレビュー、選択中"
+    },
+    {
+      "name": "background_gif_original_defaults",
+      "value": "初期値：元GIFの長辺%dpx・FPS上限%d・再生ON"
+    },
+    {
+      "name": "shortcut_move_left",
+      "value": "%sを左へ移動"
+    },
+    {
+      "name": "shortcut_move_right",
+      "value": "%sを右へ移動"
+    },
+    {
+      "name": "shortcut_remove",
+      "value": "%sをショートカットから削除"
+    },
+    {
+      "name": "shortcut_add",
+      "value": "＋ %s"
+    },
+    {
+      "name": "background_error_original_save_failed",
+      "value": "元のGIFを保存できませんでした"
+    },
+    {
+      "name": "background_error_original_read_failed",
+      "value": "元のGIFを読み込めませんでした"
+    },
+    {
+      "name": "background_error_image_data_failed",
+      "value": "画像のデータを読み込めませんでした"
+    },
+    {
+      "name": "background_error_gif_selection_limits",
+      "value": "GIFは5MB以下・長辺1280px以下・120フレーム以下の画像を選んでください"
+    },
+    {
+      "name": "background_error_image_too_large",
+      "value": "画像の容量が大きすぎます。別の画像を選んでください"
+    },
+    {
+      "name": "background_error_gif_read_failed",
+      "value": "GIFを読み込めませんでした"
+    },
+    {
+      "name": "background_error_gif_frame_limit",
+      "value": "GIFは120フレーム以下にしてください"
+    },
+    {
+      "name": "background_error_gif_incomplete",
+      "value": "GIFのデータが不完全です"
+    },
+    {
+      "name": "background_error_original_poster_failed",
+      "value": "元のGIFの静止画を生成できませんでした"
+    },
+    {
+      "name": "background_error_original_restore_failed",
+      "value": "元のGIFを復元できませんでした"
+    },
+    {
+      "name": "background_error_gif_too_large",
+      "value": "GIFは5MB以下にしてください"
+    },
+    {
+      "name": "background_error_gif_no_frames",
+      "value": "GIFにフレームがありません"
+    },
+    {
+      "name": "background_error_gif_dimensions_limit",
+      "value": "GIFは長辺1280px以下・120フレーム以下にしてください"
+    },
+    {
+      "name": "background_error_gif_delay_too_long",
+      "value": "GIFのフレーム間隔が長すぎます"
+    },
+    {
+      "name": "background_error_gif_memory_limit",
+      "value": "変換に必要なメモリが多いため、解像度またはFPS上限を下げてください"
+    },
+    {
+      "name": "background_error_gif_output_too_large",
+      "value": "変換後のGIFが5MBを超えました。解像度またはFPS上限を下げてください"
+    },
+    {
+      "name": "background_error_poster_too_large",
+      "value": "静止画の容量が大きすぎます。解像度を下げてください"
+    },
+    {
+      "name": "background_error_gif_processing_failed",
+      "value": "GIFを調整できませんでした。別の画像か小さい設定値で試してください"
+    },
+    {
+      "name": "gif_reduction",
+      "value": "%s％減"
+    },
+    {
+      "name": "gif_increase",
+      "value": "%s％増"
+    },
+    {
+      "name": "gif_comparison",
+      "value": "GIFの比較"
+    },
+    {
+      "name": "gif_stats_loading",
+      "value": "GIFの情報を読み込み中…"
+    },
+    {
+      "name": "gif_original",
+      "value": "元GIF"
+    },
+    {
+      "name": "gif_current",
+      "value": "反映中"
+    },
+    {
+      "name": "gif_resolution",
+      "value": "解像度"
+    },
+    {
+      "name": "gif_average_fps",
+      "value": "平均FPS"
+    },
+    {
+      "name": "gif_frames",
+      "value": "フレーム数"
+    },
+    {
+      "name": "gif_duration",
+      "value": "1周の時間"
+    },
+    {
+      "name": "gif_bytes",
+      "value": "容量"
+    },
+    {
+      "name": "gif_seconds",
+      "value": "%s秒"
+    },
+    {
+      "name": "gif_comparison_summary",
+      "value": "画素数 %s・フレーム数 %s・容量 %s"
+    },
+    {
+      "name": "gif_average_help",
+      "value": "平均FPSは1周全体のフレーム数と再生時間から計算しています。"
+    }
+  ]
 }
