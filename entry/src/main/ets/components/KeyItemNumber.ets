@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -25,6 +26,8 @@ import { keyPreviewSize } from '../common/KeyboardLayout';
 // 有大小写的按键组件
 @Component
 export struct KeyItemNumber {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @StorageLink('kanonFlickPreviewEnabled') @Watch('previewSettingChanged') previewEnabled: boolean = true;
   @StorageLink('kanonLayout') @Watch('cancelTouch') layout: string = 'en_qwerty';
@@ -148,7 +151,7 @@ export struct KeyItemNumber {
           .fontWeight(FontWeight.Regular)
       }
     }
-    .backgroundColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'))
+    .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_old: Area, area: Area) => {

@@ -6,12 +6,15 @@ import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '..
 import { kanonIme } from '../kanon/KanonIme';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { FlickKey } from './FlickKey';
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { DeleteItem } from './DeleteItem';
 import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
 
 @Component
 export struct NumberFlickMenu {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @Consume menuType: number;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
@@ -31,7 +34,7 @@ export struct NumberFlickMenu {
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
-      .backgroundColor($r('app.color.key_item_gray'))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .enabled(this.kind() === 'general' || (action !== 1 && action !== 5))
       .opacity(this.kind() !== 'general' && (action === 1 || action === 5) ? 0.4 : 1)
       .onClick(() => {

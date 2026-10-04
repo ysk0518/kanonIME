@@ -1,8 +1,11 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 @Component
 export struct ConvertSpaceItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonState') imeState: string = 'JP_EMPTY';
   @StorageLink('kanonList') candidates: string[] = [];
@@ -16,7 +19,7 @@ export struct ConvertSpaceItem {
       .fontColor($r('app.color.key_text'))
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.key_item_gray'))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .borderRadius(6)
       .onClick(() => { kanonIme.keySpace(); })
       .id('flick_convert_space')

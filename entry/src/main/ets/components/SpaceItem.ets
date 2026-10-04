@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -18,16 +19,18 @@ import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 @Styles function pressedStyles() {
-  .backgroundColor($r('app.color.key_item_normal_pressed'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_normal_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 @Styles function normalStyles() {
-  .backgroundColor($r('app.color.key_item_normal'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_normal'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 // 空格组件
 @Component
 export struct SpaceItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   spaceWith: Resource | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
 
@@ -38,7 +41,7 @@ export struct SpaceItem {
           .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
           .fontColor($r('app.color.key_text'))
       }
-      .backgroundColor($r('app.color.key_item_normal'))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .width(this.spaceWith)
       .borderRadius(4)
       .height('100%')

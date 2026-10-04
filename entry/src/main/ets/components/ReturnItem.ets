@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
@@ -24,16 +25,18 @@ enum EntryKey {
 }
 
 @Styles function pressedStyles() {
-  .backgroundColor($r('app.color.key_item_gray_pressed'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 @Styles function normalStyles() {
-  .backgroundColor($r('app.color.key_item_gray'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 // 返回组件
 @Component
 export struct ReturnItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @Prop returnWidth: number = 72;
@@ -60,7 +63,7 @@ export struct ReturnItem {
             .height(this.inputStyle.returnPicSize)
         }
       }
-      .backgroundColor($r('app.color.key_item_gray'))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .width(this.returnWidth)
       .borderRadius(4)
       .height('100%')

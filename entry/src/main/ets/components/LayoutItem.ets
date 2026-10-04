@@ -1,9 +1,12 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { MenuType } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 @Component
 export struct LayoutItem {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | number | undefined = undefined;
   keyRadius: number = 4;
   @Consume menuType: number;
@@ -26,7 +29,7 @@ export struct LayoutItem {
     .alignItems(HorizontalAlign.Center)
     .width(this.keyWidth ?? this.inputStyle.basicButtonWidth)
     .height('100%')
-    .backgroundColor($r('app.color.key_item_gray'))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(this.keyRadius)
     .accessibilityText(this.layout.endsWith('flick') ? 'QWERTYに切り替え' : '12キーに切り替え')
     .id('layoutItem')

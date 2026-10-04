@@ -31,6 +31,7 @@ import { StyleConfiguration } from '../common/StyleConfiguration';
 import { panelHeight, toolbarHeight, DEFAULT_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   MIN_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPreviewPercent } from '../common/KeyboardLayout';
 import { refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent } from '../common/KeyboardConfig';
+import { keyboardBackground } from '../common/KeyboardBackground';
 
 interface CursorInfo {
   x: number;
@@ -156,6 +157,7 @@ class KeyboardController {
   }
 
   public onCreate(context: InputMethodExtensionContext): void {
+    keyboardBackground.initialize(context, true).catch(() => {});
     this.active = true;
     this.mContext = context;
     this.inputHandle.addLog('onCreate');
@@ -166,6 +168,7 @@ class KeyboardController {
 
   public onDestroy(): void {
     if (!this.active) { return; }
+    AppStorage.setOrCreate('kanonKeyboardVisible', false);
     this.active = false;
     clipboardHistory.stop();
     this.inputHandle.addLog('onDestroy');
@@ -342,9 +345,12 @@ class KeyboardController {
       this.resizePanel();
     })
     InputMethodEngine.on('keyboardShow', () => {
+      AppStorage.setOrCreate('kanonKeyboardVisible', true);
+      keyboardBackground.requestSync().catch(() => {});
       refreshKeyboardHeightPercent();
       this.resizePanel();
     });
+    InputMethodEngine.on('keyboardHide', () => { AppStorage.setOrCreate('kanonKeyboardVisible', false); });
     InputMethodEngine.on('inputStop', this.inputStopped);
 
     this.inputHandle.addLog('pre on privateCommand');
@@ -524,6 +530,7 @@ class KeyboardController {
     this.inputHandle.addLog('unRegisterListener');
 
     InputMethodEngine.off('keyboardShow');
+    InputMethodEngine.off('keyboardHide');
     InputMethodEngine.off('inputStart');
     InputMethodEngine.off('inputStop', this.inputStopped);
     InputMethodEngine.off('privateCommand');

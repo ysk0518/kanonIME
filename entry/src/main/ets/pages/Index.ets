@@ -41,12 +41,21 @@ import { FlickPreview } from '../components/FlickPreview';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
+import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
 
 const TAG: string = 'index->';
 
 @Entry
 @Component
 struct Index {
+  @StorageLink('kanonBackgroundImage') backgroundPhoto: string = '';
+  @StorageLink('kanonBackgroundPoster') backgroundPoster: string = '';
+  @StorageLink('kanonBackgroundAnimate') backgroundAnimate: boolean = true;
+  @StorageLink('kanonKeyboardVisible') keyboardVisible: boolean = false;
+  @StorageLink('kanonBackgroundZoom') backgroundZoom: number = 100;
+  @StorageLink('kanonBackgroundX') backgroundX: number = 0;
+  @StorageLink('kanonBackgroundY') backgroundY: number = 0;
+  @StorageLink('kanonBackgroundBrightness') photoBrightness: number = 75;
   @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
@@ -96,6 +105,16 @@ struct Index {
 
   build() {
     Stack() {
+      if (this.backgroundPhoto.length > 0) {
+        KeyboardBackgroundCanvas({ source: this.backgroundPhoto, zoom: this.backgroundZoom,
+          x: this.backgroundX, y: this.backgroundY, photoBrightness: this.photoBrightness,
+          poster: this.backgroundPoster, play: this.backgroundAnimate,
+          active: this.keyboardVisible && (this.submenuType === SubMenuType.NORMAL || this.submenuType === SubMenuType.SIZE) &&
+            !this.candidatesExpanded })
+          .height(this.submenuType === SubMenuType.SIZE ? this.heightPreview : '100%')
+          .markAnchor({ x: 0, y: '100%' }).position({ x: 0, y: '100%' })
+          .translate({ y: this.submenuType === SubMenuType.SIZE ? -this.adjustmentBottom : 0 })
+      }
       Column() {
         if (this.submenuType === SubMenuType.NORMAL) {
           CandidateBar()
@@ -130,7 +149,7 @@ struct Index {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor($r('app.color.keyboard_background'))
+        .backgroundColor(this.backgroundPhoto.length > 0 ? Color.Transparent : $r('app.color.keyboard_background'))
       }
       .height(this.submenuType === SubMenuType.SIZE ? this.heightPreview : '100%')
       .width('100%')

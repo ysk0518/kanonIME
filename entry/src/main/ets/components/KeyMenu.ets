@@ -1,3 +1,4 @@
+import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -26,16 +27,18 @@ import { ModeCycleItem } from './ModeCycleItem';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
-  .backgroundColor($r('app.color.key_item_gray_pressed'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 @Styles function normalStyles() {
-  .backgroundColor($r('app.color.key_item_gray'))
+  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
 }
 
 // key键盘
 @Component
 export struct KeyMenu {
+  @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
+  @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_qwerty';
   @Consume menuType: number;
@@ -77,7 +80,7 @@ export struct KeyMenu {
             .width(this.inputStyle.featurePicSize)
             .height(this.inputStyle.featurePicSize)
         }
-        .backgroundColor($r('app.color.key_item_gray'))
+        .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
         .borderRadius(4)
         .onClick(() => {
           keyboardHaptics.key();
