@@ -1,10 +1,12 @@
 import { initializeShortcutConfig } from './ShortcutConfig';
 import preferences from '@ohos.data.preferences';
 import common from '@ohos.app.ability.common';
+import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPercent } from './KeyboardLayout';
 
 const CONFIG_FILE: string = 'kanon_keyboard_config';
 const LAYOUT_KEY: string = 'layout_order';
 const HAPTIC_KEY: string = 'haptic_level';
+const HEIGHT_KEY: string = 'height_percent';
 export const DEFAULT_HAPTIC_LEVEL: number = 1;
 let sharedPreferences: preferences.Preferences | undefined = undefined;
 
@@ -69,6 +71,32 @@ export function refreshSharedHapticLevel(): void {
   AppStorage.setOrCreate('kanonHapticLevel', readSharedHapticLevel());
 }
 
+export function readKeyboardHeightPercent(): number {
+  if (sharedPreferences === undefined) {
+    return DEFAULT_KEYBOARD_HEIGHT_PERCENT;
+  }
+  try {
+    const value: preferences.ValueType = sharedPreferences.getSync(HEIGHT_KEY, DEFAULT_KEYBOARD_HEIGHT_PERCENT);
+    return typeof value === 'number' ? keyboardHeightPercent(value) : DEFAULT_KEYBOARD_HEIGHT_PERCENT;
+  } catch (error) {
+    return DEFAULT_KEYBOARD_HEIGHT_PERCENT;
+  }
+}
+
+export function writeKeyboardHeightPercent(value: number): void {
+  if (sharedPreferences === undefined) { throw new Error('Keyboard preferences are unavailable'); }
+  try {
+    sharedPreferences.putSync(HEIGHT_KEY, keyboardHeightPercent(value));
+    sharedPreferences.flushSync();
+  } catch (error) {
+    throw new Error('Failed to save keyboard height preferences');
+  }
+}
+
+export function refreshKeyboardHeightPercent(): void {
+  AppStorage.setOrCreate('kanonKeyboardHeightPercent', readKeyboardHeightPercent());
+}
+
 export const DEFAULT_LAYOUT_ORDER: string = 'jp_flick,en_flick';
 export const KEYBOARD_LAYOUTS: string[] = ['jp_flick', 'jp_qwerty', 'en_flick', 'en_qwerty'];
 export const DEFAULT_FLICK_DISTANCE: number = 18;
@@ -105,6 +133,7 @@ export function nextLanguageLayout(order: string, current: string): string {
 export function initializeKeyboardConfig(context: common.Context): void {
   openKeyboardPreferences(context);
   refreshSharedHapticLevel();
+  refreshKeyboardHeightPercent();
   initializeShortcutConfig();
   PersistentStorage.persistProp('kanonLayoutOrder', DEFAULT_LAYOUT_ORDER);
   PersistentStorage.persistProp('kanonFlickDistance', DEFAULT_FLICK_DISTANCE);

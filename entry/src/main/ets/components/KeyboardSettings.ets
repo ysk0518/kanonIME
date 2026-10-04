@@ -152,6 +152,8 @@ export struct KeyboardSettings {
           Text('「あA1」で日本語・英語・数字を切り替えます。左下の配列キーを押すと、使用中の日英両方を12キー／QWERTYに切り替えます。')
             .fontSize(12).fontColor($r('app.color.text_secondary'))
           Divider().color($r('app.color.light_gray'))
+          Text('高さはキーボード左上のメニュー →「サイズ」で変更できます。')
+            .fontSize(12).fontColor($r('app.color.text_secondary'))
           Row() {
             Text('入力キーの文字プレビュー').fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
             Toggle({ type: ToggleType.Switch, isOn: this.previewEnabled })

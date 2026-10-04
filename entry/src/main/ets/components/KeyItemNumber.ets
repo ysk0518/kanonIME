@@ -20,6 +20,7 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
+import { keyPreviewSize } from '../common/KeyboardLayout';
 
 // 有大小写的按键组件
 @Component
@@ -86,7 +87,7 @@ export struct KeyItemNumber {
       this.alternateText = this.keyValue.title;
       this.previewOwner = `qwerty:${this.keyValue.content}:${touch.id}`;
       this.previewX = touch.windowX - touch.x + this.keyWidth / 2;
-      this.previewY = touch.windowY - touch.y - 64;
+      this.previewY = touch.windowY - touch.y - keyPreviewSize(this.inputStyle.basicButtonHeight) - 8;
       this.showPreview();
       this.clearLongPress();
       this.longPressTimer = setTimeout(() => {

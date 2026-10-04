@@ -36,6 +36,7 @@ import { CandidateBar } from '../components/CandidateBar';
 import { TopMenu } from '../components/TopMenu';
 import { ClipboardPanel } from '../components/ClipboardPanel';
 import { KeyboardSettings } from '../components/KeyboardSettings';
+import { KeyboardSizeSettings } from '../components/KeyboardSizeSettings';
 import { FlickPreview } from '../components/FlickPreview';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
@@ -54,7 +55,9 @@ struct Index {
   @Provide menuType: number = MenuType.NORMAL;
   @StorageLink('kanonCandidatesExpanded') candidatesExpanded: boolean = false;
   @StorageLink('inputPattern') @Watch('inputPatternChange') inputPattern: InputType = InputType.Normal
-  @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
+  @StorageLink('submenuType') @Watch('updateMeasuredStyle') submenuType: number = SubMenuType.NORMAL;
+  @StorageLink('kanonHeightPreviewVp') @Watch('updateMeasuredStyle') heightPreview: number = 264;
+  @StorageLink('kanonHeightAdjustmentBottomVp') adjustmentBottom: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
 
   onBackPress(): boolean {
@@ -83,7 +86,8 @@ struct Index {
   private updateMeasuredStyle(): void {
     if (this.measuredWidth <= 0 || this.measuredHeight <= 0) { return; }
     const width: number = Math.min(720, this.measuredWidth);
-    const height: number = Math.max(1, this.measuredHeight - this.toolbarHeight);
+    const panelHeight: number = this.submenuType === SubMenuType.SIZE ? this.heightPreview : this.measuredHeight;
+    const height: number = Math.max(1, panelHeight - this.toolbarHeight);
     if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5) {
       AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(width, height));
     }
@@ -98,7 +102,7 @@ struct Index {
           TopMenu()
         }
         Column() {
-          if (this.submenuType > SubMenuType.NORMAL) {
+          if (this.submenuType > SubMenuType.NORMAL && this.submenuType !== SubMenuType.SIZE) {
             if (this.submenuType === SubMenuType.MENU) {
               Submenu()
             } else if (this.submenuType === SubMenuType.EDIT) {
@@ -110,7 +114,7 @@ struct Index {
             } else {
               Submenu()
             }
-          } else if (!this.candidatesExpanded) {
+          } else if (!this.candidatesExpanded || this.submenuType === SubMenuType.SIZE) {
             if (this.menuType === MenuType.NORMAL) {
               if (this.layout === 'jp_flick' || this.layout === 'en_flick') { FlickMenu() }
               else { KeyMenu() }
@@ -127,9 +131,14 @@ struct Index {
         .justifyContent(FlexAlign.Center)
         .backgroundColor($r('app.color.keyboard_background'))
       }
-      .height('100%')
+      .height(this.submenuType === SubMenuType.SIZE ? this.heightPreview : '100%')
       .width('100%')
+      .markAnchor({ x: 0, y: '100%' }).position({ x: 0, y: '100%' })
+      .translate({ y: this.submenuType === SubMenuType.SIZE ? -this.adjustmentBottom : 0 })
       if (this.submenuType === SubMenuType.NORMAL) { FlickPreview() }
+      if (this.submenuType === SubMenuType.SIZE) {
+        KeyboardSizeSettings({ onClose: () => { this.submenuType = SubMenuType.NORMAL; } })
+      }
     }
     .height('100%')
     .width('100%')
@@ -138,6 +147,6 @@ struct Index {
       this.measuredHeight = Number(area.height);
       this.updateMeasuredStyle();
     })
-    .backgroundColor($r('app.color.key_item_normal'))
+    .backgroundColor(this.submenuType === SubMenuType.SIZE ? Color.Transparent : $r('app.color.key_item_normal'))
   }
 }
