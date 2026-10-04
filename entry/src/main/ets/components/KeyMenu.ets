@@ -107,9 +107,17 @@ export struct KeyMenu {
       Row({ space: 4 }) {
         LayoutItem()
         ModeCycleItem()
-        KeyItem({ keyValue: { content: ',', title: ',', upperContent: ',' } })
+        if (this.layout === 'jp_qwerty') {
+          KeyItem({ keyValue: { content: '、', title: '、', upperContent: '、' }, keyId: 'qwerty_comma' })
+        } else {
+          KeyItem({ keyValue: { content: ',', title: ',', upperContent: ',' }, keyId: 'qwerty_comma' })
+        }
         Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(1).height('100%')
-        KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' } })
+        if (this.layout === 'jp_qwerty') {
+          KeyItem({ keyValue: { content: '。', title: '。', upperContent: '。' }, keyId: 'qwerty_period' })
+        } else {
+          KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' }, keyId: 'qwerty_period' })
+        }
         ReturnItem({ returnWidth: this.inputStyle.returnButtonWidthType_1 })
       }
       .width('100%')

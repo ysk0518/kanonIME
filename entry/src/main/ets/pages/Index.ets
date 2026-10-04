@@ -40,13 +40,14 @@ import { KeyboardSizeSettings } from '../components/KeyboardSizeSettings';
 import { FlickPreview } from '../components/FlickPreview';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
+import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 
 const TAG: string = 'index->';
 
 @Entry
 @Component
 struct Index {
-  @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = 44;
+  @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
