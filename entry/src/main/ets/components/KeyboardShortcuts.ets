@@ -11,7 +11,7 @@ export struct KeyboardShortcuts {
   @StorageLink('kanonShortcutOrder') shortcutConfig: string = DEFAULT_SHORTCUT_ORDER;
 
   @Builder
-  shortcut(icon: Resource, label: string, target: number, key: string, settings: boolean) {
+  shortcut(icon: Resource, label: Resource, target: number, key: string, settings: boolean) {
     Column() {
     Stack() {
       Image(icon).width(20).height(20).fillColor(!settings && this.submenuType === target ?

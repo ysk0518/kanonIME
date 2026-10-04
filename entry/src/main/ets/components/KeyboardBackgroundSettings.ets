@@ -20,7 +20,7 @@ export struct KeyboardBackgroundSettings {
   @State private synced: boolean = true;
   @State private draft: BackgroundConfig = new BackgroundConfig();
   @State private busy: boolean = false;
-  @State private message: string = '';
+  @State private message: ResourceStr = '';
   @State private loaded: boolean = false;
   @State private showGestureHint: boolean = true;
   @State private previewQwerty: boolean = false;
@@ -29,7 +29,7 @@ export struct KeyboardBackgroundSettings {
   @State private originalGifStats: GifBackgroundStats = new GifBackgroundStats();
   @State private currentGifStats: GifBackgroundStats = new GifBackgroundStats();
   @State private gifStatsPending: boolean = false;
-  @State private gifStatsError: string = '';
+  @State private gifStatsError: ResourceStr = '';
   private saved: BackgroundConfig = new BackgroundConfig();
   private alive: boolean = false;
   private travelX: number = 0;
@@ -57,7 +57,7 @@ export struct KeyboardBackgroundSettings {
       this.loaded = true;
       keyboardBackground.preview(this.draft);
       this.refreshGifStats();
-    } catch (error) { this.message = '背景設定を読み込めませんでした'; }
+    } catch (error) { this.message = $r('app.string.background_load_failed'); }
   }
 
   aboutToDisappear(): void {
@@ -84,7 +84,7 @@ export struct KeyboardBackgroundSettings {
   private syncConfirmed(): void {
     if (!this.synced && this.loaded && this.peerVersion >= this.draft.version && this.matchesSaved()) {
       this.synced = true;
-      this.message = '保存しました。キーボードに反映済みです';
+      this.message = $r('app.string.background_saved');
     }
   }
 
@@ -116,8 +116,8 @@ export struct KeyboardBackgroundSettings {
       this.refreshGifStats();
     } catch (error) {
       if (this.alive) {
-        this.message = error instanceof BackgroundPhotoError ? error.message :
-          '画像を読み込めませんでした。別の画像を選んでください';
+        this.message = error instanceof BackgroundPhotoError ? error.displayMessage :
+          $r('app.string.background_image_read_failed');
       }
     } finally { if (this.alive) { this.busy = false; } }
   }
@@ -190,7 +190,7 @@ export struct KeyboardBackgroundSettings {
       if (snapshot.gifResolution === 0) { this.gifResolution = Math.max(this.currentGifStats.width, this.currentGifStats.height); }
       if (snapshot.gifFps === 0) { this.gifFps = Math.min(100, Math.max(1, Math.ceil(this.currentGifStats.maxFps))); }
     } catch (error) {
-      if (this.alive && this.draft.photo === snapshot.photo) { this.gifStatsError = 'GIFの情報を取得できませんでした'; }
+      if (this.alive && this.draft.photo === snapshot.photo) { this.gifStatsError = $r('app.string.background_gif_stats_failed'); }
     } finally {
       if (this.alive && this.draft.photo === snapshot.photo) { this.gifStatsPending = false; }
     }
@@ -223,11 +223,11 @@ export struct KeyboardBackgroundSettings {
       this.readGifSettings();
       keyboardBackground.preview(draft);
       this.refreshGifStats();
-      this.message = resetDefaults ? 'GIF設定を標準に戻しました。「保存」で確定します' :
-        'GIFを調整しました。「保存」で確定します';
+      this.message = resetDefaults ? $r('app.string.background_gif_reset_done') :
+        $r('app.string.background_gif_applied');
     } catch (error) {
       if (this.alive) {
-        this.message = error instanceof BackgroundPhotoError ? error.message : 'GIFを調整できませんでした';
+        this.message = error instanceof BackgroundPhotoError ? error.displayMessage : $r('app.string.background_gif_failed');
       }
     } finally { if (this.alive) { this.busy = false; } }
   }
@@ -272,9 +272,9 @@ export struct KeyboardBackgroundSettings {
       this.draft = keyboardBackground.get();
       this.saved = this.draft;
       this.synced = synced;
-      this.message = synced ? '保存しました。キーボードに反映済みです' :
-        '画像は保存済みです。確認用の入力欄でkanonを開いて、反映を確認してください';
-    } catch (error) { if (this.alive) { this.message = '反映できませんでした。もう一度保存してください'; } }
+      this.message = synced ? $r('app.string.background_saved') :
+        $r('app.string.background_sync_pending');
+    } catch (error) { if (this.alive) { this.message = $r('app.string.background_sync_failed'); } }
     finally { if (this.alive) { this.busy = false; } }
   }
 
@@ -283,18 +283,18 @@ export struct KeyboardBackgroundSettings {
       Row() {
         Button('‹').width(44).height(44).fontSize(28)
           .backgroundColor(Color.Transparent).fontColor($r('app.color.text_normal'))
-          .enabled(!this.busy).accessibilityText('戻る').onClick(() => this.onClose())
-        Text('キーボードの背景').fontSize(20).fontColor($r('app.color.text_normal')).layoutWeight(1)
-        Button('保存').enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
+          .enabled(!this.busy).accessibilityText($r('app.string.common_back')).onClick(() => this.onClose())
+        Text($r('app.string.background_title')).fontSize(20).fontColor($r('app.color.text_normal')).layoutWeight(1)
+        Button($r('app.string.common_save')).enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
       }.width('100%').height(56)
       Column({ space: 12 }) {
         Row({ space: 8 }) {
           ForEach([false, true], (qwerty: boolean) => {
-            Button(`${this.previewQwerty === qwerty ? '✓ ' : ''}${qwerty ? 'QWERTY' : '12キー'}`)
+            Button(qwerty ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_layout_flick'))
               .layoutWeight(1).height(36).enabled(!this.busy)
               .fontColor(this.previewQwerty === qwerty ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
               .backgroundColor(this.previewQwerty === qwerty ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-              .accessibilityText(`${qwerty ? 'QWERTY' : '12キー'}のプレビュー${this.previewQwerty === qwerty ? '、選択中' : ''}`)
+              .accessibilityText(qwerty ? (this.previewQwerty ? $r('app.string.background_qwerty_selected') : $r('app.string.background_qwerty_preview')) : (this.previewQwerty ? $r('app.string.background_flick_preview') : $r('app.string.background_flick_selected')))
               .onClick(() => { this.previewQwerty = qwerty; })
               .id(qwerty ? 'background_preview_qwerty' : 'background_preview_flick')
           })
@@ -344,19 +344,19 @@ export struct KeyboardBackgroundSettings {
               this.dragging = false;
             })
             .onActionCancel(() => { this.dragging = false; })))
-        Text('ドラッグで位置、2本指のピンチで拡大・縮小を調整できます。')
+        Text($r('app.string.background_gesture_help'))
           .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
       }.width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
       Scroll() {
         Column({ space: 12 }) {
-          TextInput({ placeholder: 'ここをタップしてキーボードで確認' })
+          TextInput({ placeholder: $r('app.string.background_check_placeholder') })
             .id('background_keyboard_check')
-          Text('確認用キーボードにも調整中の値が反映されます。「保存」で確定します。')
+          Text($r('app.string.background_live_help'))
             .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
           Row({ space: 8 }) {
-            Button(this.busy ? '処理中…' : '画像を選ぶ').layoutWeight(1)
+            Button(this.busy ? $r('app.string.background_processing') : $r('app.string.background_pick')).layoutWeight(1)
               .enabled(this.loaded && !this.busy).onClick(() => this.choosePhoto()).id('background_pick')
-            Button('標準に戻す').layoutWeight(1).enabled(this.loaded && !this.busy && this.draft.photo.length > 0)
+            Button($r('app.string.common_reset')).layoutWeight(1).enabled(this.loaded && !this.busy && this.draft.photo.length > 0)
               .onClick(() => {
                 this.draft = new BackgroundConfig();
                 keyboardBackground.preview(this.draft);
@@ -365,9 +365,9 @@ export struct KeyboardBackgroundSettings {
           }
           if (this.draft.format === 'gif' && this.draft.photo.length > 0) {
             Row({ space: 8 }) {
-              Text('アニメーションを再生').fontSize(14).fontColor($r('app.color.text_normal')).layoutWeight(1)
+              Text($r('app.string.background_animate')).fontSize(14).fontColor($r('app.color.text_normal')).layoutWeight(1)
               Toggle({ type: ToggleType.Switch, isOn: this.draft.animate }).enabled(!this.busy)
-                .accessibilityText('背景GIFのアニメーションを再生').id('background_animate')
+                .accessibilityText($r('app.string.background_animate_accessibility')).id('background_animate')
                 .onChange((value: boolean) => {
                   const draft: BackgroundConfig = this.copyDraft();
                   draft.animate = value;
@@ -375,46 +375,49 @@ export struct KeyboardBackgroundSettings {
                   keyboardBackground.preview(draft);
                 })
             }.width('100%')
-            Text('GIFは5MB以下・長辺1280px以下・120フレーム以下に対応しています。')
+            Text($r('app.string.background_gif_limits'))
               .fontSize(12).fontColor($r('app.color.text_secondary'))
             GifBackgroundComparison({ original: this.originalGifStats, current: this.currentGifStats,
               pending: this.gifStatsPending, error: this.gifStatsError })
-            BackgroundAdjustment({ label: 'GIFの解像度（長辺）', value: this.gifResolution,
+            BackgroundAdjustment({ label: $r('app.string.background_gif_resolution'), value: this.gifResolution,
               minimum: 1, maximum: 1280, suffix: 'px', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_resolution',
               onChange: (value: number) => { this.gifResolution = Math.round(value); } })
-            BackgroundAdjustment({ label: 'GIFのFPS上限', value: this.gifFps,
+            BackgroundAdjustment({ label: $r('app.string.background_gif_fps'), value: this.gifFps,
               minimum: 1, maximum: 100, suffix: 'fps', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_fps',
               onChange: (value: number) => { this.gifFps = Math.round(value); } })
-            Button(this.busy ? 'GIFを調整中…' : 'GIFに適用')
-              .enabled(!this.busy && (this.gifResolution !== this.draft.gifResolution || this.gifFps !== this.draft.gifFps))
-              .onClick(() => this.applyGifSettings()).id('background_gif_apply')
-            Button('GIF設定を標準に戻す').width('100%').fontSize(14)
-              .fontColor($r('app.color.text_normal')).backgroundColor($r('app.color.key_item_normal'))
-              .enabled(!this.busy && this.gifDefaultsChanged())
-              .onClick(() => this.applyGifSettings(true)).id('background_gif_defaults')
+            Row({ space: 8 }) {
+              Button(this.busy ? $r('app.string.background_gif_processing') : $r('app.string.background_gif_apply'))
+                .layoutWeight(1).fontSize(14)
+                .enabled(!this.busy && (this.gifResolution !== this.draft.gifResolution || this.gifFps !== this.draft.gifFps))
+                .onClick(() => this.applyGifSettings()).id('background_gif_apply')
+              Button($r('app.string.background_gif_reset')).layoutWeight(1).fontSize(14)
+                .fontColor($r('app.color.text_normal')).backgroundColor($r('app.color.key_item_normal'))
+                .enabled(!this.busy && this.gifDefaultsChanged())
+                .onClick(() => this.applyGifSettings(true)).id('background_gif_defaults')
+            }.width('100%')
             if (this.originalGifStats.frames > 0 && !this.gifStatsPending) {
-              Text(`標準：元GIFの長辺${this.originalGifResolution()}px・FPS上限${this.originalGifFps()}・再生ON`)
+              Text($r('app.string.background_gif_original_defaults', this.originalGifResolution(), this.originalGifFps()))
                 .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
             }
-            Text('設定値を選んで「GIFに適用」を押すと反映します。元の画像より大きくは拡大せず、再生速度を保ってフレームを間引きます。')
+            Text($r('app.string.background_gif_apply_help'))
               .fontSize(12).fontColor($r('app.color.text_secondary'))
           }
-          BackgroundAdjustment({ label: '拡大率', value: this.draft.zoom, minimum: 100, maximum: 250,
+          BackgroundAdjustment({ label: $r('app.string.background_zoom'), value: this.draft.zoom, minimum: 100, maximum: 250,
             available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_zoom',
             onChange: (value: number) => this.setAdjustment('zoom', value) })
-          BackgroundAdjustment({ label: '横位置', value: this.draft.x, minimum: -100, maximum: 100, suffix: '',
+          BackgroundAdjustment({ label: $r('app.string.background_x'), value: this.draft.x, minimum: -100, maximum: 100, suffix: '',
             available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_x',
             onChange: (value: number) => this.setAdjustment('x', value) })
-          BackgroundAdjustment({ label: '縦位置', value: this.draft.y, minimum: -100, maximum: 100, suffix: '',
+          BackgroundAdjustment({ label: $r('app.string.background_y'), value: this.draft.y, minimum: -100, maximum: 100, suffix: '',
             available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_y',
             onChange: (value: number) => this.setAdjustment('y', value) })
-          BackgroundAdjustment({ label: '明るさ', value: this.draft.brightness, minimum: 20, maximum: 100,
+          BackgroundAdjustment({ label: $r('app.string.background_brightness'), value: this.draft.brightness, minimum: 20, maximum: 100,
             available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_brightness',
             onChange: (value: number) => this.setAdjustment('brightness', value) })
-          BackgroundAdjustment({ label: 'キーの不透明度', value: this.draft.keyOpacity, minimum: 0, maximum: 100,
+          BackgroundAdjustment({ label: $r('app.string.background_key_opacity'), value: this.draft.keyOpacity, minimum: 0, maximum: 100,
             available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_key_opacity',
             onChange: (value: number) => this.setAdjustment('keyOpacity', value) })
-          if (this.message.length > 0) { Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')) }
+          if (this.message !== '') { Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')) }
         }.width('100%').padding(16)
       }.layoutWeight(1).width('100%').id('background_settings_scroll')
     }.width('100%').height('100%').backgroundColor($r('app.color.menu_background'))

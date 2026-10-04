@@ -144,7 +144,7 @@ class KeyboardBackgroundStore {
   endPreview(): void { this.live.end(); }
 
   async keepGifOriginal(config: BackgroundConfig): Promise<void> {
-    if (!this.context || this.ime) { throw new BackgroundPhotoError('元のGIFを保存できませんでした'); }
+    if (!this.context || this.ime) { throw new BackgroundPhotoError($r('app.string.background_error_original_save_failed')); }
     let file: fs.File | undefined;
     try {
       if (config.sourceId.length > 0 && fs.accessSync(`${this.context.filesDir}/${config.sourceId}.gif`)) { return; }
@@ -154,7 +154,7 @@ class KeyboardBackgroundStore {
       const written: number = await fs.write(file.fd, bytes.buffer);
       if (written !== bytes.byteLength) { throw new Error('Incomplete GIF'); }
       config.sourceId = id;
-    } catch (error) { throw new BackgroundPhotoError('元のGIFを保存できませんでした'); }
+    } catch (error) { throw new BackgroundPhotoError($r('app.string.background_error_original_save_failed')); }
     finally { if (file) { try { await fs.close(file); } catch (error) {} } }
   }
 
@@ -166,9 +166,9 @@ class KeyboardBackgroundStore {
       if (!fs.accessSync(path)) { return config.photo; }
       file = await fs.open(path, fs.OpenMode.READ_ONLY);
       const stat: fs.Stat = await fs.stat(file.fd);
-      if (stat.size <= 0 || stat.size > 5000000) { throw new BackgroundPhotoError('元のGIFを読み込めませんでした'); }
+      if (stat.size <= 0 || stat.size > 5000000) { throw new BackgroundPhotoError($r('app.string.background_error_original_read_failed')); }
       return new util.Base64Helper().encodeToStringSync(new Uint8Array(await readBackgroundFile(file.fd, stat.size)));
-    } catch (error) { throw new BackgroundPhotoError('元のGIFを読み込めませんでした'); }
+    } catch (error) { throw new BackgroundPhotoError($r('app.string.background_error_original_read_failed')); }
     finally { if (file) { try { await fs.close(file); } catch (error) {} } }
   }
 
@@ -278,7 +278,13 @@ class KeyboardBackgroundStore {
 
 export const keyboardBackground = new KeyboardBackgroundStore();
 
-export class BackgroundPhotoError extends Error {}
+export class BackgroundPhotoError extends Error {
+  displayMessage: Resource;
+  constructor(displayMessage: Resource) {
+    super('background-photo-error');
+    this.displayMessage = displayMessage;
+  }
+}
 
 async function readBackgroundFile(fd: number, size: number): Promise<ArrayBuffer> {
   try {
@@ -293,7 +299,7 @@ async function readBackgroundFile(fd: number, size: number): Promise<ArrayBuffer
       offset += read;
     }
     return original;
-  } catch (error) { throw new BackgroundPhotoError('画像のデータを読み込めませんでした'); }
+  } catch (error) { throw new BackgroundPhotoError($r('app.string.background_error_image_data_failed')); }
 }
 
 /** Preserve bounded GIFs with a static poster; convert other formats to bounded JPEG. */
@@ -315,7 +321,7 @@ export async function copyBackgroundPhoto(uri: string): Promise<BackgroundConfig
       const stat: fs.Stat = await fs.stat(file.fd);
       if (stat.size <= 0 || stat.size > 5000000 || Math.max(info.size.width, info.size.height) > 1280 ||
         await source.getFrameCount() > 120) {
-        throw new BackgroundPhotoError('GIFは5MB以下・長辺1280px以下・120フレーム以下の画像を選んでください');
+        throw new BackgroundPhotoError($r('app.string.background_error_gif_selection_limits'));
       }
       gifFile = await fs.open(uri, fs.OpenMode.READ_ONLY);
       const original: ArrayBuffer = await readBackgroundFile(gifFile.fd, stat.size);
@@ -335,13 +341,13 @@ export async function copyBackgroundPhoto(uri: string): Promise<BackgroundConfig
     if (bytes.byteLength > limit && gif) {
       bytes = await packer.packToData(pixels, { format: 'image/jpeg', quality: 35 });
     }
-    if (bytes.byteLength > limit) { throw new BackgroundPhotoError('画像の容量が大きすぎます。別の画像を選んでください'); }
+    if (bytes.byteLength > limit) { throw new BackgroundPhotoError($r('app.string.background_error_image_too_large')); }
     const jpeg: string = new util.Base64Helper().encodeToStringSync(new Uint8Array(bytes));
     if (gif) { config.poster = jpeg; } else { config.photo = jpeg; }
     return config;
   } catch (error) {
     if (error instanceof BackgroundPhotoError) { throw error; }
-    throw new BackgroundPhotoError('画像を読み込めませんでした。別の画像を選んでください');
+    throw new BackgroundPhotoError($r('app.string.background_image_read_failed'));
   }
   finally {
     if (pixels) { try { await pixels.release(); } catch (error) {} }

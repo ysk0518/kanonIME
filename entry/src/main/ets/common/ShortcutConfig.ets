@@ -13,8 +13,8 @@ export function shortcutOrder(value: string): string[] {
   return result.length > 0 ? result : DEFAULT_SHORTCUT_ORDER.split(',');
 }
 
-export function shortcutName(id: string): string {
-  return id === 'settings' ? 'キーボード設定' : id === 'clipboard' ? 'クリップボード' : 'テキスト編集';
+export function shortcutName(id: string): Resource {
+  return id === 'settings' ? $r('app.string.settings_title') : id === 'clipboard' ? $r('app.string.shortcut_clipboard') : $r('app.string.shortcut_edit');
 }
 
 export function shortcutIcon(id: string): Resource {

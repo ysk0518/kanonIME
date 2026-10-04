@@ -101,6 +101,7 @@ export const DEFAULT_LAYOUT_ORDER: string = 'jp_flick,en_flick';
 export const KEYBOARD_LAYOUTS: string[] = ['jp_flick', 'jp_qwerty', 'en_flick', 'en_qwerty'];
 export const DEFAULT_FLICK_DISTANCE: number = 18;
 export const DEFAULT_LONG_PRESS_MS: number = 400;
+export const DEFAULT_KEY_PREVIEW_ENABLED: boolean = true;
 
 export function layoutOrder(value: string): string[] {
   const result: string[] = [];
@@ -138,7 +139,7 @@ export function initializeKeyboardConfig(context: common.Context): void {
   PersistentStorage.persistProp('kanonLayoutOrder', DEFAULT_LAYOUT_ORDER);
   PersistentStorage.persistProp('kanonFlickDistance', DEFAULT_FLICK_DISTANCE);
   PersistentStorage.persistProp('kanonLongPressMs', DEFAULT_LONG_PRESS_MS);
-  PersistentStorage.persistProp('kanonFlickPreviewEnabled', true);
+  PersistentStorage.persistProp('kanonFlickPreviewEnabled', DEFAULT_KEY_PREVIEW_ENABLED);
   const stored: string | undefined = readSharedLayoutOrder();
   const saved: string = stored ?? AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
   const selected: string[] = languageLayouts(saved);
