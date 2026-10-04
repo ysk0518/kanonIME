@@ -57,6 +57,13 @@ export struct Submenu {
           .onClick(() => { this.submenuType = SubMenuType.SETTINGS; })
       }
       GridItem() {
+        Text('サイズ')
+          .fontColor($r('app.color.text_normal')).fontSize(this.inputStyle.editFontSize)
+          .width('100%').height('100%').textAlign(TextAlign.Center)
+          .onClick(() => { this.submenuType = SubMenuType.SIZE; })
+          .id('keyboardSizeSettings')
+      }
+      GridItem() {
         Column({ space: 8 }) {
           Text('クリップボード')
             .fontColor($r('app.color.text_normal'))
@@ -95,7 +102,7 @@ export struct Submenu {
       .width('100%')
       .layoutWeight(1)
       .columnsTemplate('1fr 1fr')
-      .rowsTemplate('1fr 1fr')
+      .rowsTemplate('1fr 1fr 1fr')
       .columnsGap(12)
       .rowsGap(12)
       if (this.settingsError) {

@@ -2,9 +2,12 @@ import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_FLICK_DISTANCE } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
+import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
+import { keyVisualScale, keyPreviewSize } from '../common/KeyboardLayout';
 
 @Component
 export struct FlickKey {
+  @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonFlickDistance') flickDistance: number = DEFAULT_FLICK_DISTANCE;
   @StorageLink('kanonFlickPreviewEnabled') previewEnabled: boolean = true;
   @Prop values: string[] = [];
@@ -57,7 +60,7 @@ export struct FlickKey {
       this.startY = finger.windowY;
       // タッチ開始位置からキーの中央と上端を求め、移動中も固定する。
       this.previewX = finger.windowX - finger.x + this.keyWidth / 2;
-      this.previewY = finger.windowY - finger.y - 64;
+      this.previewY = finger.windowY - finger.y - keyPreviewSize(this.inputStyle.basicButtonHeight) - 8;
       this.flickDirection = 0;
       this.active = true;
       this.showPreview();
@@ -90,12 +93,16 @@ export struct FlickKey {
     return this.english && this.uppercase ? value.toUpperCase() : value;
   }
 
+  private labelFontSize(): number {
+    return (this.modifier ? 18 : this.label().length > 1 ? 17 : 20) * keyVisualScale(this.inputStyle.basicButtonHeight);
+  }
+
   build() {
     Stack({ alignContent: Alignment.Center }) {
       Text(this.label())
-        .fontSize(this.modifier ? 18 : this.label().length > 1 ? 17 : 20)
+        .fontSize(this.labelFontSize())
         .maxFontScale(1.3).maxLines(1)
-        .minFontSize(10).maxFontSize(this.modifier ? 18 : this.label().length > 1 ? 17 : 20)
+        .minFontSize(10).maxFontSize(this.labelFontSize())
         .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
         .width('90%').height('70%').textAlign(TextAlign.Center)
         .fontWeight(this.active ? FontWeight.Medium : FontWeight.Normal)
