@@ -1,6 +1,6 @@
 ﻿import display from '@ohos.display';
 import { readKeyboardHeightPercent, writeKeyboardHeightPercent } from '../common/KeyboardConfig';
-import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPercent, keyboardHeightPreviewPercent,
+import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPercent, keyboardHeightPreviewPercent,
   standardKeyHeight } from '../common/KeyboardLayout';
 import { keyboardController } from '../model/KeyboardController';
 
@@ -30,7 +30,7 @@ struct KeyboardSizeActions {
 export struct KeyboardSizeSettings {
   @State private heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT;
   @State private message: string = '';
-  @StorageLink('kanonToolbarHeight') toolbarHeight: number = 44;
+  @StorageLink('kanonToolbarHeight') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   @StorageLink('kanonHeightPreviewVp') heightPreview: number = 264;
   @StorageLink('kanonHeightAdjustmentBottomVp') adjustmentBottom: number = 0;
   @State private canvasHeight: number = 0;

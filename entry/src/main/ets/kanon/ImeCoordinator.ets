@@ -362,7 +362,7 @@ export class ImeCoordinator {
       return;
     }
     // 未確定なしのEnterは欄のアクション側へ返す。エンジンを空振りさせない。
-    if (event.kind === 'submit' && this.state === 'JP_EMPTY') {
+    if ((event.kind === 'submit' || event.kind === 'enter') && this.state === 'JP_EMPTY') {
       this.lastError = 'empty-submit';
       return;
     }

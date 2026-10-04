@@ -2,10 +2,11 @@ import { SubMenuType } from '../model/KeyboardKeyData';
 import { InputHandler } from '../model/KeyboardController';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 
 @Component
 export struct KeyboardToolbar {
-  @StorageLink('kanonToolbarHeight') toolbarHeight: number = 44;
+  @StorageLink('kanonToolbarHeight') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
   @StorageLink('kanonMode') mode: string = 'JP';
   @StorageLink('kanonNeedsRecovery') needsRecovery: boolean = false;
@@ -14,11 +15,14 @@ export struct KeyboardToolbar {
   build() {
     Row() {
       Stack() {
+        Stack() {
         Image(this.submenuType === SubMenuType.NORMAL ? $r('app.media.ic_more') : $r('app.media.ic_keyboard'))
-          .width(22).height(22).fillColor($r('app.color.key_text'))
+          .width(20).height(20).fillColor($r('app.color.key_text'))
+        }.width(32).height(32).borderRadius(16)
+          .backgroundColor($r('app.color.key_item_normal'))
       }
-      .width(40).height(40).borderRadius(20)
-      .backgroundColor($r('app.color.key_item_normal'))
+      .width(40).height(this.toolbarHeight)
+      .backgroundColor(Color.Transparent)
       .onClick(() => {
         AppStorage.setOrCreate('kanonCandidatesExpanded', false);
         this.submenuType = this.submenuType === SubMenuType.NORMAL ? SubMenuType.MENU : SubMenuType.NORMAL;
@@ -39,7 +43,7 @@ export struct KeyboardToolbar {
         }.layoutWeight(0.7)
       }
       Stack() {
-        Image($rawfile('down.svg')).width(22).height(22).fillColor($r('app.color.key_text'))
+        Image($rawfile('down.svg')).width(20).height(20).fillColor($r('app.color.key_text'))
       }
       .width(40).height(this.toolbarHeight)
       .onClick(() => { this.submenuType = SubMenuType.NORMAL; InputHandler.getInstance().hideKeyboardSelf(); })

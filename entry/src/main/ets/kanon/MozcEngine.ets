@@ -9,6 +9,7 @@
 
 import { CandidateLabel, CommitEffect, EnginePort, EngineUpdate, UiEvent } from './ImeCoordinator';
 import { kanaRoman, modifiedKana } from './KanaInput';
+import { CompositionInput, literalInputs } from './CompositionInput';
 
 interface BridgeApi {
   executeAsync(operation: string, text: string, candidateId: number): Promise<string>;
@@ -63,8 +64,7 @@ export class MozcEngine implements EnginePort {
   private bridge: BridgeApi | null = null;
   private initFailed: boolean = false;
   private buffer: string = '';
-  private inputUnits: string[] = [];
-  private kanaUnits: string[] = [];
+  private inputUnits: CompositionInput[] = [];
   private revision: number = 0;
   private lastIds: number[] = [];
   private selIdx: number = 0;
@@ -197,6 +197,37 @@ export class MozcEngine implements EnginePort {
     }
   }
 
+  private async callLiteral(text: string): Promise<ConvOut> {
+    const api: BridgeApi = this.bridge as BridgeApi;
+    try {
+      return parseOut(await api.executeAsync('literal', text, 0));
+    } catch (e) {
+      return new ConvOut();
+    }
+  }
+
+  /** Replay typed units; UTF-8 literals must never go through the roman byte path. */
+  private async replay(units: CompositionInput[]): Promise<ConvOut> {
+    const api: BridgeApi = this.bridge as BridgeApi;
+    let out: ConvOut = parseOut(await api.executeAsync('reset', '', 0));
+    if (!out.ok) { return out; }
+    for (let i: number = 0; i < units.length; i++) {
+      const literal: boolean = units[i].literal;
+      let text: string = units[i].text;
+      while (i + 1 < units.length && units[i + 1].literal === literal) {
+        text += units[++i].text;
+      }
+      out = literal ? await this.callLiteral(text) : await this.callConvert(text);
+      if (!out.ok || out.result.length > 0) { return new ConvOut(); }
+    }
+    return out;
+  }
+
+  private setInputUnits(units: CompositionInput[]): void {
+    this.inputUnits = units;
+    this.buffer = units.map((unit: CompositionInput): string => unit.text).join('');
+  }
+
   /** 純粋Spaceキー（special_key=SPACE）。変換開始に使う。key_codeの空白では変換しない。 */
   private async callSpace(): Promise<ConvOut> {
     const api: BridgeApi = this.bridge as BridgeApi;
@@ -232,7 +263,6 @@ export class MozcEngine implements EnginePort {
     }
     this.buffer = '';
     this.inputUnits = [];
-    this.kanaUnits = [];
     this.lastIds = [];
     this.selIdx = 0;
     this.lastPreedit = '';
@@ -252,7 +282,6 @@ export class MozcEngine implements EnginePort {
       }
       this.buffer = '';
       this.inputUnits = [];
-      this.kanaUnits = [];
       this.lastIds = [];
       this.selIdx = 0;
       this.lastPreedit = '';
@@ -270,19 +299,23 @@ export class MozcEngine implements EnginePort {
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
-      if (this.phase !== 'composing' || this.partial || this.kanaUnits.length === 0) {
+      if (this.phase !== 'composing' || this.partial || this.inputUnits.length === 0) {
         return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
       }
-      const last: number = this.kanaUnits.length - 1;
-      const kana: string = modifiedKana(this.kanaUnits[last]);
+      const last: number = this.inputUnits.length - 1;
+      const kana: string = modifiedKana(this.inputUnits[last].kana);
       const roman: string = kanaRoman(kana);
       if (roman.length > 0) {
-        this.kanaUnits[last] = kana;
-        this.inputUnits[last] = roman;
-        this.buffer = this.inputUnits.join('');
-        await api.executeAsync('reset', '', 0);
+        const units: CompositionInput[] = this.inputUnits.slice();
+        units[last] = new CompositionInput(roman, kana);
+        const out: ConvOut = await this.replay(units);
+        if (!out.ok) {
+          await this.replay(this.inputUnits);
+          return this.errUpdate(sessionId, epoch, seq, true);
+        }
+        this.setInputUnits(units);
         this.revision++;
-        return this.fromOut(sessionId, epoch, seq, await this.callConvert(this.buffer), []);
+        return this.fromOut(sessionId, epoch, seq, out, []);
       }
       return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
     }
@@ -292,45 +325,39 @@ export class MozcEngine implements EnginePort {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
       const roman: string = kind === 'kana' ? kanaRoman(t) : '';
-      if (!isRomanLower(t) && roman.length === 0) {
-        // 数字・記号・大文字は未確定へ混ぜず直接効果にする。保留があれば先に確定する。
-        const effects: CommitEffect[] = [];
-        if (this.buffer.length > 0) {
-          let committed: string = '';
-          if (this.phase === 'composing' && this.lastPreedit.length > 0) {
-            committed = this.lastPreedit;
-            await api.executeAsync('reset', '', 0);
-          } else {
-            const flushed: ConvOut = parseOut(await api.executeAsync('submit', '', 0));
-            if (flushed.ok) { committed = flushed.result; }
-          }
-          // An empty commit must not discard the pending reading when punctuation is entered.
-          if (committed.length === 0) { return this.errUpdate(sessionId, epoch, seq, true); }
-          effects.push({ effectId: `f${this.revision}`, text: committed });
-          this.buffer = '';
-          this.inputUnits = [];
-          this.kanaUnits = [];
-          this.lastIds = [];
-          this.selIdx = 0;
-          this.lastPreedit = '';
-          this.partial = false;
-        }
-        effects.push({ effectId: `d${seq}`, text: t });
-        this.revision++;
-        this.phase = 'empty';
-        const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
-        u.effects = effects;
-        return u;
-      }
+      const literal: boolean = !isRomanLower(t) && roman.length === 0;
       const unit: string = roman.length > 0 ? roman : t;
-      this.inputUnits.push(unit);
-      this.kanaUnits.push(kind === 'kana' ? t : '');
-      this.buffer += unit;
-      const out: ConvOut = await this.callConvert(unit);
+      let units: CompositionInput[] = this.inputUnits.slice();
+      // A literal after conversion continues the displayed candidate without
+      // committing it to the editor. The selected text becomes literal input.
+      const retainConversion: boolean = literal && this.phase === 'converting';
+      if (retainConversion) {
+        units = literalInputs(this.lastPreedit);
+        const restored: ConvOut = await this.replay(units);
+        if (!restored.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+      }
+      const out: ConvOut = literal ? await this.callLiteral(t) : await this.callConvert(unit);
+      if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+      const effects: CommitEffect[] = [];
+      if (out.result.length > 0) {
+        // Mozc may commit an existing conversion when ordinary roman input
+        // starts the next composition. Never silently discard that result.
+        effects.push({ effectId: `t${seq}`, text: out.result });
+        units = [];
+        this.partial = false;
+      }
+      if (literal) {
+        units = units.concat(literalInputs(t));
+      } else {
+        units.push(new CompositionInput(unit, kind === 'kana' ? t : ''));
+      }
+      this.setInputUnits(units);
+      if (retainConversion) { this.partial = false; }
       this.selIdx = 0;
-      this.phase = this.buffer.length > 0 ? 'composing' : 'empty';
+      this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
+      if (this.phase === 'empty') { this.setInputUnits([]); }
       this.revision++;
-      return this.fromOut(sessionId, epoch, seq, out, []);
+      return this.fromOut(sessionId, epoch, seq, out, effects);
     }
     if (kind === 'backspace') {
       if (this.buffer.length === 0) {
@@ -353,7 +380,6 @@ export class MozcEngine implements EnginePort {
         if (out.preedit_len === 0) {
           this.buffer = '';
           this.inputUnits = [];
-          this.kanaUnits = [];
           this.partial = false;
           this.phase = 'empty';
         }
@@ -361,21 +387,13 @@ export class MozcEngine implements EnginePort {
         this.revision++;
         return this.fromOut(sessionId, epoch, seq, out, []);
       }
-      this.inputUnits.pop();
-      this.kanaUnits.pop();
-      this.buffer = this.inputUnits.join('');
-      try {
-        await api.executeAsync('reset', '', 0);
-      } catch (e) {
+      const units: CompositionInput[] = this.inputUnits.slice(0, -1);
+      const out: ConvOut = await this.replay(units);
+      if (!out.ok) {
+        await this.replay(this.inputUnits);
+        return this.errUpdate(sessionId, epoch, seq, true);
       }
-      let out: ConvOut = new ConvOut();
-      out.ok = true;
-      if (this.buffer.length > 0) {
-        out = await this.callConvert(this.buffer);
-      } else {
-        this.lastPreedit = '';
-        this.lastIds = [];
-      }
+      this.setInputUnits(units);
       this.selIdx = 0;
       this.phase = this.buffer.length > 0 ? 'composing' : 'empty';
       this.revision++;
@@ -390,15 +408,18 @@ export class MozcEngine implements EnginePort {
         return u;
       }
       if (this.phase === 'converting' && this.lastIds.length > 0) {
-        // SELECT_CANDIDATE は Mozc 側で候補欄を閉じるため、巡回中は呼ばない。
-        this.selIdx = (this.selIdx + 1) % this.lastIds.length;
+        // Highlight without committing or hiding the candidate window. Mozc's
+        // complete preedit retains every other segment, including punctuation.
+        const next: number = (this.selIdx + 1) % this.lastIds.length;
+        const id: number = this.lastIds[next];
+        const out: ConvOut = parseOut(await api.executeAsync('highlightCandidate', '', id));
+        if (!out.ok || out.result.length > 0 || out.preedit_len === 0) {
+          return this.errUpdate(sessionId, epoch, seq, true);
+        }
         this.revision++;
-        const u: EngineUpdate = this.fromOut(sessionId, epoch, seq, this.lastOut, []);
-        const selected: string = this.lastOut.candidates[this.selIdx].value;
-        this.lastPreedit = selected;
-        u.hasPreedit = selected.length > 0;
-        u.preeditLen = selected.length;
-        u.caretUtf16 = selected.length;
+        const u: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, []);
+        const selected: number = this.lastIds.indexOf(id);
+        this.selIdx = selected >= 0 ? selected : 0;
         return u;
       }
       const out: ConvOut = await this.callSpace();
@@ -438,7 +459,6 @@ export class MozcEngine implements EnginePort {
       }
       this.buffer = '';
       this.inputUnits = [];
-      this.kanaUnits = [];
       this.lastIds = [];
       this.selIdx = 0;
       this.lastPreedit = '';
@@ -456,8 +476,9 @@ export class MozcEngine implements EnginePort {
       }
       return u;
     }
-    if (kind === 'partial') {
-      // 先頭文節のみ確定し、残り読みは未確定のまま続ける（AT-10）。
+    if (kind === 'partial' || (kind === 'enter' && this.phase === 'converting')) {
+      // Enter during conversion shares the segment-commit path. Submit is
+      // still the full commit used by layout changes, paste and cursor moves.
       if (this.phase !== 'converting' || this.lastIds.length === 0 ||
         this.selIdx >= this.lastIds.length) {
         this.revision++;
@@ -471,12 +492,15 @@ export class MozcEngine implements EnginePort {
       } catch (e) {
         part.ok = false;
       }
-      if (!part.ok) {
+      if (!part.ok || part.result.length === 0) {
         this.revision++;
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      this.partial = true;
-      this.phase = part.ncand > 0 ? 'converting' : 'composing';
+      // Discard consumed input history: only Mozc owns the remaining reading.
+      this.inputUnits = [];
+      this.buffer = part.preedit;
+      this.partial = part.preedit_len > 0;
+      this.phase = !this.partial ? 'empty' : part.ncand > 0 ? 'converting' : 'composing';
       this.selIdx = 0;
       this.revision++;
       const effects: CommitEffect[] = [];
@@ -485,7 +509,7 @@ export class MozcEngine implements EnginePort {
       }
       return this.fromOut(sessionId, epoch, seq, part, effects);
     }
-    if (kind === 'submit') {
+    if (kind === 'submit' || kind === 'enter') {
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
@@ -498,7 +522,6 @@ export class MozcEngine implements EnginePort {
         }
         this.buffer = '';
         this.inputUnits = [];
-        this.kanaUnits = [];
         this.lastIds = [];
         this.selIdx = 0;
         this.lastPreedit = '';
@@ -531,7 +554,6 @@ export class MozcEngine implements EnginePort {
       }
       this.buffer = '';
       this.inputUnits = [];
-      this.kanaUnits = [];
       this.lastIds = [];
       this.selIdx = 0;
       this.lastPreedit = '';

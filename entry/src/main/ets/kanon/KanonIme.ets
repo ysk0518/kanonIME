@@ -202,7 +202,7 @@ class KanonIme {
       finally { englishPrediction.editing = false; }
       const s: ImeSnapshot = this.coord.getSnapshot();
       if (epoch !== realEditorPort.getEpoch()) { englishPrediction.clear(); return s; }
-      if (!english && kind === 'submit' && s.lastError === 'empty-submit') {
+      if (!english && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
         const attr = await editorAdapter.queryAttribute();
         if (attr.ok && attr.value !== undefined && epoch === realEditorPort.getEpoch()) {
           await editorAdapter.sendEnterAction(attr.value.enterKeyType);
@@ -213,7 +213,7 @@ class KanonIme {
         else if (kind === 'backspace') { englishPrediction.backspace(); }
         else { englishPrediction.clear(); }
       } else if (english || kind === 'mode') { englishPrediction.clear(); }
-      if (kind === 'partial') {
+      if ((kind === 'partial' || kind === 'enter') && s.lastError === 'ok' && s.commitLength > 0) {
         // 部分確定は確定済み＋残り読みの構成が変わる。カーソル再問合せは
         // 確定直後の位置を返さない実機挙動があるため、追跡中の旧起点に
         // 今回確定文字数を足して再アンカーする（決定的）。
@@ -223,7 +223,7 @@ class KanonIme {
       }
       if (s.preeditLen === 0 && this.compIdx >= 0) {
         if ((s.lastError === 'ok' && s.commitLength > 0) ||
-          kind === 'submit' || kind === 'select' || kind === 'move' ||
+          kind === 'submit' || kind === 'enter' || kind === 'select' || kind === 'move' ||
           kind === 'selectMove' || kind === 'selectEdge' || kind === 'selectAll' || kind === 'forwardDelete' ||
           kind === 'partial' ||
           (kind === 'mode' && s.mode !== this.mode)) {
@@ -346,11 +346,7 @@ class KanonIme {
 
   async keyReturn(feedback: boolean = true): Promise<void> {
     if (feedback) { keyboardHaptics.key(); }
-    if (this.getMode() === 'EN') {
-      await this.post('enter');
-      return;
-    }
-    await this.post('submit');
+    await this.post('enter');
   }
 
   async keyDelete(feedback: boolean = true): Promise<void> {

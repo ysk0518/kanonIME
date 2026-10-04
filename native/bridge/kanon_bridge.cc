@@ -36,7 +36,15 @@ std::string EscapeJson(const std::string& s) {
       case '\\': out += "\\\\"; break;
       case '"': out += "\\\""; break;
       case '\n': out += "\\n"; break;
-      default: out += c;
+      default:
+        if (static_cast<unsigned char>(c) < 0x20) {
+          constexpr char hex[] = "0123456789abcdef";
+          out += "\\u00";
+          out += hex[(static_cast<unsigned char>(c) >> 4) & 0xf];
+          out += hex[static_cast<unsigned char>(c) & 0xf];
+        } else {
+          out += c;
+        }
     }
   }
   return out;
@@ -342,6 +350,17 @@ std::string ExecuteOperation(const AsyncOperation& task) {
       input.set_request_suggestion(i + 1 == task.text.size());
       ok = Call(input, &output);
     }
+  } else if (task.operation == "literal") {
+    // Whole UTF-8 text, not one SEND_KEY per byte. AS_IS retains punctuation
+    // and other literal characters in the composition instead of committing.
+    mozc::commands::Input input;
+    input.set_type(mozc::commands::Input::SEND_KEY);
+    auto* key = input.mutable_key();
+    key->set_special_key(mozc::commands::KeyEvent::TEXT_INPUT);
+    key->set_key_string(task.text);
+    key->set_input_style(mozc::commands::KeyEvent::AS_IS);
+    input.set_request_suggestion(true);
+    ok = Call(input, &output) && output.consumed();
   } else {
     mozc::commands::Input input;
     if (task.operation == "space" || task.operation == "submit" ||
@@ -357,10 +376,14 @@ std::string ExecuteOperation(const AsyncOperation& task) {
       *input.mutable_key() = key;
     } else {
       input.set_type(mozc::commands::Input::SEND_COMMAND);
-      if (task.operation == "selectCandidate" || task.operation == "submitCandidate") {
-        input.mutable_command()->set_type(task.operation == "selectCandidate" ?
+      if (task.operation == "selectCandidate" || task.operation == "submitCandidate" ||
+          task.operation == "highlightCandidate") {
+        const auto type = task.operation == "highlightCandidate" ?
+            mozc::commands::SessionCommand::HIGHLIGHT_CANDIDATE :
+            task.operation == "selectCandidate" ?
             mozc::commands::SessionCommand::SELECT_CANDIDATE :
-            mozc::commands::SessionCommand::SUBMIT_CANDIDATE);
+            mozc::commands::SessionCommand::SUBMIT_CANDIDATE;
+        input.mutable_command()->set_type(type);
         input.mutable_command()->set_id(static_cast<uint32_t>(task.candidate_id));
       } else if (task.operation == "reset") {
         input.mutable_command()->set_type(mozc::commands::SessionCommand::RESET_CONTEXT);
@@ -409,9 +432,10 @@ napi_value BridgeExecuteAsync(napi_env env, napi_callback_info info) {
   task->operation = GetStringArg(env, info, 0);
   task->text = GetStringArg(env, info, 1);
   const auto& operation = task->operation;
-  if (operation != "init" && operation != "convert" && operation != "space" &&
+  if (operation != "init" && operation != "convert" && operation != "literal" && operation != "space" &&
       operation != "submit" && operation != "backspace" && operation != "reset" &&
-      operation != "selectCandidate" && operation != "submitCandidate") {
+      operation != "selectCandidate" && operation != "submitCandidate" &&
+      operation != "highlightCandidate") {
     napi_throw_range_error(env, nullptr, "Unknown native operation");
     return nullptr;
   }

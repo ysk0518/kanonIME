@@ -3,6 +3,7 @@
 export const FLICK_ACTION_COLUMN_WIDTH: string = '17%';
 export const FLICK_KEY_GAP: number = 6;
 export const FLICK_SIDE_PADDING: number = 8;
+export const DEFAULT_TOOLBAR_HEIGHT: number = 40;
 export const DEFAULT_KEYBOARD_HEIGHT_PERCENT: number = 100;
 export const MIN_KEYBOARD_HEIGHT_PERCENT: number = 80;
 export const MAX_KEYBOARD_HEIGHT_PERCENT: number = 150;
@@ -31,7 +32,7 @@ export function clampSize(value: number, minimum: number, maximum: number): numb
 }
 
 export function toolbarHeight(fontScale: number): number {
-  return Math.max(44, Math.ceil(24 * Math.max(1, fontScale) + 16));
+  return Math.max(DEFAULT_TOOLBAR_HEIGHT, Math.ceil(24 * Math.max(1, fontScale) + 12));
 }
 
 export function standardKeyHeight(width: number, height: number): number {

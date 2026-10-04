@@ -3,11 +3,12 @@ import { StyleConfiguration, KeyStyle } from '../common/StyleConfiguration';
 import { kanonIme } from '../kanon/KanonIme';
 import { SubMenuType } from '../model/KeyboardKeyData';
 import { KeyboardToolbar } from './KeyboardToolbar';
+import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 
 @Component
 export struct CandidateBar {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  @StorageLink('kanonToolbarHeight') toolbarHeight: number = 44;
+  @StorageLink('kanonToolbarHeight') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
   @StorageLink('kanonMode') mode: string = 'JP';
   @StorageLink('kanonList') @Watch('candidatesChanged') candList: string[] = [];
@@ -46,7 +47,7 @@ export struct CandidateBar {
           KeyboardToolbar()
         } else {
           Stack() {
-            Image($r('app.media.ic_more')).width(22).height(22).fillColor($r('app.color.key_text'))
+            Image($r('app.media.ic_more')).width(20).height(20).fillColor($r('app.color.key_text'))
           }
           .width(40).height(this.toolbarHeight).margin({ left: 8 })
           .onClick(() => { this.submenuType = SubMenuType.MENU; })
