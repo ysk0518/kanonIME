@@ -197,32 +197,29 @@ export struct KeyboardSettings {
     Column({ space: 12 }) {
       Text($r('app.string.settings_language_location'))
         .fontSize(12).fontColor($r('app.color.text_secondary'))
-          Text($r('app.string.settings_layout')).fontSize(14).fontColor($r('app.color.text_secondary'))
-          Row({ space: 8 }) {
-            ForEach([true, false], (flick: boolean) => {
-              Button(flick ? $r('app.string.settings_layout_flick') : $r('app.string.settings_layout_qwerty'))
-                .layoutWeight(1).enabled(!this.saving && (!flick || this.flickEnabled))
-                .fontColor(this.selectedFlick === flick ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-                .backgroundColor(this.selectedFlick === flick ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-                .accessibilityText(flick ? (this.selectedFlick ? $r('app.string.settings_flick_selected') : $r('app.string.settings_layout_flick')) : (this.selectedFlick ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_qwerty_selected')))
-                .onClick(() => this.chooseLayout(flick))
-                .id(flick ? 'keyboard_config_flick' : 'keyboard_config_qwerty')
-            })
-          }.width('100%')
-          Text($r('app.string.settings_layout_help'))
-            .fontSize(12).fontColor($r('app.color.text_secondary'))
-
-          if (!this.selectedFlick) {
-            Row() {
-              Text($r('app.string.settings_flick_enabled')).fontSize(15)
-                .fontColor($r('app.color.text_normal')).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.flickEnabled }).enabled(!this.saving)
-                .onChange((value: boolean) => { this.flickEnabled = value; })
-                .accessibilityText($r('app.string.settings_flick_enabled')).id('keyboard_config_flick_enabled')
-            }.width('100%')
-            Text($r('app.string.settings_flick_disabled_help')).fontSize(12)
-              .fontColor($r('app.color.text_secondary'))
-          }
+      Text($r('app.string.settings_layout')).fontSize(14).fontColor($r('app.color.text_secondary'))
+      Row({ space: 8 }) {
+        ForEach([true, false], (flick: boolean) => {
+          Button(flick ? $r('app.string.settings_layout_flick') : $r('app.string.settings_layout_qwerty'))
+            .layoutWeight(1).enabled(!this.saving && (!flick || this.flickEnabled))
+            .fontColor(this.selectedFlick === flick ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
+            .backgroundColor(this.selectedFlick === flick ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+            .accessibilityText(flick ? (this.selectedFlick ? $r('app.string.settings_flick_selected') : $r('app.string.settings_layout_flick')) :
+              (this.selectedFlick ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_qwerty_selected')))
+            .onClick(() => this.chooseLayout(flick))
+            .id(flick ? 'keyboard_config_flick' : 'keyboard_config_qwerty')
+        })
+      }.width('100%')
+      Row() {
+        Text($r('app.string.settings_flick_enabled')).fontSize(15)
+          .fontColor($r('app.color.text_normal')).layoutWeight(1)
+        Toggle({ type: ToggleType.Switch, isOn: this.flickEnabled }).enabled(!this.saving)
+          .onChange((value: boolean) => {
+            this.flickEnabled = value;
+            if (!value) { this.chooseLayout(false); }
+          })
+          .accessibilityText($r('app.string.settings_flick_enabled')).id('keyboard_config_flick_enabled')
+      }.width('100%')
 
           Text($r('app.string.settings_flick_sensitivity'))
             .fontSize(14).fontColor($r('app.color.text_normal'))

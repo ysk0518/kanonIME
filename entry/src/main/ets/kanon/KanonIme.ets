@@ -29,6 +29,10 @@ class KanonIme {
   private tick: number = 0;
   private postTail: Promise<void> = Promise.resolve();
 
+  configureProfile(filesDirectory: string): void {
+    this.engine.configureProfile(filesDirectory);
+  }
+
   private async ensure(): Promise<void> {
     if (this.ready) {
       return;

@@ -10,6 +10,8 @@
 import { CandidateLabel, CommitEffect, EnginePort, EngineUpdate, UiEvent } from './ImeCoordinator';
 import { kanaRoman, modifiedKana } from './KanaInput';
 import { CompositionInput, literalInputs } from './CompositionInput';
+import fs from '@ohos.file.fs';
+import { debugLog, debugErrorCode } from '../common/DebugLog';
 
 interface BridgeApi {
   executeAsync(operation: string, text: string, candidateId: number): Promise<string>;
@@ -63,6 +65,7 @@ function isRomanLower(s: string): boolean {
 export class MozcEngine implements EnginePort {
   private bridge: BridgeApi | null = null;
   private initFailed: boolean = false;
+  private profileDirectory: string = '';
   private buffer: string = '';
   private inputUnits: CompositionInput[] = [];
   private revision: number = 0;
@@ -78,6 +81,8 @@ export class MozcEngine implements EnginePort {
    * 再送に使わず、Backspaceはセッション内削除に回す。
    */
   private partial: boolean = false;
+  /** Native deletion changes the composer; the original key history is no longer replayable. */
+  private sessionOwned: boolean = false;
 
   /** 強調中の候補位置（診断表示用）。 */
   getSelIdx(): number {
@@ -94,11 +99,31 @@ export class MozcEngine implements EnginePort {
     return this.lastLens;
   }
 
+  /** Must run before loading Mozc, whose character-form storage is a singleton. */
+  configureProfile(filesDirectory: string): void {
+    if (this.bridge !== null || this.profileDirectory.length > 0) { return; }
+    const directory: string = `${filesDirectory}/mozc`;
+    try {
+      if (filesDirectory.length === 0) { return; }
+      if (!fs.accessSync(directory)) { fs.mkdirSync(directory, true); }
+      // Do not start the engine with an unavailable learning-storage directory.
+      const probe: fs.File = fs.openSync(`${directory}/.writable`,
+        fs.OpenMode.CREATE | fs.OpenMode.READ_WRITE | fs.OpenMode.TRUNC);
+      fs.closeSync(probe);
+      fs.unlinkSync(`${directory}/.writable`);
+      this.profileDirectory = directory;
+      this.initFailed = false;
+      debugLog.record('engine', 'profile ready=true');
+    } catch (error) {
+      debugLog.record('engine', `profile ready=false code=${debugErrorCode(error)}`);
+    }
+  }
+
   private async ensure(): Promise<boolean> {
     if (this.bridge !== null) {
       return true;
     }
-    if (this.initFailed) {
+    if (this.initFailed || this.profileDirectory.length === 0) {
       return false;
     }
     try {
@@ -112,7 +137,7 @@ export class MozcEngine implements EnginePort {
       }
       let ok: boolean = false;
       try {
-        ok = parseOut(await api.executeAsync('init', '', 0)).ok;
+        ok = parseOut(await api.executeAsync('init', this.profileDirectory, 0)).ok;
       } catch (e) {
         ok = false;
       }
@@ -270,6 +295,7 @@ export class MozcEngine implements EnginePort {
     this.revision = 0;
     this.phase = 'empty';
     this.partial = false;
+    this.sessionOwned = false;
   }
 
   private async dispatchInner(sessionId: string, epoch: number, seq: number, event: UiEvent): Promise<EngineUpdate> {
@@ -287,6 +313,7 @@ export class MozcEngine implements EnginePort {
       this.lastPreedit = '';
       this.lastLens = '';
       this.partial = false;
+      this.sessionOwned = false;
       if (kind === 'reset') {
         this.revision = 0;
       } else {
@@ -299,7 +326,25 @@ export class MozcEngine implements EnginePort {
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
-      if (this.phase !== 'composing' || this.partial || this.inputUnits.length === 0) {
+      if (this.phase !== 'composing' || this.partial) {
+        return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
+      }
+      if (this.sessionOwned) {
+        const previous: string = this.lastPreedit.slice(-1);
+        const kana: string = modifiedKana(previous);
+        const roman: string = kanaRoman(kana);
+        if (kana === previous || roman.length === 0) {
+          return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
+        }
+        const deleted: ConvOut = parseOut(await api.executeAsync('backspace', '', 0));
+        if (!deleted.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+        const out: ConvOut = await this.callConvert(roman);
+        if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+        this.buffer = out.preedit;
+        this.revision++;
+        return this.fromOut(sessionId, epoch, seq, out, []);
+      }
+      if (this.inputUnits.length === 0) {
         return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
       }
       const last: number = this.inputUnits.length - 1;
@@ -346,6 +391,7 @@ export class MozcEngine implements EnginePort {
         effects.push({ effectId: `t${seq}`, text: out.result });
         units = [];
         this.partial = false;
+        this.sessionOwned = false;
       }
       if (literal) {
         units = units.concat(literalInputs(t));
@@ -353,7 +399,14 @@ export class MozcEngine implements EnginePort {
         units.push(new CompositionInput(unit, kind === 'kana' ? t : ''));
       }
       this.setInputUnits(units);
-      if (retainConversion) { this.partial = false; }
+      if (retainConversion) {
+        this.partial = false;
+        this.sessionOwned = false;
+      }
+      if (this.sessionOwned) {
+        this.inputUnits = [];
+        this.buffer = out.preedit;
+      }
       this.selIdx = 0;
       this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
       if (this.phase === 'empty') { this.setInputUnits([]); }
@@ -361,42 +414,21 @@ export class MozcEngine implements EnginePort {
       return this.fromOut(sessionId, epoch, seq, out, effects);
     }
     if (kind === 'backspace') {
-      if (this.buffer.length === 0) {
+      if (this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
-      if (this.partial) {
-        // 部分確定後の残り読みはbuffer再送できない。セッション内削除に回す。
-        const bapi: BridgeApi = this.bridge as BridgeApi;
-        let out: ConvOut = new ConvOut();
-        out.ok = false;
-        try {
-          out = parseOut(await bapi.executeAsync('backspace', '', 0));
-        } catch (e) {
-          out.ok = false;
-        }
-        if (!out.ok) {
-          this.revision++;
-          return this.errUpdate(sessionId, epoch, seq, true);
-        }
-        if (out.preedit_len === 0) {
-          this.buffer = '';
-          this.inputUnits = [];
-          this.partial = false;
-          this.phase = 'empty';
-        }
-        this.selIdx = 0;
-        this.revision++;
-        return this.fromOut(sessionId, epoch, seq, out, []);
-      }
-      const units: CompositionInput[] = this.inputUnits.slice(0, -1);
-      const out: ConvOut = await this.replay(units);
+      // Delete in the live composer, rather than undoing a roman keystroke:
+      // replaying k after ki would turn the displayed き back into ｋ.
+      const out: ConvOut = parseOut(await api.executeAsync('backspace', '', 0));
       if (!out.ok) {
-        await this.replay(this.inputUnits);
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      this.setInputUnits(units);
+      this.inputUnits = [];
+      this.buffer = out.preedit;
+      this.sessionOwned = out.preedit_len > 0;
+      if (!this.sessionOwned) { this.partial = false; }
       this.selIdx = 0;
-      this.phase = this.buffer.length > 0 ? 'composing' : 'empty';
+      this.phase = this.sessionOwned ? 'composing' : 'empty';
       this.revision++;
       return this.fromOut(sessionId, epoch, seq, out, []);
     }
@@ -465,6 +497,7 @@ export class MozcEngine implements EnginePort {
       this.lastPreedit = '';
       this.phase = 'empty';
       this.partial = false;
+      this.sessionOwned = false;
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {
@@ -501,6 +534,7 @@ export class MozcEngine implements EnginePort {
       this.inputUnits = [];
       this.buffer = part.preedit;
       this.partial = part.preedit_len > 0;
+      this.sessionOwned = this.partial;
       this.phase = !this.partial ? 'empty' : part.ncand > 0 ? 'converting' : 'composing';
       this.selIdx = 0;
       this.revision++;
@@ -528,6 +562,7 @@ export class MozcEngine implements EnginePort {
         this.lastPreedit = '';
         this.phase = 'empty';
         this.partial = false;
+        this.sessionOwned = false;
         try {
           await api.executeAsync('reset', '', 0);
         } catch (e) {
@@ -560,6 +595,7 @@ export class MozcEngine implements EnginePort {
       this.lastPreedit = '';
       this.phase = 'empty';
       this.partial = false;
+      this.sessionOwned = false;
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {
