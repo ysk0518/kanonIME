@@ -1,5 +1,6 @@
 ﻿import display from '@ohos.display';
-import { readKeyboardHeightPercent, writeKeyboardHeightPercent } from '../common/KeyboardConfig';
+import { readKeyboardHeightPercent } from '../common/KeyboardConfig';
+import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPercent, keyboardHeightPreviewPercent,
   standardKeyHeight } from '../common/KeyboardLayout';
 import { keyboardController } from '../model/KeyboardController';
@@ -25,7 +26,7 @@ struct KeyboardSizeActions {
   }
 }
 
-// Preview inside the IME. Only confirmation writes to its own preferences.
+// Preview inside the IME. Confirmation uses the shared settings transaction.
 @Component
 export struct KeyboardSizeSettings {
   @State private heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT;
@@ -114,11 +115,11 @@ export struct KeyboardSizeSettings {
     }
   }
 
-  private confirm(): void {
+  private async confirm(): Promise<void> {
     this.cancelPendingPreview();
     try {
       const percent: number = keyboardHeightPercent(this.heightPercent);
-      if (percent !== this.savedPercent) { writeKeyboardHeightPercent(percent); }
+      if (percent !== this.savedPercent) { await keyboardSettingsSync.save({ heightPercent: percent }, false); }
       this.onClose();
     } catch (error) {
       this.message = '保存できませんでした。もう一度お試しください。';

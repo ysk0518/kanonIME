@@ -20,6 +20,7 @@ import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { BusinessError } from '@ohos.base';
+import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 
 export default class EntryAbility extends UIAbility {
   private clipboardPermission: boolean = false;
@@ -27,6 +28,7 @@ export default class EntryAbility extends UIAbility {
   private background: boolean = false;
   private mainStage: window.WindowStage | undefined;
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    keyboardSettingsSync.initialize().catch(() => {});
     this.clipboardPermission = want.parameters?.['kanonClipboardPermission'] === true;
     this.preview = want.parameters?.['kanonPreview'] === true;
     this.background = want.parameters?.['kanonBackground'] === true;
@@ -76,6 +78,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onForeground(): void {
+    keyboardSettingsSync.request().catch(() => {});
     AppStorage.setOrCreate('kanonSettingsForeground', true);
     // Ability has brought to foreground
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onForeground');

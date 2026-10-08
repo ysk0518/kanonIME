@@ -26,15 +26,22 @@ import { editorAdapter } from '../kanon/EditorAdapter';
 export struct KeyItem {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
-  keyValue: keySourceListType | undefined = undefined;
+  @Prop @Watch('cancelTouch') keyValue: keySourceListType | undefined = undefined;
   kanaInput: boolean = false;
   keyId: string = '';
+  keyWidth: number | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   private finger: number = -1;
   private startEpoch: number = -1;
   @State private active: boolean = false;
 
-  aboutToDisappear(): void { this.finger = -1; this.active = false; }
+  private cancelTouch(): void {
+    this.finger = -1;
+    this.startEpoch = -1;
+    this.active = false;
+  }
+
+  aboutToDisappear(): void { this.cancelTouch(); }
 
   private touch(event: TouchEvent): void {
     if (event.type === TouchType.Cancel) { this.finger = -1; this.active = false; return; }
@@ -66,7 +73,7 @@ export struct KeyItem {
     }
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
-    .width(this.inputStyle.basicButtonWidth)
+    .width(this.keyWidth ?? this.inputStyle.basicButtonWidth)
     .height('100%')
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
     .onTouch((event: TouchEvent) => this.touch(event))

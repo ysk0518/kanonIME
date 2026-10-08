@@ -13,7 +13,8 @@ import { EnglishEngine } from './EnglishEngine';
 import { editorAdapter } from './EditorAdapter';
 import { EnglishCompletionUndo, englishPrediction } from './EnglishPrediction';
 import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout,
-  writeSharedLayoutOrder } from '../common/KeyboardConfig';
+  readSharedFlickEnabled } from '../common/KeyboardConfig';
+import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 class KanonIme {
@@ -490,6 +491,7 @@ class KanonIme {
   }
 
   async toggleLayout(): Promise<boolean> {
+    if (!readSharedFlickEnabled()) { return false; }
     keyboardHaptics.key();
     const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
     const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
@@ -517,11 +519,12 @@ class KanonIme {
   private async changeLayout(kind: string, value: string, epoch: number): Promise<ImeSnapshot> {
     const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
     const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
-    const order: string[] = languageLayouts(kind === 'config' ? value : configured);
+    const order: string[] = languageLayouts(kind === 'config' ? value : configured).map((id: string) =>
+      readSharedFlickEnabled() ? id : `${layoutLanguage(id) === 'EN' ? 'en' : 'jp'}_qwerty`);
     const target: string = kind === 'config' ?
       (order.find((id: string) => layoutLanguage(id) === layoutLanguage(current)) ?? order[0]) :
       nextLanguageLayout(configured, current);
-    if (target !== current) {
+    if (target !== current || this.coord.getSnapshot().mode !== layoutLanguage(target)) {
       await this.coord.postEvent({ kind: 'mode', text: layoutLanguage(target) });
       const snapshot: ImeSnapshot = this.coord.getSnapshot();
       if (epoch !== realEditorPort.getEpoch() || snapshot.lastError !== 'ok' || snapshot.mode !== layoutLanguage(target)) {
@@ -536,8 +539,9 @@ class KanonIme {
       AppStorage.setOrCreate('kanonCandidatesExpanded', false);
     }
     if (kind === 'config' && epoch === realEditorPort.getEpoch()) {
-      AppStorage.setOrCreate('kanonLayoutOrder', order.join(','));
-      writeSharedLayoutOrder(order.join(','));
+      if (AppStorage.get<string>('kanonLayoutOrder') !== order.join(',')) {
+        await keyboardSettingsSync.save({ layoutOrder: order.join(',') }, false);
+      }
     }
     const snapshot: ImeSnapshot = this.coord.getSnapshot();
     this.publish(snapshot);

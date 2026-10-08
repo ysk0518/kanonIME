@@ -7,6 +7,7 @@ export struct BackgroundKeyPreview {
   @Prop qwerty: boolean = false;
   @Prop keyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') themeVersion: number = 0;
+  @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   private kanaRows: string[][] = [
     ['記号', 'あ', 'か', 'さ', '⌫'], ['←', 'た', 'な', 'は', '→'],
     ['あA1', 'ま', 'や', 'ら', '空白'], ['QWERTY', '小゛゜', 'わ', '、。?!', 'Enter']
@@ -40,12 +41,12 @@ export struct BackgroundKeyPreview {
           this.previewKey('⌫', 1.5, true)
         }.width('100%').layoutWeight(1)
         Row({ space: 4 }) {
-          this.previewKey('12', 1, true)
-          this.previewKey('あA1', 1, true)
+          this.previewKey(this.flickEnabled ? '12' : '#+=', 1, true)
+          this.previewKey('あA1', 1.5, true)
           this.previewKey('、')
           this.previewKey('空白', 4, true)
           this.previewKey('。')
-          this.previewKey('Enter', 2, true)
+          this.previewKey('Enter', 1.5, true)
         }.width('100%').layoutWeight(1)
       } else {
         ForEach(this.kanaRows, (row: string[]) => {

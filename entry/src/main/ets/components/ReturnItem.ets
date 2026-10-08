@@ -40,7 +40,7 @@ export struct ReturnItem {
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
-  @Prop returnWidth: number = 72;
+  @Prop returnWidth: number | string = 72;
 
   build() {
     if (this.returnWidth) {

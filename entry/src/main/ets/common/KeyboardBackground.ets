@@ -8,6 +8,8 @@ import { BackgroundConfig, backgroundImageUri, backgroundPosterUri,
   MAX_BACKGROUND_PHOTO, MAX_BACKGROUND_POSTER, MAX_BACKGROUND_PAYLOAD, MAX_BACKGROUND_CHUNKS } from './BackgroundAppearance';
 import { BackgroundLivePreview, PREVIEW_EVENT, END_PREVIEW_EVENT } from './BackgroundLivePreview';
 import { debugLog, debugErrorCode } from './DebugLog';
+import { keyboardConfigDiagnostics } from './KeyboardConfig';
+import { settingsReceipt } from './SettingsReceipt';
 export { BackgroundConfig } from './BackgroundAppearance';
 
 const BUNDLE: string = 'local.yplic.kanon';
@@ -66,7 +68,6 @@ class KeyboardBackgroundStore {
   private ready: Promise<void> | undefined;
   private ime: boolean = false;
   private peerVersion: number = 0;
-  private acknowledged: ((version: number) => void) | undefined;
   private live: BackgroundLivePreview = new BackgroundLivePreview();
   private visiblePreview: BackgroundConfig | undefined;
   private originalRevision: number = 0;
@@ -75,6 +76,7 @@ class KeyboardBackgroundStore {
     if (ime) { this.ime = true; }
     debugLog.initialize(ime);
     debugLog.onEnabled = () => {
+      debugLog.record('config', keyboardConfigDiagnostics());
       debugLog.record('background', `state version=${this.current.version} peer=${this.peerVersion} format=${this.current.format} photoChars=${this.current.photo.length} preview=${this.visiblePreview !== undefined}`);
       this.requestSync().catch((error: Error) => debugLog.record('background', `sync request failed code=${debugErrorCode(error)}`));
     };
@@ -118,7 +120,7 @@ class KeyboardBackgroundStore {
         if (Number.isSafeInteger(version) && version > this.peerVersion) {
           this.peerVersion = version;
           AppStorage.setOrCreate('kanonBackgroundPeerVersion', version);
-          if (this.acknowledged) { this.acknowledged(version); }
+          settingsReceipt.applied('background', version);
         }
         return;
       }
@@ -227,22 +229,16 @@ class KeyboardBackgroundStore {
     debugLog.record('background', `save normalized format=${next.format} photoChars=${next.photo.length} dropped=${config.photo.length > 0 && next.photo.length === 0}`);
     next.version = Math.max(Date.now(), this.current.version + 1);
     this.persist(next);
+    settingsReceipt.saved('background', next.version);
     this.pruneGifOriginals();
-    await this.broadcast();
+    try { await this.broadcast(); }
+    catch (error) {
+      settingsReceipt.failed('background', debugErrorCode(error));
+      // Saving succeeded; keep the change and retry transfer when the IME requests it.
+      return false;
+    }
     if (this.peerVersion >= next.version) { return true; }
-    return new Promise<boolean>((resolve) => {
-      const timer: number = setTimeout(() => {
-        debugLog.record('background', `ack timeout version=${next.version} peer=${this.peerVersion}`);
-        this.acknowledged = undefined;
-        resolve(false);
-      }, 2000);
-      this.acknowledged = (version: number) => {
-        if (version < next.version) { return; }
-        clearTimeout(timer);
-        this.acknowledged = undefined;
-        resolve(true);
-      };
-    });
+    return settingsReceipt.wait('background', next.version);
   }
 
   async requestSync(): Promise<void> {

@@ -30,7 +30,8 @@ import { KeyCode } from '@ohos.multimodalInput.keyCode';
 import { StyleConfiguration } from '../common/StyleConfiguration';
 import { panelHeight, toolbarHeight, DEFAULT_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   MIN_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPreviewPercent } from '../common/KeyboardLayout';
-import { refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent } from '../common/KeyboardConfig';
+import { openKeyboardPreferences, refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent, layoutLanguage } from '../common/KeyboardConfig';
+import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardBackground } from '../common/KeyboardBackground';
 
 interface CursorInfo {
@@ -165,7 +166,23 @@ class KeyboardController {
   }
 
   public onCreate(context: InputMethodExtensionContext): void {
+    // The IME must open its own preferences using its extension context.
+    // AbilityStage initialization alone does not guarantee a usable store here.
+    openKeyboardPreferences(context);
+    refreshSharedLayoutOrder();
+    refreshSharedHapticLevel();
+    refreshKeyboardHeightPercent();
     keyboardBackground.initialize(context, true).catch(() => {});
+    keyboardSettingsSync.onApplied = async (snapshot, heightChanged: boolean, fromPeer: boolean) => {
+      if (heightChanged) { this.refreshKeyboardHeight(); }
+      if (fromPeer) {
+        await kanonIme.prepare();
+        const activeLayout: string = AppStorage.get<string>('kanonLayout') ?? '';
+        if (!snapshot.layoutOrder.split(',').includes(activeLayout) ||
+          AppStorage.get<string>('kanonMode') !== layoutLanguage(activeLayout)) { throw new Error('Layout application pending'); }
+      }
+    };
+    keyboardSettingsSync.initialize(true).catch(() => {});
     this.active = true;
     this.mContext = context;
     this.inputHandle.addLog('onCreate');
@@ -353,6 +370,11 @@ class KeyboardController {
       this.resizePanel();
     })
     InputMethodEngine.on('keyboardShow', () => {
+      keyboardSettingsSync.request().catch(() => {});
+      // Returning from settings may reuse the current editor without inputStart.
+      // Refresh both layout and flick availability before showing the existing panel.
+      refreshSharedLayoutOrder();
+      refreshSharedHapticLevel();
       AppStorage.setOrCreate('kanonKeyboardVisible', true);
       keyboardBackground.requestSync().catch(() => {});
       refreshKeyboardHeightPercent();

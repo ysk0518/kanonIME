@@ -108,20 +108,20 @@ export struct KeyMenu {
       .layoutWeight(1)
 
       Row({ space: 4 }) {
-        LayoutItem()
-        ModeCycleItem()
-        if (this.layout === 'jp_qwerty') {
-          KeyItem({ keyValue: { content: '、', title: '、', upperContent: '、' }, keyId: 'qwerty_comma' })
-        } else {
-          KeyItem({ keyValue: { content: ',', title: ',', upperContent: ',' }, keyId: 'qwerty_comma' })
-        }
-        Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(1).height('100%')
-        if (this.layout === 'jp_qwerty') {
-          KeyItem({ keyValue: { content: '。', title: '。', upperContent: '。' }, keyId: 'qwerty_period' })
-        } else {
-          KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' }, keyId: 'qwerty_period' })
-        }
-        ReturnItem({ returnWidth: this.inputStyle.returnButtonWidthType_1 })
+        Column() { LayoutItem({ keyWidth: '100%' }) }.layoutWeight(1).height('100%')
+        Column() { ModeCycleItem({ keyWidth: '100%' }) }.layoutWeight(1.5).height('100%')
+        Column() {
+          KeyItem({ keyValue: { content: this.layout === 'jp_qwerty' ? '、' : ',',
+            title: this.layout === 'jp_qwerty' ? '、' : ',', upperContent: this.layout === 'jp_qwerty' ? '、' : ',' },
+            keyId: 'qwerty_comma', keyWidth: '100%' })
+        }.layoutWeight(1).height('100%')
+        Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(4).height('100%')
+        Column() {
+          KeyItem({ keyValue: { content: this.layout === 'jp_qwerty' ? '。' : '.',
+            title: this.layout === 'jp_qwerty' ? '。' : '.', upperContent: this.layout === 'jp_qwerty' ? '。' : '.' },
+            keyId: 'qwerty_period', keyWidth: '100%' })
+        }.layoutWeight(1).height('100%')
+        Column() { ReturnItem({ returnWidth: '100%' }) }.layoutWeight(1.5).height('100%')
       }
       .width('100%')
       .layoutWeight(1)
