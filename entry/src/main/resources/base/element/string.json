@@ -1,5 +1,11 @@
 {
   "string": [
+    { "name": "debug_mode", "value": "デバッグログ" },
+    { "name": "debug_off", "value": "オフ" },
+    { "name": "debug_on", "value": "オン" },
+    { "name": "debug_clear", "value": "消去" },
+    { "name": "debug_help", "value": "最新160件・15分で自動オフ。長押しでコピーできます。" },
+    { "name": "debug_empty", "value": "ログ取得中です。背景を変更して保存してください。" },
     {
       "name": "keyboard_convert",
       "value": "変換"

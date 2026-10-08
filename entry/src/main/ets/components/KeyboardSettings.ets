@@ -5,6 +5,7 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
+import { DebugConsole } from './DebugConsole';
 
 @Component
 export struct KeyboardSettings {
@@ -287,6 +288,7 @@ export struct KeyboardSettings {
         if (this.message !== '') {
           Text(this.message).fontSize(14).fontColor($r('app.color.text_normal')).width('100%')
         }
+        if (!this.languageOnly) { DebugConsole() }
       }
     }.padding(12).width('100%').height('100%').backgroundColor($r('app.color.menu_background'))
   }

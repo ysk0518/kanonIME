@@ -1,4 +1,5 @@
 import commonEventManager from '@ohos.commonEventManager';
+import { debugLog, debugErrorCode } from './DebugLog';
 import { BackgroundConfig, MAX_BACKGROUND_PHOTO, MAX_BACKGROUND_POSTER,
   MAX_BACKGROUND_PAYLOAD, MAX_BACKGROUND_CHUNKS } from './BackgroundAppearance';
 
@@ -94,6 +95,9 @@ export class BackgroundLivePreview {
         if (!packet.hasPhoto) { packet.config.photo = ''; packet.config.poster = ''; }
         const payload: string = JSON.stringify(packet);
         const count: number = Math.ceil(payload.length / CHUNK);
+        if (packet.hasPhoto) {
+          debugLog.record('preview', `transfer start session=${session} chars=${payload.length} chunks=${count}`);
+        }
         for (let index: number = 0; index < count; index++) {
           await this.publish(PREVIEW_EVENT, payload.slice(index * CHUNK, (index + 1) * CHUNK),
             session, sequence, index, count);
@@ -102,7 +106,11 @@ export class BackgroundLivePreview {
           this.sentPhoto = config.photo;
           this.sentPoster = config.poster;
         }
-      }).catch(() => this.onError());
+        if (packet.hasPhoto) { debugLog.record('preview', `transfer sent session=${session}`); }
+      }).catch((error: Error) => {
+        debugLog.record('preview', `transfer failed code=${debugErrorCode(error)}`);
+        this.onError();
+      });
     }, 50);
   }
 
@@ -115,6 +123,7 @@ export class BackgroundLivePreview {
     if (this.timer >= 0) { clearTimeout(this.timer); this.timer = -1; }
     if (this.heartbeat >= 0) { clearInterval(this.heartbeat); this.heartbeat = -1; }
     if (session > 0) {
+      debugLog.record('preview', `end session=${session}`);
       this.tail = this.tail.then(() => this.publish(END_PREVIEW_EVENT, '', session, 0, 0, 0))
         .catch(() => this.onError());
     }
@@ -125,7 +134,12 @@ export class BackgroundLivePreview {
     return new Promise<void>((resolve, reject) => {
       commonEventManager.publish(event, { bundleName: BUNDLE, data: data,
         parameters: { sender: 'app', session: session, sequence: sequence, index: index, count: count } },
-        (error) => { if (error) { reject(error); } else { resolve(); } });
+        (error) => {
+          if (error) {
+            debugLog.record('preview', `publish failed index=${index} count=${count} code=${error.code}`);
+            reject(error);
+          } else { resolve(); }
+        });
     });
   }
 
@@ -168,8 +182,12 @@ export class BackgroundLivePreview {
           !/^[A-Za-z0-9+/=]*$/.test(packet.config.poster)) { return; }
         this.photo = packet.config.photo;
         this.poster = packet.config.poster;
+        debugLog.record('preview', `received image session=${session} photoChars=${packet.config.photo.length}`);
       } else {
-        if (session !== this.receivedSession || this.photo === undefined) { return; }
+        if (session !== this.receivedSession || this.photo === undefined) {
+          debugLog.record('preview', `adjustment rejected missing image session=${session}`);
+          return;
+        }
         packet.config.photo = this.photo;
         packet.config.poster = this.poster ?? '';
       }
@@ -179,10 +197,11 @@ export class BackgroundLivePreview {
       if (this.lease >= 0) { clearTimeout(this.lease); }
       // Restore saved settings even if the editor process is killed without END.
       this.lease = setTimeout(() => this.restore(), 30000);
-    } catch (error) { /* Leave the complete previous frame visible. */ }
+    } catch (error) { debugLog.record('preview', `receive failed code=${debugErrorCode(error)}`); }
   }
 
   private restore(): void {
+    debugLog.record('preview', 'restore saved background');
     if (this.lease >= 0) { clearTimeout(this.lease); this.lease = -1; }
     this.onPreview(undefined);
   }

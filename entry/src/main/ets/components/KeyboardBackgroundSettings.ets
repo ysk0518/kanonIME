@@ -10,6 +10,8 @@ import { BackgroundGestureHint } from './BackgroundGestureHint';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { processBackgroundGif, restoreBackgroundGif, inspectBackgroundGif, GifBackgroundStats } from '../common/GifBackgroundProcessor';
 import { GifBackgroundComparison } from './GifBackgroundComparison';
+import { DebugConsole } from './DebugConsole';
+import { debugLog, debugErrorCode } from '../common/DebugLog';
 
 @Component
 export struct KeyboardBackgroundSettings {
@@ -57,7 +59,10 @@ export struct KeyboardBackgroundSettings {
       this.loaded = true;
       keyboardBackground.preview(this.draft);
       this.refreshGifStats();
-    } catch (error) { this.message = $r('app.string.background_load_failed'); }
+    } catch (error) {
+      debugLog.record('settings', `load failed code=${debugErrorCode(error)}`);
+      this.message = $r('app.string.background_load_failed');
+    }
   }
 
   aboutToDisappear(): void {
@@ -92,11 +97,16 @@ export struct KeyboardBackgroundSettings {
     if (this.busy) { return; }
     this.busy = true;
     this.message = '';
+    debugLog.record('image', 'picker opened');
     try {
       const result: photoAccessHelper.PhotoSelectResult = await new photoAccessHelper.PhotoViewPicker().select({
         MIMEType: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE, maxSelectNumber: 1
       });
-      if (result.photoUris.length === 0 || !this.alive) { return; }
+      if (result.photoUris.length === 0 || !this.alive) {
+        debugLog.record('image', `picker cancelled active=${this.alive}`);
+        return;
+      }
+      debugLog.record('image', 'picker selected');
       const draft: BackgroundConfig = await copyBackgroundPhoto(result.photoUris[0]);
       if (!this.alive) { return; }
       if (draft.format === 'gif') {
@@ -115,6 +125,7 @@ export struct KeyboardBackgroundSettings {
       keyboardBackground.preview(this.draft);
       this.refreshGifStats();
     } catch (error) {
+      debugLog.record('image', `selection failed code=${debugErrorCode(error)}`);
       if (this.alive) {
         this.message = error instanceof BackgroundPhotoError ? error.displayMessage :
           $r('app.string.background_image_read_failed');
@@ -210,6 +221,7 @@ export struct KeyboardBackgroundSettings {
     if (this.busy || this.draft.format !== 'gif') { return; }
     this.busy = true;
     this.message = '';
+    debugLog.record('gif', `process start reset=${resetDefaults} resolution=${this.gifResolution} fps=${this.gifFps}`);
     try {
       const draft: BackgroundConfig = this.copyDraft();
       if (resetDefaults) { draft.animate = DEFAULT_GIF_ANIMATE; }
@@ -219,6 +231,7 @@ export struct KeyboardBackgroundSettings {
         await processBackgroundGif(original, this.gifResolution, this.gifFps);
       if (!this.alive) { keyboardBackground.pruneGifOriginals(); return; }
       this.useProcessedGif(draft, processed);
+      debugLog.record('gif', `process done width=${processed.gifWidth} height=${processed.gifHeight} frames=${processed.gifFrames}`);
       this.draft = draft;
       this.readGifSettings();
       keyboardBackground.preview(draft);
@@ -226,6 +239,7 @@ export struct KeyboardBackgroundSettings {
       this.message = resetDefaults ? $r('app.string.background_gif_reset_done') :
         $r('app.string.background_gif_applied');
     } catch (error) {
+      debugLog.record('gif', `process failed code=${debugErrorCode(error)}`);
       if (this.alive) {
         this.message = error instanceof BackgroundPhotoError ? error.displayMessage : $r('app.string.background_gif_failed');
       }
@@ -266,15 +280,20 @@ export struct KeyboardBackgroundSettings {
   private async save(): Promise<void> {
     if (this.busy || !this.changed()) { return; }
     this.busy = true;
+    debugLog.record('settings', 'save pressed');
     try {
       const synced: boolean = await keyboardBackground.save(this.draft);
       if (!this.alive) { return; }
       this.draft = keyboardBackground.get();
       this.saved = this.draft;
       this.synced = synced;
+      debugLog.record('settings', `save finished imeConfirmed=${synced}`);
       this.message = synced ? $r('app.string.background_saved') :
         $r('app.string.background_sync_pending');
-    } catch (error) { if (this.alive) { this.message = $r('app.string.background_sync_failed'); } }
+    } catch (error) {
+      debugLog.record('settings', `save failed code=${debugErrorCode(error)}`);
+      if (this.alive) { this.message = $r('app.string.background_sync_failed'); }
+    }
     finally { if (this.alive) { this.busy = false; } }
   }
 
@@ -420,6 +439,7 @@ export struct KeyboardBackgroundSettings {
           if (this.message !== '') { Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')) }
         }.width('100%').padding(16)
       }.layoutWeight(1).width('100%').id('background_settings_scroll')
+      DebugConsole().padding({ left: 16, right: 16, bottom: 8 })
     }.width('100%').height('100%').backgroundColor($r('app.color.menu_background'))
   }
 }
