@@ -2,7 +2,7 @@ import inputMethodEngine from '@ohos.inputMethodEngine';
 import { MenuType } from '../model/KeyboardKeyData';
 import { numberFlickKeys } from '../model/NumberFlickData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
-import { FLICK_ACTION_COLUMN_WIDTH, FLICK_KEY_GAP, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
+import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { kanonIme } from '../kanon/KanonIme';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { FlickKey } from './FlickKey';
@@ -47,9 +47,9 @@ export struct NumberFlickMenu {
   }
 
   build() {
-    Column({ space: FLICK_KEY_GAP }) {
+    Column({ space: this.inputStyle.keyGap }) {
       ForEach([0, 1, 2, 3], (row: number) => {
-        Row({ space: FLICK_KEY_GAP }) {
+        Row({ space: this.inputStyle.keyGap }) {
           Column() {
             if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6 }) }
             else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6 }) }

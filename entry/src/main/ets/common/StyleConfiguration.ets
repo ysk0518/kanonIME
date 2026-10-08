@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-import { keyVisualScale } from './KeyboardLayout';
+import { keyVisualScale, DEFAULT_KEY_GAP, effectiveKeyGap } from './KeyboardLayout';
 
 export interface KeyStyle {
+  keyGap: number,
+  bottomKeyGap: number,
   deviceType?: string,
   basicButtonWidth: number,
   basicButtonHeight: number,
@@ -55,13 +57,16 @@ export class StyleConfiguration {
     return AppStorage.get<KeyStyle>('inputStyle') ?? StyleConfiguration.getInputStyle(360, 247);
   }
 
-  static getInputStyle(width: number, height: number): KeyStyle {
-    const key: number = Math.max(1, (width - 12 - 9 * 6) / 10);
-    const row: number = Math.max(1, (height - 12 - 3 * 6) / 4);
+  static getInputStyle(width: number, height: number,
+    spacing: number = AppStorage.get<number>('kanonKeyGap') ?? DEFAULT_KEY_GAP): KeyStyle {
+    const gap: number = effectiveKeyGap(width, height, spacing);
+    const key: number = Math.max(1, (width - 12 - 9 * gap) / 10);
+    const row: number = Math.max(1, (height - 12 - 3 * gap) / 4);
     const visualScale: number = keyVisualScale(row);
     const icon: number = Math.min(24, row * 0.6);
     const editSize: number = Math.max(24, Math.min(48, width / 7, (height - 8) / 4));
     return {
+      keyGap: gap, bottomKeyGap: gap * 2 / 3,
       basicButtonWidth: key, basicButtonHeight: row,
       featurePicSize: icon, switchButtonWidth: key * 1.5,
       returnPicSize: icon, returnButtonWidthType_1: key * 2, returnButtonWidthType_2: key * 2,

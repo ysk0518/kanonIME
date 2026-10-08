@@ -8,6 +8,7 @@ import { KeyboardBackgroundCanvas } from './KeyboardBackgroundCanvas';
 import { BackgroundAdjustment } from './BackgroundAdjustment';
 import { BackgroundGestureHint } from './BackgroundGestureHint';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
+import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
 import { processBackgroundGif, restoreBackgroundGif, inspectBackgroundGif, GifBackgroundStats } from '../common/GifBackgroundProcessor';
 import { GifBackgroundComparison } from './GifBackgroundComparison';
 import { DebugConsole } from './DebugConsole';
@@ -307,17 +308,8 @@ export struct KeyboardBackgroundSettings {
         Button($r('app.string.common_save')).enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
       }.width('100%').height(56)
       Column({ space: 12 }) {
-        Row({ space: 8 }) {
-          ForEach([false, true], (qwerty: boolean) => {
-            Button(qwerty ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_layout_flick'))
-              .layoutWeight(1).height(36).enabled(!this.busy)
-              .fontColor(this.previewQwerty === qwerty ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-              .backgroundColor(this.previewQwerty === qwerty ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-              .accessibilityText(qwerty ? (this.previewQwerty ? $r('app.string.background_qwerty_selected') : $r('app.string.background_qwerty_preview')) : (this.previewQwerty ? $r('app.string.background_flick_preview') : $r('app.string.background_flick_selected')))
-              .onClick(() => { this.previewQwerty = qwerty; })
-              .id(qwerty ? 'background_preview_qwerty' : 'background_preview_flick')
-          })
-        }.width('100%')
+        KeyboardPreviewLayoutSwitch({ qwerty: this.previewQwerty, disabled: this.busy,
+          idPrefix: 'background_preview', onChange: (qwerty: boolean) => { this.previewQwerty = qwerty; } })
         Stack() {
           KeyboardBackgroundCanvas({
             source: backgroundImageUri(this.draft), poster: backgroundPosterUri(this.draft),

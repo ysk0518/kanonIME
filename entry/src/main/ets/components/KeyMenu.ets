@@ -46,7 +46,7 @@ export struct KeyMenu {
   private keyList: keySourceListType[] = keySourceListData;
 
   build() {
-    Column({ space: 6 }) {
+    Column({ space: this.inputStyle.keyGap }) {
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
         ForEach(this.keyList.slice(0, 10), (item: keySourceListType) => {
           KeyItemNumber({ keyValue: item })
@@ -107,7 +107,7 @@ export struct KeyMenu {
       .width('100%')
       .layoutWeight(1)
 
-      Row({ space: 4 }) {
+      Row({ space: this.inputStyle.bottomKeyGap }) {
         Column() { LayoutItem({ keyWidth: '100%' }) }.layoutWeight(1).height('100%')
         Column() { ModeCycleItem({ keyWidth: '100%' }) }.layoutWeight(1.5).height('100%')
         Column() {
