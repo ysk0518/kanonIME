@@ -1,5 +1,14 @@
 {
   "string": [
+    { "name": "settings_sync_waiting", "value": "設定は保存済みです。同期・反映の確認を待っています。" },
+    { "name": "settings_sync_retry", "value": "同期を再試行" },
+    { "name": "settings_applied", "value": "保存してキーボードに反映しました。" },
+    { "name": "settings_saved_pending", "value": "保存しました。設定の同期・反映を待っています。" },
+    { "name": "settings_flick_enabled", "value": "フリックへの切り替えを使う" },
+    { "name": "settings_flick_disabled_help", "value": "オフにするとQWERTYのみを使い、配列切り替えキーが記号キーになります。保存すると反映されます。" },
+    { "name": "keyboard_show_symbols", "value": "記号キーボードを表示" },
+    { "name": "keyboard_back_letters", "value": "文字キーボードに戻る" },
+    { "name": "keyboard_switch_layout", "value": "12キーとQWERTYを切り替え" },
     { "name": "debug_mode", "value": "デバッグログ" },
     { "name": "debug_off", "value": "オフ" },
     { "name": "debug_on", "value": "オン" },

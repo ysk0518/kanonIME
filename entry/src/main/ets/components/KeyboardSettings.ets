@@ -1,11 +1,13 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
   DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_PREVIEW_ENABLED,
-  layoutLanguage, languageLayouts, readSharedLayoutOrder, writeSharedLayoutOrder,
-  readSharedHapticLevel, writeSharedHapticLevel } from '../common/KeyboardConfig';
+  layoutLanguage, languageLayouts, DEFAULT_FLICK_ENABLED } from '../common/KeyboardConfig';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 import { DebugConsole } from './DebugConsole';
+import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
+import { KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
+import { readSettings } from '../common/KeyboardSettingsRepository';
 
 @Component
 export struct KeyboardSettings {
@@ -13,6 +15,7 @@ export struct KeyboardSettings {
   @State private backgroundOpen: boolean = false;
   @State private selectedLayouts: string[] = [];
   @State private selectedFlick: boolean = true;
+  @State private flickEnabled: boolean = DEFAULT_FLICK_ENABLED;
   @State private selectedShortcuts: string[] = [];
   @State private saving: boolean = false;
   @State private message: ResourceStr = '';
@@ -20,27 +23,49 @@ export struct KeyboardSettings {
   @State private longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @State private previewEnabled: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
   @State private hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
+  @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
+  @StorageLink('kanonSettingsSyncState') @Watch('syncConfirmed') syncState: string = '';
+  @StorageLink('kanonSettingsRequestSyncState') @Watch('syncConfirmed') requestState: string = '';
+  private savedSnapshot: KeyboardSettingsSnapshot = new KeyboardSettingsSnapshot();
+  private waitingConfirmation: boolean = false;
   private savedSettingsKey: string = '';
   languageOnly: boolean = false;
   onClose: () => void = () => {};
 
   aboutToAppear(): void {
-    this.selectedShortcuts = shortcutOrder(AppStorage.get<string>('kanonShortcutOrder') ?? DEFAULT_SHORTCUT_ORDER);
-    const shared: string | undefined = readSharedLayoutOrder();
-    const layouts: string[] = languageLayouts(shared ??
-      AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER);
-    const current: string = shared === undefined ? AppStorage.get<string>('kanonLayout') ?? layouts[0] : layouts[0];
-    this.selectedFlick = current.endsWith('_flick');
+    this.loadSaved();
+    keyboardSettingsSync.request().catch(() => {});
+  }
+
+  private settingsChanged(): void {
+    if (!this.saving && !this.hasChanges()) { this.loadSaved(); }
+  }
+
+  private syncConfirmed(): void {
+    const state: string = keyboardSettingsSync.isReplica() ? this.requestState : this.syncState;
+    if (this.waitingConfirmation && state === 'applied') {
+      this.waitingConfirmation = false;
+      this.message = $r('app.string.settings_applied');
+    }
+  }
+
+  private loadSaved(): void {
+    const snapshot: KeyboardSettingsSnapshot = readSettings();
+    const layouts: string[] = languageLayouts(snapshot.layoutOrder);
+    this.savedSnapshot = snapshot;
+    this.selectedShortcuts = shortcutOrder(snapshot.shortcutOrder);
+    this.flickEnabled = snapshot.flickEnabled;
+    this.selectedFlick = this.flickEnabled && layouts[0].endsWith('_flick');
     this.selectedLayouts = layouts.map((id: string) => this.layoutForLanguage(layoutLanguage(id)));
-    this.flickDistance = AppStorage.get<number>('kanonFlickDistance') ?? DEFAULT_FLICK_DISTANCE;
-    this.longPressMs = AppStorage.get<number>('kanonLongPressMs') ?? DEFAULT_LONG_PRESS_MS;
-    this.previewEnabled = AppStorage.get<boolean>('kanonFlickPreviewEnabled') ?? DEFAULT_KEY_PREVIEW_ENABLED;
-    this.hapticLevel = readSharedHapticLevel();
+    this.flickDistance = snapshot.flickDistance;
+    this.longPressMs = snapshot.longPressMs;
+    this.previewEnabled = snapshot.keyPreview;
+    this.hapticLevel = snapshot.hapticLevel;
     this.savedSettingsKey = this.currentSettingsKey();
   }
 
   private currentSettingsKey(): string {
-    return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0',
+    return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
       this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
       this.previewEnabled ? '1' : '0', this.hapticLevel.toString()].join('|');
   }
@@ -57,7 +82,8 @@ export struct KeyboardSettings {
     return `${language === 'EN' ? 'en' : 'jp'}_${this.selectedFlick ? 'flick' : 'qwerty'}`;
   }
 
-  private toggleLanguage(language: string, enable: boolean): void {
+  private async toggleLanguage(language: string, enable: boolean): Promise<void> {
+    if (this.saving) { return; }
     const previous: string[] = this.selectedLayouts;
     if (enable && !this.hasLanguage(language)) {
       this.selectedLayouts = this.selectedLayouts.concat([this.layoutForLanguage(language)]);
@@ -65,17 +91,20 @@ export struct KeyboardSettings {
       this.selectedLayouts = this.selectedLayouts.filter((id: string) => layoutLanguage(id) !== language);
     }
     try {
+      this.saving = true;
       const order: string = languageLayouts(this.selectedLayouts.join(',')).join(',');
-      writeSharedLayoutOrder(order);
-      AppStorage.setOrCreate('kanonLayoutOrder', order);
-      this.message = $r('app.string.settings_language_applied');
+      const result = await keyboardSettingsSync.save({ layoutOrder: order });
+      this.loadSaved();
+      this.waitingConfirmation = !result.confirmed;
+      this.message = result.confirmed ? $r('app.string.settings_language_applied') : $r('app.string.settings_saved_pending');
     } catch (e) {
       this.selectedLayouts = previous;
       this.message = $r('app.string.settings_language_failed');
-    }
+    } finally { this.saving = false; }
   }
 
   private chooseLayout(flick: boolean): void {
+    if (flick && !this.flickEnabled) { return; }
     this.selectedFlick = flick;
     this.selectedLayouts = this.selectedLayouts.map((item: string) => this.layoutForLanguage(layoutLanguage(item)));
     this.message = '';
@@ -84,7 +113,7 @@ export struct KeyboardSettings {
   private tabDefaultsChanged(tab: number): boolean {
     if (tab === 0) {
       return this.selectedFlick !== DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick') ||
-        this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
+        this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
     }
     if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED; }
     return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
@@ -93,6 +122,7 @@ export struct KeyboardSettings {
   private restoreTabDefaults(tab: number): void {
     if (this.saving || !this.tabDefaultsChanged(tab)) { return; }
     if (tab === 0) {
+      this.flickEnabled = DEFAULT_FLICK_ENABLED;
       this.chooseLayout(DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick'));
       this.flickDistance = DEFAULT_FLICK_DISTANCE;
       this.longPressMs = DEFAULT_LONG_PRESS_MS;
@@ -122,18 +152,19 @@ export struct KeyboardSettings {
     if (this.saving || !this.hasChanges()) { return; }
     this.saving = true;
     try {
-      const order: string = languageLayouts(this.selectedLayouts.map((id: string) =>
-        this.layoutForLanguage(layoutLanguage(id))).join(',')).join(',');
-      writeSharedLayoutOrder(order);
-      AppStorage.setOrCreate('kanonLayoutOrder', order);
-      AppStorage.setOrCreate('kanonFlickDistance', this.flickDistance);
-      AppStorage.setOrCreate('kanonLongPressMs', this.longPressMs);
-      AppStorage.setOrCreate('kanonFlickPreviewEnabled', this.previewEnabled);
-      writeSharedHapticLevel(this.hapticLevel);
-      AppStorage.setOrCreate('kanonHapticLevel', this.hapticLevel);
-      AppStorage.setOrCreate('kanonShortcutOrder', shortcutOrder(this.selectedShortcuts.join(',')).join(','));
-      this.savedSettingsKey = this.currentSettingsKey();
-      this.message = $r('app.string.common_saved');
+      const patch: KeyboardSettingsPatch = {};
+      const saved: KeyboardSettingsSnapshot = this.savedSnapshot;
+      if (this.selectedFlick !== saved.layoutOrder.split(',')[0].endsWith('_flick')) { patch.layoutKind = this.selectedFlick ? 'flick' : 'qwerty'; }
+      if (this.flickEnabled !== saved.flickEnabled) { patch.flickEnabled = this.flickEnabled; }
+      if (this.flickDistance !== saved.flickDistance) { patch.flickDistance = this.flickDistance; }
+      if (this.longPressMs !== saved.longPressMs) { patch.longPressMs = this.longPressMs; }
+      if (this.previewEnabled !== saved.keyPreview) { patch.keyPreview = this.previewEnabled; }
+      if (this.hapticLevel !== saved.hapticLevel) { patch.hapticLevel = this.hapticLevel; }
+      if (this.selectedShortcuts.join(',') !== saved.shortcutOrder) { patch.shortcutOrder = this.selectedShortcuts.join(','); }
+      const result = await keyboardSettingsSync.save(patch);
+      this.loadSaved();
+      this.waitingConfirmation = !result.confirmed;
+      this.message = result.confirmed ? $r('app.string.settings_applied') : $r('app.string.settings_saved_pending');
     } catch (e) {
       this.message = $r('app.string.common_save_failed');
     } finally { this.saving = false; }
@@ -170,7 +201,7 @@ export struct KeyboardSettings {
           Row({ space: 8 }) {
             ForEach([true, false], (flick: boolean) => {
               Button(flick ? $r('app.string.settings_layout_flick') : $r('app.string.settings_layout_qwerty'))
-                .layoutWeight(1).enabled(!this.saving)
+                .layoutWeight(1).enabled(!this.saving && (!flick || this.flickEnabled))
                 .fontColor(this.selectedFlick === flick ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
                 .backgroundColor(this.selectedFlick === flick ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
                 .accessibilityText(flick ? (this.selectedFlick ? $r('app.string.settings_flick_selected') : $r('app.string.settings_layout_flick')) : (this.selectedFlick ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_qwerty_selected')))
@@ -180,6 +211,18 @@ export struct KeyboardSettings {
           }.width('100%')
           Text($r('app.string.settings_layout_help'))
             .fontSize(12).fontColor($r('app.color.text_secondary'))
+
+          if (!this.selectedFlick) {
+            Row() {
+              Text($r('app.string.settings_flick_enabled')).fontSize(15)
+                .fontColor($r('app.color.text_normal')).layoutWeight(1)
+              Toggle({ type: ToggleType.Switch, isOn: this.flickEnabled }).enabled(!this.saving)
+                .onChange((value: boolean) => { this.flickEnabled = value; })
+                .accessibilityText($r('app.string.settings_flick_enabled')).id('keyboard_config_flick_enabled')
+            }.width('100%')
+            Text($r('app.string.settings_flick_disabled_help')).fontSize(12)
+              .fontColor($r('app.color.text_secondary'))
+          }
 
           Text($r('app.string.settings_flick_sensitivity'))
             .fontSize(14).fontColor($r('app.color.text_normal'))
@@ -287,6 +330,16 @@ export struct KeyboardSettings {
         }
         if (this.message !== '') {
           Text(this.message).fontSize(14).fontColor($r('app.color.text_normal')).width('100%')
+        }
+        if ((keyboardSettingsSync.isReplica() ? this.requestState : this.syncState) === 'pending' ||
+          (keyboardSettingsSync.isReplica() ? this.requestState : this.syncState) === 'error') {
+          Row({ space: 8 }) {
+            Text($r('app.string.settings_sync_waiting')).fontSize(12)
+              .fontColor($r('app.color.text_secondary')).layoutWeight(1)
+            Button($r('app.string.settings_sync_retry')).fontSize(12).height(32).enabled(!this.saving)
+              .onClick(() => { keyboardSettingsSync.request().catch(() => { this.message = $r('app.string.settings_saved_pending'); }); })
+              .id('keyboard_settings_sync_retry')
+          }.width('100%')
         }
         if (!this.languageOnly) { DebugConsole() }
       }
