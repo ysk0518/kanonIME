@@ -166,6 +166,9 @@ class KeyboardController {
   }
 
   public onCreate(context: InputMethodExtensionContext): void {
+    // Set the writable Mozc profile before settings callbacks or panel creation
+    // can prepare the engine and initialize its native storage singletons.
+    kanonIme.configureProfile(context.filesDir);
     // The IME must open its own preferences using its extension context.
     // AbilityStage initialization alone does not guarantee a usable store here.
     openKeyboardPreferences(context);
