@@ -39,12 +39,16 @@ export struct ReturnItem {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
+  @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
   @Prop returnWidth: number = 72;
 
   build() {
     if (this.returnWidth) {
       Stack() {
-        if (this.enterKeyType === EnterKeyType.Send) {
+        if (this.englishComposing) {
+          Image($rawfile('return.svg')).fillColor($r('app.color.key_text'))
+            .width(this.inputStyle.returnPicSize).height(this.inputStyle.returnPicSize)
+        } else if (this.enterKeyType === EnterKeyType.Send) {
           Text(EntryKey.Send)
             .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
             .fontColor($r('app.color.key_text'))

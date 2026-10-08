@@ -19,6 +19,7 @@ export struct FlickMenu {
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @Consume menuType: number;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
+  @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
   @State private englishUpper: boolean = false;
   private keys: string[][] = [
     ['あ', 'い', 'う', 'え', 'お'], ['か', 'き', 'く', 'け', 'こ'], ['さ', 'し', 'す', 'せ', 'そ'],
@@ -90,6 +91,7 @@ export struct FlickMenu {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
             else if (row === 2 && this.layout !== 'en_flick') { ConvertSpaceItem() }
             else { this.control(row === 1 ? '→' : row === 2 ? '-' :
+              this.layout === 'en_flick' && this.englishComposing ? 'Enter' :
               this.enterKeyType === EnterKeyType.Send ? '送信' :
               this.enterKeyType === EnterKeyType.Search ? '検索' :
               'Enter', row === 1 ? 6 : row === 2 ? 5 : 7) }

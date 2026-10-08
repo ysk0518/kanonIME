@@ -81,7 +81,8 @@ export struct FlickKey {
           if (this.modifier) { kanonIme.modifyKana(); }
           else if (value.length > 0 && (this.english || this.textInput)) {
             const letter: boolean = /^[a-z]$/.test(value);
-            kanonIme.keyText(letter && this.uppercase ? value.toUpperCase() : value);
+            if (value === ' ') { kanonIme.keySpace(); }
+            else { kanonIme.keyText(letter && this.uppercase ? value.toUpperCase() : value); }
             if (letter) { this.onLetter(); }
           } else if (value.length > 0) { kanonIme.keyKana(value); }
         } else if (this.flickDirection !== previousDirection) { this.showPreview(); }

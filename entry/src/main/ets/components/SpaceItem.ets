@@ -33,11 +33,13 @@ export struct SpaceItem {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   spaceWith: Resource | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
+  @StorageLink('kanonMode') imeMode: string = 'JP';
+  @StorageLink('kanonList') candidates: string[] = [];
 
   build() {
     if (this.spaceWith) {
       Stack() {
-        Text('space')
+        Text(this.imeMode === 'EN' && this.candidates.length > 0 ? $r('app.string.keyboard_convert') : 'space')
           .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
           .fontColor($r('app.color.key_text'))
       }

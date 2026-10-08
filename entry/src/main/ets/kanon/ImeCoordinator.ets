@@ -80,6 +80,7 @@ export interface EngineUpdate {
   effects: CommitEffect[];
   errorCode: number; // 0=なし。非0はエンジン側失敗。
   errorRecoverable: boolean;
+  converting?: boolean;
 }
 
 export interface EnginePort {
@@ -89,7 +90,7 @@ export interface EnginePort {
 /** 文字列内容を持たないUIスナップショット。 */
 export interface ImeSnapshot {
   mode: string; // 'EN' | 'JP'
-  state: string; // 'DIRECT_EN' | 'JP_EMPTY' | 'JP_COMPOSING' | 'JP_CONVERTING' | 'ENGINE_ERROR'
+  state: string; // EN/JP EMPTY, COMPOSING, CONVERTING; DIRECT_EN fallback; ENGINE_ERROR
   preeditLen: number;
   caretUtf16: number;
   segCount: number;
@@ -115,6 +116,8 @@ function newSessionId(): string {
 export class ImeCoordinator {
   private editor: EditorPort;
   private engine: EnginePort | undefined = undefined;
+  private englishEngine: EnginePort | undefined = undefined;
+  private englishCompositionEnabled: boolean = true;
   private tail: Promise<void> = Promise.resolve();
 
   private mode: string = 'JP';
@@ -147,6 +150,18 @@ export class ImeCoordinator {
 
   setEngine(engine: EnginePort): void {
     this.engine = engine;
+  }
+
+  setEnglishEngine(engine: EnginePort): void { this.englishEngine = engine; }
+  setEnglishCompositionEnabled(enabled: boolean): void { this.englishCompositionEnabled = enabled; }
+  usesEnglishComposition(): boolean {
+    return this.mode === 'EN' && this.englishCompositionEnabled && this.previewSupported;
+  }
+  private activeEngine(): EnginePort | undefined {
+    return this.mode === 'EN' ? this.englishEngine : this.engine;
+  }
+  private emptyState(): string {
+    return this.mode === 'EN' ? this.usesEnglishComposition() ? 'EN_EMPTY' : 'DIRECT_EN' : 'JP_EMPTY';
   }
 
   getSnapshot(): ImeSnapshot {
@@ -220,7 +235,7 @@ export class ImeCoordinator {
     if (this.mode === 'JP') {
       this.state = 'JP_EMPTY';
     } else {
-      this.state = 'DIRECT_EN';
+      this.state = this.emptyState();
     }
   }
 
@@ -272,7 +287,7 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'paste') {
-      if (this.mode === 'JP' && this.state !== 'JP_EMPTY') {
+      if (this.preeditLen > 0) {
         this.lastError = 'paste-needs-submit';
         return;
       }
@@ -283,7 +298,7 @@ export class ImeCoordinator {
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
     }
-    if (this.mode === 'EN') {
+    if (this.mode === 'EN' && !this.usesEnglishComposition()) {
       await this.doDirectEn(epoch, event);
       return;
     }
@@ -313,6 +328,14 @@ export class ImeCoordinator {
     if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
     const deleted: OpResult = await this.editor.deleteForward(1);
     if (!deleted.ok) { this.lastError = `edit-${deleted.code}`; this.needsRecovery = true; return; }
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+    if (this.usesEnglishComposition()) {
+      const prefixSelected: OpResult = await this.editor.selectRange(cursor - word.length, start);
+      if (!prefixSelected.ok) { this.lastError = `edit-${prefixSelected.code}`; return; }
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+      await this.doEngineEvent(epoch, { kind: 'text', text: word.substring(0, prefixLength) });
+      return;
+    }
     this.lastError = 'ok';
   }
 
@@ -355,14 +378,14 @@ export class ImeCoordinator {
   private async doEngineEvent(epoch: number, event: UiEvent): Promise<void> {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
     // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
-    if (event.kind === 'backspace' && this.state === 'JP_EMPTY') {
+    if (event.kind === 'backspace' && this.preeditLen === 0) {
       const result: OpResult = await this.directDelete();
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
     }
     // 未確定なしのEnterは欄のアクション側へ返す。エンジンを空振りさせない。
-    if ((event.kind === 'submit' || event.kind === 'enter') && this.state === 'JP_EMPTY') {
+    if ((event.kind === 'submit' || event.kind === 'enter') && this.preeditLen === 0) {
       this.lastError = 'empty-submit';
       return;
     }
@@ -375,7 +398,7 @@ export class ImeCoordinator {
       }
     }
     // 未確定中のBackspaceはエンジンへ回し、確定済み本文に触れない（REQ-03）。
-    const eng: EnginePort | undefined = this.engine;
+    const eng: EnginePort | undefined = this.activeEngine();
     if (eng === undefined) {
       this.lastError = 'no-engine';
       return;
@@ -450,12 +473,14 @@ export class ImeCoordinator {
     // The engine's preedit may contain only a pending QWERTY consonant.
     // Track the preview actually sent to the editor, not the engine state.
     if (!update.hasPreedit) { this.previewShown = false; }
-    if (this.candidateCount > 0) {
+    if (this.mode === 'EN') {
+      this.state = this.preeditLen === 0 ? this.emptyState() : update.converting ? 'EN_CONVERTING' : 'EN_COMPOSING';
+    } else if (this.candidateCount > 0) {
       this.state = 'JP_CONVERTING';
     } else if (this.preeditLen > 0) {
       this.state = 'JP_COMPOSING';
     } else {
-      this.state = 'JP_EMPTY';
+      this.state = this.emptyState();
     }
     this.lastError = 'ok';
   }
@@ -514,6 +539,8 @@ export class ImeCoordinator {
       this.previewStart = text.length > 0 ? start : -1;
       // endは置換前の範囲。確定置換用には結果の範囲を保持する。
       this.previewEnd = text.length > 0 ? start + text.length : -1;
+    } else {
+      this.lastError = `preview-${r.code}`;
     }
     return r.ok;
   }
@@ -529,8 +556,8 @@ export class ImeCoordinator {
   /** モード切替。表示中の未確定を先に確定し、成功後にモードを反映する（REQ-10/D-03）。 */
   private async doModeSwitch(epoch: number, event: UiEvent): Promise<void> {
     const target: string = event.text ? event.text as string : 'EN';
-    if (this.mode === 'JP' && (this.state === 'JP_COMPOSING' || this.state === 'JP_CONVERTING')) {
-      const eng: EnginePort | undefined = this.engine;
+    if (this.preeditLen > 0) {
+      const eng: EnginePort | undefined = this.activeEngine();
       if (eng === undefined) {
         this.lastError = 'no-engine';
         return;
@@ -553,8 +580,13 @@ export class ImeCoordinator {
       }
     }
     this.mode = target;
+    // Revisions belong to each language engine; the old engine's revision
+    // must not reject the first response from the newly selected engine.
+    this.revision = 0;
+    this.candidateRevision = 0;
+    this.candidateItems = [];
     if (target === 'EN') {
-      this.state = 'DIRECT_EN';
+      this.state = this.emptyState();
     } else {
       this.state = 'JP_EMPTY';
     }
@@ -568,8 +600,8 @@ export class ImeCoordinator {
 
   /** カーソル移動。未確定があれば先に確定し、成功後に欄カーソルを動かす。 */
   private async doMove(epoch: number, event: UiEvent): Promise<void> {
-    if (this.mode === 'JP' && (this.state === 'JP_COMPOSING' || this.state === 'JP_CONVERTING')) {
-      const eng: EnginePort | undefined = this.engine;
+    if (this.preeditLen > 0) {
+      const eng: EnginePort | undefined = this.activeEngine();
       if (eng === undefined) {
         this.lastError = 'no-engine';
         return;
@@ -619,7 +651,7 @@ export class ImeCoordinator {
   }
 
   private async doReset(epoch: number): Promise<void> {
-    const eng: EnginePort | undefined = this.engine;
+    const eng: EnginePort | undefined = this.activeEngine();
     if (eng !== undefined) {
       this.sequence++;
       try {
@@ -649,7 +681,7 @@ export class ImeCoordinator {
     }
     if (this.state !== 'ENGINE_ERROR') {
       this.lastError = 'ok';
-      this.state = this.mode === 'EN' ? 'DIRECT_EN' : 'JP_EMPTY';
+      this.state = this.emptyState();
     }
   }
 

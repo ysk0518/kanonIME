@@ -77,15 +77,35 @@ export class EnglishPrediction {
   private start: number = -1;
   private revision: number = 0;
   private items: CandidateLabel[] = [];
+  private selectedIndex: number = -1;
+  private compositionCursor: number = -1;
+  private compositionAbandoned: boolean = false;
   private selectionCollapsed: boolean = true;
   private undo: EnglishCompletionUndo | undefined = undefined;
   editing: boolean = false;
 
   getPrefix(): string { return this.prefix; }
-  getCursor(): number { return this.start < 0 ? -1 : this.start + this.prefix.length; }
+  getCursor(): number { return this.compositionCursor >= 0 ? this.compositionCursor : this.start < 0 ? -1 : this.start + this.prefix.length; }
   getItems(): CandidateLabel[] { return this.items; }
   getRevision(): number { return this.revision; }
+  getSelectedIndex(): number { return this.selectedIndex; }
+  getSelectedItem(): CandidateLabel | undefined { return this.items[this.selectedIndex]; }
+  selectNext(): void {
+    if (this.items.length > 0) { this.selectedIndex = (this.selectedIndex + 1) % this.items.length; }
+  }
   canSeed(): boolean { return this.selectionCollapsed; }
+
+  setCompositionCursor(cursor: number): void { this.compositionCursor = cursor; }
+  takeCompositionAbandoned(): boolean {
+    const abandoned: boolean = this.compositionAbandoned;
+    this.compositionAbandoned = false;
+    return abandoned;
+  }
+  updateComposition(text: string): void {
+    const word: RegExpMatchArray | null = text.match(/[A-Za-z]+$/);
+    this.prefix = word !== null && word[0].length <= 40 ? word[0] : '';
+    this.refresh();
+  }
 
   rememberCompletion(prefix: string, word: string, cursor: number, epoch: number): void {
     this.undo = { prefix: prefix, word: word, cursor: cursor, epoch: epoch };
@@ -118,9 +138,13 @@ export class EnglishPrediction {
 
   clear(): void {
     this.dropUndo();
+    AppStorage.setOrCreate('kanonEnglishComposing', false);
+    if (AppStorage.get<string>('kanonMode') === 'EN') { AppStorage.setOrCreate('kanonSel', -1); }
     this.prefix = '';
     this.start = -1;
     this.items = [];
+    this.selectedIndex = -1;
+    this.compositionCursor = -1;
     this.revision++;
   }
 
@@ -128,8 +152,9 @@ export class EnglishPrediction {
     this.selectionCollapsed = begin === end;
     if (this.editing) { return; }
     if (this.undo !== undefined && (begin !== end || end !== this.undo.cursor)) { this.dropUndo(); }
-    if (this.prefix.length === 0) { return; }
+    if (this.prefix.length === 0 && this.compositionCursor < 0) { return; }
     if (begin !== end || end !== this.getCursor()) {
+      if (this.compositionCursor >= 0) { this.compositionAbandoned = true; }
       this.clear();
       if (AppStorage.get<string>('kanonMode') === 'EN') {
         AppStorage.setOrCreate('kanonList', [] as string[]);
@@ -156,7 +181,9 @@ export class EnglishPrediction {
   private refresh(): void {
     this.revision++;
     this.items = [];
+    this.selectedIndex = -1;
     const lower: string = this.prefix.toLowerCase();
+    if (lower.length === 0) { return; }
     for (const word of WORDS) {
       const normalized: string = word.toLowerCase();
       if (!normalized.startsWith(lower) || normalized.length <= lower.length) { continue; }

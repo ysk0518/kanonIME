@@ -9,6 +9,7 @@
 import { CandidateLabel, ImeCoordinator, ImeSnapshot, UiEvent } from './ImeCoordinator';
 import { realEditorPort } from './RealEditorPort';
 import { MozcEngine } from './MozcEngine';
+import { EnglishEngine } from './EnglishEngine';
 import { editorAdapter } from './EditorAdapter';
 import { EnglishCompletionUndo, englishPrediction } from './EnglishPrediction';
 import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayout,
@@ -18,6 +19,7 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 class KanonIme {
   private coord: ImeCoordinator = new ImeCoordinator(realEditorPort);
   private engine: MozcEngine = new MozcEngine();
+  private englishEngine: EnglishEngine = new EnglishEngine();
   private ready: boolean = false;
   private lastEpoch: number = -1;
   private mode: string = 'JP';
@@ -31,6 +33,7 @@ class KanonIme {
       return;
     }
     this.coord.setEngine(this.engine);
+    this.coord.setEnglishEngine(this.englishEngine);
     await this.engine.prepare();
     await this.coord.loadPreviewSupport();
     const layout: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
@@ -45,6 +48,7 @@ class KanonIme {
     if (this.lastEpoch !== e) {
       this.coord.onEditorChanged();
       await this.engine.resetLocal();
+      this.englishEngine.resetLocal();
       englishPrediction.clear();
       await this.coord.loadPreviewSupport();
       this.lastEpoch = e;
@@ -60,12 +64,13 @@ class KanonIme {
     AppStorage.setOrCreate('kanonTick', this.tick);
     AppStorage.setOrCreate('kanonMode', s.mode);
     AppStorage.setOrCreate('kanonState', s.state);
+    AppStorage.setOrCreate('kanonEnglishComposing', s.mode === 'EN' && (this.coord.usesEnglishComposition() ? s.preeditLen > 0 : englishPrediction.getPrefix().length > 0));
     AppStorage.setOrCreate('kanonErr', s.lastError);
     AppStorage.setOrCreate('kanonNeedsRecovery', s.needsRecovery);
-    AppStorage.setOrCreate('kanonCand', s.mode === 'EN' ? englishPrediction.getItems().length : s.candidateCount);
-    AppStorage.setOrCreate('kanonRev', s.mode === 'EN' ? englishPrediction.getRevision() : this.coord.getCandidateRevision());
+    AppStorage.setOrCreate('kanonCand', s.mode === 'EN' && !this.coord.usesEnglishComposition() ? englishPrediction.getItems().length : s.candidateCount);
+    AppStorage.setOrCreate('kanonRev', s.mode === 'EN' && !this.coord.usesEnglishComposition() ? englishPrediction.getRevision() : this.coord.getCandidateRevision());
     try {
-      const items = s.mode === 'EN' ? englishPrediction.getItems() : this.coord.getCandidateView();
+      const items = s.mode === 'EN' && !this.coord.usesEnglishComposition() ? englishPrediction.getItems() : this.coord.getCandidateView();
       const labels: string[] = [];
       const ids: number[] = [];
       for (let i: number = 0; i < items.length && i < 20; i++) {
@@ -81,7 +86,7 @@ class KanonIme {
       AppStorage.setOrCreate('kanonIds', this.getCandidateIds());
       AppStorage.setOrCreate('kanonLens2', this.getCandidateLens2());
       AppStorage.setOrCreate('kanonSeg', s.segCount);
-      AppStorage.setOrCreate('kanonSel', s.mode === 'EN' ? -1 : this.engine.getSelIdx());
+      AppStorage.setOrCreate('kanonSel', s.mode === 'EN' ? englishPrediction.getSelectedIndex() : this.engine.getSelIdx());
     } catch (e) {
     }
   }
@@ -107,6 +112,13 @@ class KanonIme {
       await this.ensure();
       await this.syncEpoch();
       if (requestEpoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
+      this.coord.setEnglishCompositionEnabled(this.predictionAllowed());
+      if (this.mode === 'EN' && englishPrediction.takeCompositionAbandoned()) {
+        this.englishEngine.resetLocal();
+        this.coord.onEditorChanged();
+        this.compIdx = -1;
+        this.compLen = 0;
+      }
       if (kind === 'prepare') {
         const configured: string = AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER;
         const current: string = AppStorage.get<string>('kanonLayout') ?? 'jp_flick';
@@ -121,7 +133,23 @@ class KanonIme {
       if (kind === 'cycle' || kind === 'config') {
         return await this.changeLayout(kind, text ?? '', requestEpoch);
       }
-      if (kind === 'paste' && this.mode === 'JP' && this.coord.getSnapshot().state !== 'JP_EMPTY') {
+      if (this.mode === 'EN' && !this.coord.usesEnglishComposition() && kind === 'convert') {
+        if (this.predictionAllowed() && englishPrediction.getItems().length > 0) {
+          const expected: number = englishPrediction.getCursor();
+          const cursor: number = await realEditorPort.queryCursor();
+          const before: string = cursor >= 0 && cursor <= 4096 ? await realEditorPort.queryBefore(cursor) : '';
+          if (requestEpoch !== realEditorPort.getEpoch()) { englishPrediction.clear(); return this.coord.getSnapshot(); }
+          if (cursor === expected && before.endsWith(englishPrediction.getPrefix())) {
+            englishPrediction.selectNext();
+          } else { englishPrediction.clear(); }
+        } else {
+          return await this.postSerial('text', ' ');
+        }
+        const snapshot: ImeSnapshot = this.coord.getSnapshot();
+        this.publish(snapshot);
+        return snapshot;
+      }
+      if (kind === 'paste' && this.coord.getSnapshot().preeditLen > 0) {
         const committed: ImeSnapshot = await this.postSerial('submit');
         if (committed.lastError !== 'ok' || requestEpoch !== realEditorPort.getEpoch()) { return committed; }
       }
@@ -136,11 +164,20 @@ class KanonIme {
           const snapshot: ImeSnapshot = this.coord.getSnapshot();
           if (requestEpoch !== realEditorPort.getEpoch()) { englishPrediction.clear(); return snapshot; }
           if (snapshot.lastError === 'ok') {
-            englishPrediction.restorePrefix(undo.prefix, undo.cursor - undo.word.length + undo.prefix.length);
+            if (this.coord.usesEnglishComposition()) {
+              this.compIdx = undo.cursor - undo.word.length;
+              this.compLen = 0;
+              englishPrediction.editing = true;
+              try { await this.refreshPreview(snapshot); }
+              finally { englishPrediction.editing = false; }
+            } else {
+              englishPrediction.restorePrefix(undo.prefix, undo.cursor - undo.word.length + undo.prefix.length);
+            }
           }
           if (snapshot.lastError !== 'undo-stale') {
-            this.publish(snapshot);
-            return snapshot;
+            const restored: ImeSnapshot = this.coord.getSnapshot();
+            this.publish(restored);
+            return restored;
           }
         }
       }
@@ -153,8 +190,14 @@ class KanonIme {
         this.publish(snapshot);
         return snapshot;
       }
-      if (this.mode === 'EN' && (kind === 'select' || kind === 'cancel' || kind === 'enter')) {
+      if (this.mode === 'EN' && !this.coord.usesEnglishComposition() && (kind === 'select' || kind === 'cancel' || kind === 'enter')) {
         if (kind === 'select') { await this.completeEnglish(candidateId ?? -1, expectedRevision ?? -1); }
+        else if (kind === 'enter' && englishPrediction.getPrefix().length > 0) {
+          const selected: CandidateLabel | undefined = englishPrediction.getSelectedItem();
+          if (selected !== undefined) {
+            await this.completeEnglish(selected.id, englishPrediction.getRevision());
+          } else { englishPrediction.clear(); }
+        }
         else {
           englishPrediction.clear();
           if (kind === 'cancel') { await this.coord.postEvent({ kind: 'cancel' }); }
@@ -171,10 +214,11 @@ class KanonIme {
         return snapshot;
       }
       const english: boolean = this.mode === 'EN';
+      const directEnglish: boolean = english && !this.coord.usesEnglishComposition();
       const epoch: number = realEditorPort.getEpoch();
-      const cursor: number = english && kind === 'text' && englishPrediction.getPrefix().length === 0 ?
+      const cursor: number = directEnglish && kind === 'text' && englishPrediction.getPrefix().length === 0 ?
         await realEditorPort.queryCursor() : englishPrediction.getCursor();
-      if (english && kind === 'text' && /^[A-Za-z]+$/.test(text ?? '') && this.predictionAllowed() &&
+      if (directEnglish && kind === 'text' && /^[A-Za-z]+$/.test(text ?? '') && this.predictionAllowed() &&
         englishPrediction.getPrefix().length === 0 && englishPrediction.canSeed() && cursor > 0 && cursor <= 4096) {
         const before: string = await realEditorPort.queryBefore(cursor);
         const word: RegExpMatchArray | null = before.match(/[A-Za-z]+$/);
@@ -197,22 +241,34 @@ class KanonIme {
       if (edge !== undefined) {
         ev.edge = edge;
       }
+      const completionPrefix: string = english && !directEnglish ? this.englishEngine.getTypedText() : '';
+      const completionItem: CandidateLabel | undefined = kind === 'select' ?
+        englishPrediction.getItems().find((item: CandidateLabel) => item.id === candidateId) :
+        englishPrediction.getSelectedItem();
+      const completionStart: number = this.compIdx;
       englishPrediction.editing = english;
       try { await this.coord.postEvent(ev); }
       finally { englishPrediction.editing = false; }
       const s: ImeSnapshot = this.coord.getSnapshot();
       if (epoch !== realEditorPort.getEpoch()) { englishPrediction.clear(); return s; }
-      if (!english && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
+      if ((!english || !directEnglish) && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
         const attr = await editorAdapter.queryAttribute();
         if (attr.ok && attr.value !== undefined && epoch === realEditorPort.getEpoch()) {
           await editorAdapter.sendEnterAction(attr.value.enterKeyType);
         }
       }
-      if (english && s.lastError === 'ok' && this.predictionAllowed()) {
+      if (directEnglish && s.lastError === 'ok' && this.predictionAllowed()) {
         if (kind === 'text') { englishPrediction.text(text ?? '', cursor); }
         else if (kind === 'backspace') { englishPrediction.backspace(); }
         else { englishPrediction.clear(); }
-      } else if (english || kind === 'mode') { englishPrediction.clear(); }
+      } else if (directEnglish || kind === 'mode') { englishPrediction.clear(); }
+      if (english && !directEnglish && (kind === 'enter' || kind === 'select') &&
+        s.lastError === 'ok' && s.commitLength > 0 && completionStart >= 0 &&
+        /^[A-Za-z]+$/.test(completionPrefix) && completionItem !== undefined &&
+        completionItem.label.startsWith(completionPrefix) && completionItem.label.length > completionPrefix.length) {
+        englishPrediction.rememberCompletion(completionPrefix, completionItem.label,
+          completionStart + s.commitLength, epoch);
+      }
       if ((kind === 'partial' || kind === 'enter') && s.lastError === 'ok' && s.commitLength > 0) {
         // 部分確定は確定済み＋残り読みの構成が変わる。カーソル再問合せは
         // 確定直後の位置を返さない実機挙動があるため、追跡中の旧起点に
@@ -241,9 +297,12 @@ class KanonIme {
           this.compLen = 0;
         }
       }
-      await this.refreshPreview(s);
-      this.publish(s);
-      return s;
+      englishPrediction.editing = english;
+      try { await this.refreshPreview(s); }
+      finally { englishPrediction.editing = false; }
+      const updated: ImeSnapshot = this.coord.getSnapshot();
+      this.publish(updated);
+      return updated;
     } catch (e) {
       const s: ImeSnapshot = this.coord.getSnapshot();
       this.publish(s);
@@ -253,15 +312,15 @@ class KanonIme {
 
   /** 未確定previewの表示更新。前回範囲を置換する（G-01置換順序）。失敗時はinsert確定のみへ落とす。 */
   private async refreshPreview(s: ImeSnapshot): Promise<void> {
-    if (s.mode !== 'JP' || s.preeditLen === 0) {
+    if ((s.mode !== 'JP' && !this.coord.usesEnglishComposition()) || s.preeditLen === 0) {
       this.compIdx = -1;
       this.compLen = 0;
       return;
     }
-    if (s.state !== 'JP_COMPOSING' && s.state !== 'JP_CONVERTING') {
+    if (s.state !== 'JP_COMPOSING' && s.state !== 'JP_CONVERTING' && s.state !== 'EN_COMPOSING' && s.state !== 'EN_CONVERTING') {
       return;
     }
-    const pre: string = this.engine.getPreedit();
+    const pre: string = s.mode === 'EN' ? this.englishEngine.getPreedit() : this.engine.getPreedit();
     if (pre.length === 0) {
       return;
     }
@@ -272,11 +331,12 @@ class KanonIme {
     if (this.compIdx < 0) {
       return;
     }
+    if (s.mode === 'EN') { englishPrediction.setCompositionCursor(this.compIdx + pre.length); }
     const ok: boolean = await this.coord.refreshPreview(pre, this.compIdx, this.compIdx + this.compLen);
     if (ok) {
       this.compLen = pre.length;
     }
-    if (!ok) {
+    if (!ok && s.mode === 'JP') {
       this.coord.setPreviewUnsupported();
     }
   }
@@ -337,10 +397,6 @@ class KanonIme {
 
   async keySpace(feedback: boolean = true): Promise<void> {
     if (feedback) { keyboardHaptics.key(); }
-    if (this.getMode() === 'EN') {
-      await this.post('text', ' ');
-      return;
-    }
     await this.post('convert');
   }
 
@@ -414,7 +470,7 @@ class KanonIme {
 
   async selectCandidate(id: number): Promise<void> {
     keyboardHaptics.key();
-    const rev: number = this.mode === 'EN' ? englishPrediction.getRevision() : this.coord.getCandidateRevision();
+    const rev: number = this.mode === 'EN' && !this.coord.usesEnglishComposition() ? englishPrediction.getRevision() : this.coord.getCandidateRevision();
     await this.post('select', undefined, id, rev);
   }
 
@@ -490,7 +546,7 @@ class KanonIme {
 
   getCandidates(): CandidateLabel[] {
     try {
-      return this.mode === 'EN' ? englishPrediction.getItems() : this.coord.getCandidateView();
+      return this.mode === 'EN' && !this.coord.usesEnglishComposition() ? englishPrediction.getItems() : this.coord.getCandidateView();
     } catch (e) {
       return [];
     }
