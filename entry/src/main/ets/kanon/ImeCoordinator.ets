@@ -30,6 +30,8 @@ export interface EditorPort {
   selectByMovement(direction: number): Promise<OpResult>;
   selectAll(): Promise<OpResult>;
   selectRange(start: number, end: number): Promise<OpResult>;
+  /** Optional readback of a collapsed cursor inside the existing preview. */
+  previewCaret?(position: number): Promise<OpResult>;
   queryPreviewSupported(): Promise<boolean>;
   /** カーソル位置（UTF-16）。失敗時は-1。 */
   queryCursor(): Promise<number>;
@@ -41,7 +43,7 @@ export interface EditorPort {
 
 /** UIイベント。1イベント→1 EngineUpdateが契約。 */
 export interface UiEvent {
-  kind: string; // text / paste / backspace / convert / submit / cancel / move / selectMove / selectEdge / selectAll / forwardDelete / select / reset / mode
+  kind: string; // text / paste / backspace / convert / compositionArrow / submit / cancel / move / selectMove / selectEdge / selectAll / forwardDelete / select / reset / mode
   text?: string;
   candidateId?: number;
   expectedRevision?: number;
@@ -131,6 +133,7 @@ export class ImeCoordinator {
   private previewSupported: boolean = false;
   private previewStart: number = -1;
   private previewEnd: number = -1;
+  private previewText: string = '';
   private needsRecovery: boolean = false;
   private lastError: string = 'ok';
   private preeditLen: number = 0;
@@ -195,9 +198,14 @@ export class ImeCoordinator {
   /** preview書込が非対応と判明した通知。以降はinsert確定のみにする。 */
   setPreviewUnsupported(): void {
     this.previewSupported = false;
+    this.clearPreviewTracking();
+  }
+
+  private clearPreviewTracking(): void {
     this.previewShown = false;
     this.previewStart = -1;
     this.previewEnd = -1;
+    this.previewText = '';
   }
   snapLine(): string {
     const s: ImeSnapshot = this.getSnapshot();
@@ -221,9 +229,7 @@ export class ImeCoordinator {
     this.revision = 0;
     this.lastAppliedSequence = 0;
     this.appliedEffects = [];
-    this.previewShown = false;
-    this.previewStart = -1;
-    this.previewEnd = -1;
+    this.clearPreviewTracking();
     this.preeditLen = 0;
     this.caretUtf16 = 0;
     this.segCount = 0;
@@ -472,7 +478,7 @@ export class ImeCoordinator {
     this.candidateItems = update.candidates;
     // The engine's preedit may contain only a pending QWERTY consonant.
     // Track the preview actually sent to the editor, not the engine state.
-    if (!update.hasPreedit) { this.previewShown = false; }
+    if (!update.hasPreedit) { this.clearPreviewTracking(); }
     if (this.mode === 'EN') {
       this.state = this.preeditLen === 0 ? this.emptyState() : update.converting ? 'EN_CONVERTING' : 'EN_COMPOSING';
     } else if (this.candidateCount > 0) {
@@ -499,10 +505,8 @@ export class ImeCoordinator {
         if (!committed.ok) {
           return false;
         }
-        this.previewShown = false;
+        this.clearPreviewTracking();
         this.preeditLen = 0;
-        this.previewStart = -1;
-        this.previewEnd = -1;
         this.lastCommitLength = text.length;
         return true;
       }
@@ -511,7 +515,7 @@ export class ImeCoordinator {
       if (!fin0.ok) {
         return false;
       }
-      this.previewShown = false;
+      this.clearPreviewTracking();
       this.preeditLen = 0;
     }
     if (text.length === 0) {
@@ -527,18 +531,32 @@ export class ImeCoordinator {
   }
 
   /** 未確定プレビューの表示更新（エンジン応答のpreedit反映）。失敗は符号のみ残す。 */
-  async refreshPreview(text: string, start: number, end: number): Promise<boolean> {
+  async refreshPreview(text: string, start: number, end: number, caretUtf16: number = text.length): Promise<boolean> {
     if (!this.previewSupported) {
       return false;
     }
     // (-1,-1) targets the entire preview, including when it is first created.
     // start/end are document coordinates for our own tracking, not API range offsets.
-    const r: OpResult = await this.editor.setPreview(text, -1, -1);
+    const epoch: number = this.editor.getEpoch();
+    const unchanged: boolean = this.previewShown && this.previewStart === start && this.previewText === text;
+    const r: OpResult = unchanged ? { ok: true, code: 0 } : await this.editor.setPreview(text, -1, -1);
+    if (epoch !== this.editor.getEpoch()) { return false; }
     if (r.ok) {
       this.previewShown = text.length > 0;
+      this.previewText = text;
       this.previewStart = text.length > 0 ? start : -1;
       // endは置換前の範囲。確定置換用には結果の範囲を保持する。
       this.previewEnd = text.length > 0 ? start + text.length : -1;
+      const caret: number = Math.max(0, Math.min(text.length, caretUtf16));
+      if (text.length > 0 && start >= 0 && (unchanged || caret < text.length)) {
+        // setPreviewText places the editor caret at the end. Move only the
+        // collapsed selection; keep the native composing range and its text.
+        const position: number = start + caret;
+        const moved: OpResult = this.editor.previewCaret === undefined ?
+          await this.editor.selectRange(position, position) : await this.editor.previewCaret(position);
+        if (epoch !== this.editor.getEpoch()) { return false; }
+        if (!moved.ok) { this.lastError = `preview-caret-${moved.code}`; }
+      }
     } else {
       this.lastError = `preview-${r.code}`;
     }
@@ -592,9 +610,7 @@ export class ImeCoordinator {
     }
     this.preeditLen = 0;
     this.candidateCount = 0;
-    this.previewShown = false;
-    this.previewStart = -1;
-    this.previewEnd = -1;
+    this.clearPreviewTracking();
     this.lastError = 'ok';
   }
 
@@ -666,9 +682,7 @@ export class ImeCoordinator {
     this.revision = 0;
     this.lastAppliedSequence = this.sequence;
     this.appliedEffects = [];
-    this.previewShown = false;
-    this.previewStart = -1;
-    this.previewEnd = -1;
+    this.clearPreviewTracking();
     this.preeditLen = 0;
     this.caretUtf16 = 0;
     this.segCount = 0;
@@ -691,8 +705,6 @@ export class ImeCoordinator {
     this.candidateCount = 0;
     this.candidateRevision = 0;
     this.candidateItems = [];
-    this.previewShown = false;
-    this.previewStart = -1;
-    this.previewEnd = -1;
+    this.clearPreviewTracking();
   }
 }

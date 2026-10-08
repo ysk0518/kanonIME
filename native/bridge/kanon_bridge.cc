@@ -69,6 +69,7 @@ bool ConfigureKeyboardRequest() {
   request->set_mixed_conversion(true);
   request->set_candidate_page_size(20);
   request->set_is_a11y_talkback_enabled(true);
+  request->set_crossing_edge_behavior(mozc::commands::Request::DO_NOTHING);
   return Call(input, nullptr);
 }
 
@@ -118,11 +119,34 @@ bool EnsureSession() {
 std::string OutputToJson(bool ok, const mozc::commands::Output& output) {
   std::string json = std::string("{\"ok\":") + (ok ? "true" : "false");
   std::string preedit;
-  for (const auto& seg : output.preedit().segment()) preedit += seg.value();
+  std::string focused_reading;
+  for (const auto& seg : output.preedit().segment()) {
+    preedit += seg.value();
+    if (seg.annotation() == mozc::commands::Preedit::Segment::HIGHLIGHT) {
+      focused_reading = seg.has_key() ? seg.key() : seg.value();
+    }
+  }
+  json += ",\"focused_reading\":\"" + EscapeJson(focused_reading) + "\"";
   json += ",\"preedit_len\":" + std::to_string(preedit.size());
   json += ",\"preedit\":\"" + EscapeJson(preedit) + "\"";
+  // Mozc reports a Unicode-character offset; ArkTS strings use UTF-16 units.
+  size_t caret_utf16 = 0;
+  size_t characters = 0;
+  for (unsigned char byte : preedit) {
+    if ((byte & 0xc0) == 0x80) continue;
+    if (characters >= output.preedit().cursor()) break;
+    caret_utf16 += byte >= 0xf0 ? 2 : 1;
+    ++characters;
+  }
+  json += ",\"caret_utf16\":" + std::to_string(caret_utf16);
   json += ",\"segcount\":" +
           std::to_string(output.preedit().segment_size());
+  const auto& all_candidates = output.all_candidate_words();
+  if (all_candidates.has_focused_index() &&
+      all_candidates.focused_index() < all_candidates.candidates_size()) {
+    json += ",\"focused_id\":" + std::to_string(
+        all_candidates.candidates(all_candidates.focused_index()).id());
+  }
   json += ",\"ncand\":" +
           std::to_string(output.candidate_window().candidate_size());
   json += ",\"candidates\":[";
@@ -363,7 +387,14 @@ std::string ExecuteOperation(const AsyncOperation& task) {
     ok = Call(input, &output) && output.consumed();
   } else {
     mozc::commands::Input input;
-    if (task.operation == "space" || task.operation == "submit" ||
+    if (task.operation == "arrowLeft" || task.operation == "arrowRight") {
+      // Software arrows move the composing cursor or resize a conversion
+      // segment, according to Mozc's current state in the same session.
+      input.set_type(mozc::commands::Input::SEND_KEY);
+      input.mutable_key()->set_special_key(task.operation == "arrowLeft" ?
+          mozc::commands::KeyEvent::VIRTUAL_LEFT :
+          mozc::commands::KeyEvent::VIRTUAL_RIGHT);
+    } else if (task.operation == "space" || task.operation == "submit" ||
         task.operation == "backspace") {
       if (task.operation == "space" && !ConfigureKeyboardRequest()) {
         return OutputToJson(false, output);
@@ -392,6 +423,22 @@ std::string ExecuteOperation(const AsyncOperation& task) {
       }
     }
     ok = Call(input, &output);
+  }
+  if (ok && (task.operation == "arrowLeft" || task.operation == "arrowRight")) {
+    // Width adjustment intentionally hides Mozc's desktop candidate window.
+    // Re-highlight its current candidate to show the resized segment's list
+    // without cycling candidates, committing text or changing the boundary.
+    const auto& candidates = output.all_candidate_words();
+    if (candidates.has_focused_index() &&
+        candidates.focused_index() < candidates.candidates_size()) {
+      mozc::commands::Input show;
+      show.set_type(mozc::commands::Input::SEND_COMMAND);
+      show.mutable_command()->set_type(
+          mozc::commands::SessionCommand::HIGHLIGHT_CANDIDATE);
+      show.mutable_command()->set_id(
+          candidates.candidates(candidates.focused_index()).id());
+      ok = Call(show, &output);
+    }
   }
   return OutputToJson(ok, output);
 }
@@ -435,7 +482,8 @@ napi_value BridgeExecuteAsync(napi_env env, napi_callback_info info) {
   if (operation != "init" && operation != "convert" && operation != "literal" && operation != "space" &&
       operation != "submit" && operation != "backspace" && operation != "reset" &&
       operation != "selectCandidate" && operation != "submitCandidate" &&
-      operation != "highlightCandidate") {
+      operation != "highlightCandidate" && operation != "arrowLeft" &&
+      operation != "arrowRight") {
     napi_throw_range_error(env, nullptr, "Unknown native operation");
     return nullptr;
   }

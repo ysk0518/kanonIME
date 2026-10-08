@@ -57,6 +57,12 @@ class RealEditorPort implements EditorPort {
     return toOp(await editorAdapter.selectRange(start, end));
   }
 
+  async previewCaret(position: number): Promise<OpResult> {
+    const result: EditorResult = await editorAdapter.previewCaret(position);
+    if (!result.ok) { return toOp(result); }
+    return { ok: result.detail === 'matched=true', code: result.detail === 'matched=true' ? 0 : -7 };
+  }
+
   async queryPreviewSupported(): Promise<boolean> {
     try {
       const v = await editorAdapter.queryAttribute();
