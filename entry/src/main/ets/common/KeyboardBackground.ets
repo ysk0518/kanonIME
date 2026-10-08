@@ -7,6 +7,7 @@ import { ColorMetrics } from '@ohos.arkui.node';
 import { BackgroundConfig, backgroundImageUri, backgroundPosterUri,
   MAX_BACKGROUND_PHOTO, MAX_BACKGROUND_POSTER, MAX_BACKGROUND_PAYLOAD, MAX_BACKGROUND_CHUNKS } from './BackgroundAppearance';
 import { BackgroundLivePreview, PREVIEW_EVENT, END_PREVIEW_EVENT } from './BackgroundLivePreview';
+import { debugLog, debugErrorCode } from './DebugLog';
 export { BackgroundConfig } from './BackgroundAppearance';
 
 const BUNDLE: string = 'local.yplic.kanon';
@@ -72,13 +73,23 @@ class KeyboardBackgroundStore {
 
   initialize(context: common.Context, ime: boolean = false): Promise<void> {
     if (ime) { this.ime = true; }
+    debugLog.initialize(ime);
+    debugLog.onEnabled = () => {
+      debugLog.record('background', `state version=${this.current.version} peer=${this.peerVersion} format=${this.current.format} photoChars=${this.current.photo.length} preview=${this.visiblePreview !== undefined}`);
+      this.requestSync().catch((error: Error) => debugLog.record('background', `sync request failed code=${debugErrorCode(error)}`));
+    };
     if (this.ready !== undefined) { return this.ready; }
     this.context = context;
     try {
       this.current = normalized(JSON.parse(fs.readTextSync(`${context.filesDir}/keyboard-background.json`)) as BackgroundConfig);
-    } catch (error) { this.current = new BackgroundConfig(); }
+      debugLog.record('background', `disk loaded version=${this.current.version} photoChars=${this.current.photo.length}`);
+    } catch (error) {
+      debugLog.record('background', `disk load unavailable code=${debugErrorCode(error)}`);
+      this.current = new BackgroundConfig();
+    }
     this.apply();
     this.ready = this.connect().catch((error: Error) => {
+      debugLog.record('background', `connect failed code=${debugErrorCode(error)}`);
       this.ready = undefined;
       throw error;
     });
@@ -95,7 +106,7 @@ class KeyboardBackgroundStore {
       events: [UPDATE, REQUEST, ACK, PREVIEW_EVENT, END_PREVIEW_EVENT], publisherBundleName: BUNDLE
     });
     commonEventManager.subscribe(this.subscriber, (error, event) => {
-      if (error) { return; }
+      if (error) { debugLog.record('background', `subscription error code=${error.code}`); return; }
       if (event.parameters?.['sender'] === (this.ime ? 'ime' : 'app')) { return; }
       if (event.event === PREVIEW_EVENT || event.event === END_PREVIEW_EVENT) {
         if (this.ime && event.parameters?.['sender'] === 'app') { this.live.receive(event); }
@@ -103,6 +114,7 @@ class KeyboardBackgroundStore {
       }
       if (event.event === ACK) {
         const version: number = Number(event.data);
+        debugLog.record('background', `ack version=${version} expected=${this.current.version}`);
         if (Number.isSafeInteger(version) && version > this.peerVersion) {
           this.peerVersion = version;
           AppStorage.setOrCreate('kanonBackgroundPeerVersion', version);
@@ -113,10 +125,12 @@ class KeyboardBackgroundStore {
       if (event.event === REQUEST) {
         if (!this.ime) { this.live.resend(); }
         const version: number = Number(event.data);
+        debugLog.record('background', `sync request peer=${version} local=${this.current.version}`);
         if (this.current.version > version) { this.broadcast().catch(() => {}); }
         else { this.publish(ACK, this.current.version.toString()).catch(() => {}); }
       } else { this.receive(event); }
     });
+    debugLog.record('background', 'subscribed');
     await this.requestSync();
   }
 
@@ -126,6 +140,9 @@ class KeyboardBackgroundStore {
 
   private apply(): void {
     const config: BackgroundConfig = this.visiblePreview ?? this.current;
+    if (this.visiblePreview === undefined) {
+      debugLog.record('background', `apply saved version=${config.version} format=${config.format} photoChars=${config.photo.length}`);
+    }
     AppStorage.setOrCreate('kanonBackgroundImage', backgroundImageUri(config));
     AppStorage.setOrCreate('kanonBackgroundPoster', backgroundPosterUri(config));
     AppStorage.setOrCreate('kanonBackgroundAnimate', config.animate);
@@ -186,6 +203,7 @@ class KeyboardBackgroundStore {
   private persist(config: BackgroundConfig): void {
     if (!this.context) { throw new Error('Background storage unavailable'); }
     const path: string = `${this.context.filesDir}/keyboard-background.json`;
+    debugLog.record('background', `disk save start version=${config.version} photoChars=${config.photo.length}`);
     let file: fs.File | undefined;
     try {
       file = fs.openSync(`${path}.tmp`, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
@@ -195,7 +213,9 @@ class KeyboardBackgroundStore {
       fs.renameSync(`${path}.tmp`, path);
       this.current = config;
       this.apply();
+      debugLog.record('background', `disk save done version=${config.version}`);
     } catch (error) {
+      debugLog.record('background', `disk save failed code=${debugErrorCode(error)}`);
       if (file) { try { fs.closeSync(file); } catch (closeError) {} }
       throw new Error('Background could not be saved');
     }
@@ -204,6 +224,7 @@ class KeyboardBackgroundStore {
   async save(config: BackgroundConfig): Promise<boolean> {
     if (this.ready) { await this.ready; }
     const next: BackgroundConfig = normalized(config);
+    debugLog.record('background', `save normalized format=${next.format} photoChars=${next.photo.length} dropped=${config.photo.length > 0 && next.photo.length === 0}`);
     next.version = Math.max(Date.now(), this.current.version + 1);
     this.persist(next);
     this.pruneGifOriginals();
@@ -211,6 +232,7 @@ class KeyboardBackgroundStore {
     if (this.peerVersion >= next.version) { return true; }
     return new Promise<boolean>((resolve) => {
       const timer: number = setTimeout(() => {
+        debugLog.record('background', `ack timeout version=${next.version} peer=${this.peerVersion}`);
         this.acknowledged = undefined;
         resolve(false);
       }, 2000);
@@ -224,6 +246,7 @@ class KeyboardBackgroundStore {
   }
 
   async requestSync(): Promise<void> {
+    debugLog.record('background', `request sync version=${this.current.version}`);
     await this.publish(REQUEST, this.current.version.toString());
   }
 
@@ -232,7 +255,10 @@ class KeyboardBackgroundStore {
     return new Promise<void>((resolve, reject) => {
       commonEventManager.publish(event, { bundleName: BUNDLE, data: data,
         parameters: { version: version, index: index, count: count, sender: this.ime ? 'ime' : 'app' } }, (error) => {
-        if (error) { reject(error); } else { resolve(); }
+        if (error) {
+          debugLog.record('background', `publish failed kind=${event === UPDATE ? 'update' : event === ACK ? 'ack' : 'request'} index=${index} count=${count} code=${error.code}`);
+          reject(error);
+        } else { resolve(); }
       });
     });
   }
@@ -241,9 +267,11 @@ class KeyboardBackgroundStore {
     const config: BackgroundConfig = this.get();
     const payload: string = JSON.stringify(config);
     const count: number = Math.ceil(payload.length / CHUNK);
+    debugLog.record('background', `transfer start version=${config.version} chars=${payload.length} chunks=${count}`);
     for (let i: number = 0; i < count; i++) {
       await this.publish(UPDATE, payload.slice(i * CHUNK, (i + 1) * CHUNK), config.version, i, count);
     }
+    debugLog.record('background', `transfer sent version=${config.version} chunks=${count}`);
   }
 
   private receive(event: commonEventManager.CommonEventData): void {
@@ -255,24 +283,27 @@ class KeyboardBackgroundStore {
       index < 0 || index >= count || !event.data || event.data.length > CHUNK) { return; }
     if (version < this.incomingVersion && Date.now() - this.incomingAt < 30000) { return; }
     if (version !== this.incomingVersion || Date.now() - this.incomingAt > 30000) {
+      debugLog.record('background', `receive start version=${version} chunks=${count}`);
       this.incomingVersion = version;
       this.chunks = [];
       this.chunkCount = count;
       this.incomingAt = Date.now();
     }
-    if (count !== this.chunkCount) { return; }
+    if (count !== this.chunkCount) { debugLog.record('background', 'receive rejected chunk count'); return; }
     this.chunks[index] = event.data;
     for (let i: number = 0; i < count; i++) { if (!this.chunks[i]) { return; } }
     const payload: string = this.chunks.join('');
     this.chunks = [];
-    if (payload.length > MAX_BACKGROUND_PAYLOAD) { return; }
+    if (payload.length > MAX_BACKGROUND_PAYLOAD) { debugLog.record('background', 'receive rejected payload limit'); return; }
+    debugLog.record('background', `receive complete version=${version} chars=${payload.length}`);
     try {
       const next: BackgroundConfig = normalized(JSON.parse(payload) as BackgroundConfig);
       if (next.version === version) {
         this.persist(next);
+        debugLog.record('background', `receive applied version=${version} photoChars=${next.photo.length}`);
         this.publish(ACK, version.toString()).catch(() => {});
       }
-    } catch (error) { /* Keep the last complete, valid image on transfer or storage failure. */ }
+    } catch (error) { debugLog.record('background', `receive failed code=${debugErrorCode(error)}`); }
   }
 }
 
@@ -309,18 +340,24 @@ export async function copyBackgroundPhoto(uri: string): Promise<BackgroundConfig
   let packer: image.ImagePacker | undefined;
   let pixels: image.PixelMap | undefined;
   let gifFile: fs.File | undefined;
+  let stage: string = 'open';
   try {
     file = await fs.open(uri, fs.OpenMode.READ_ONLY);
+    stage = 'decode';
     source = image.createImageSource(file.fd);
     packer = image.createImagePacker();
     const info: image.ImageInfo = await source.getImageInfo();
+    debugLog.record('image', `decoded width=${info.size.width} height=${info.size.height} gif=${info.mimeType === 'image/gif'}`);
     if (info.size.width <= 0 || info.size.height <= 0) { throw new Error('Invalid image'); }
     const config = new BackgroundConfig();
     const gif: boolean = info.mimeType === 'image/gif';
     if (gif) {
+      stage = 'gif-limits';
       const stat: fs.Stat = await fs.stat(file.fd);
+      const frames: number = await source.getFrameCount();
+      debugLog.record('gif', `selected bytes=${stat.size} frames=${frames}`);
       if (stat.size <= 0 || stat.size > 5000000 || Math.max(info.size.width, info.size.height) > 1280 ||
-        await source.getFrameCount() > 120) {
+        frames > 120) {
         throw new BackgroundPhotoError($r('app.string.background_error_gif_selection_limits'));
       }
       gifFile = await fs.open(uri, fs.OpenMode.READ_ONLY);
@@ -329,6 +366,7 @@ export async function copyBackgroundPhoto(uri: string): Promise<BackgroundConfig
       config.photo = new util.Base64Helper().encodeToStringSync(new Uint8Array(original));
     }
     const ratio: number = Math.min(1, (gif ? 480 : 1280) / Math.max(info.size.width, info.size.height));
+    stage = 'pack';
     pixels = await source.createPixelMap({ desiredSize: {
       width: Math.max(1, Math.round(info.size.width * ratio)),
       height: Math.max(1, Math.round(info.size.height * ratio))
@@ -341,11 +379,16 @@ export async function copyBackgroundPhoto(uri: string): Promise<BackgroundConfig
     if (bytes.byteLength > limit && gif) {
       bytes = await packer.packToData(pixels, { format: 'image/jpeg', quality: 35 });
     }
-    if (bytes.byteLength > limit) { throw new BackgroundPhotoError($r('app.string.background_error_image_too_large')); }
+    if (bytes.byteLength > limit) {
+      debugLog.record('image', `packed limit exceeded bytes=${bytes.byteLength} limit=${limit}`);
+      throw new BackgroundPhotoError($r('app.string.background_error_image_too_large'));
+    }
     const jpeg: string = new util.Base64Helper().encodeToStringSync(new Uint8Array(bytes));
     if (gif) { config.poster = jpeg; } else { config.photo = jpeg; }
+    debugLog.record('image', `ready format=${config.format} photoChars=${config.photo.length} posterChars=${config.poster.length}`);
     return config;
   } catch (error) {
+    debugLog.record('image', `read failed stage=${stage} code=${debugErrorCode(error)}`);
     if (error instanceof BackgroundPhotoError) { throw error; }
     throw new BackgroundPhotoError($r('app.string.background_image_read_failed'));
   }

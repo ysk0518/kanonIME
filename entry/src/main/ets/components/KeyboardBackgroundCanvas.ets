@@ -1,3 +1,5 @@
+import { debugLog } from '../common/DebugLog';
+
 @Component
 export struct KeyboardBackgroundCanvas {
   @Prop @Watch('sourceChanged') source: string = '';
@@ -12,10 +14,12 @@ export struct KeyboardBackgroundCanvas {
   @State private canvasWidth: number = 0;
   @State private canvasHeight: number = 0;
   @State private imageRatio: number = 0;
+  private reportedSource: string = '';
   onGeometry: (width: number, height: number) => void = () => {};
 
   private sourceChanged(): void {
     this.imageRatio = 0;
+    this.reportedSource = '';
     this.reportGeometry();
   }
 
@@ -56,9 +60,16 @@ export struct KeyboardBackgroundCanvas {
           })
           .onComplete((event) => {
             if (event && event.width > 0 && event.height > 0) {
+              if (this.reportedSource !== this.displayedSource()) {
+                this.reportedSource = this.displayedSource();
+                debugLog.record('render', `decoded width=${event.width} height=${event.height} animated=${this.source.startsWith('data:image/gif;')}`);
+              }
               this.imageRatio = event.width / event.height;
               this.reportGeometry();
             }
+          })
+          .onError(() => {
+            debugLog.record('render', `decode failed animated=${this.source.startsWith('data:image/gif;')} poster=${this.displayedSource() === this.poster}`);
           })
       }
     }
