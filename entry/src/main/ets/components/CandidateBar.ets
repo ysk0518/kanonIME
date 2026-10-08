@@ -15,6 +15,9 @@ export struct CandidateBar {
   @StorageLink('kanonIdList') candIds: number[] = [];
   @StorageLink('kanonSel') sel: number = 0;
   @StorageLink('kanonCandidatesExpanded') expanded: boolean = false;
+  @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
+  @StorageLink('kanonConversionReading') conversionReading: string = '';
+  @StorageLink('kanonCompositionCursor') compositionCursor: string = '';
 
   private candidatesChanged(): void {
     if (this.candList.length === 0) { this.expanded = false; }
@@ -43,7 +46,7 @@ export struct CandidateBar {
   build() {
     Column() {
       Row() {
-        if (this.candList.length === 0) {
+        if (this.candList.length === 0 && !(this.mode === 'JP' && this.japaneseComposing)) {
           KeyboardToolbar()
         } else {
           Stack() {
@@ -52,6 +55,21 @@ export struct CandidateBar {
           .width(40).height(this.toolbarHeight).margin({ left: 8 })
           .onClick(() => { this.submenuType = SubMenuType.MENU; })
           .accessibilityText('キーボードメニュー').id('candidate_keyboard_menu')
+          if (this.mode === 'JP' && this.japaneseComposing && this.compositionCursor.length > 0) {
+            Text(this.compositionCursor)
+              .fontSize(14).fontColor($r('app.color.candidate_accent'))
+              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              .constraintSize({ maxWidth: 120 }).padding({ left: 4, right: 8 })
+              .accessibilityText($r('app.string.keyboard_composition_cursor', this.compositionCursor))
+              .id('composition_cursor')
+          } else if (this.mode === 'JP' && this.japaneseComposing && this.conversionReading.length > 0) {
+            Text(this.conversionReading)
+              .fontSize(12).fontColor($r('app.color.candidate_accent'))
+              .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width(44).textAlign(TextAlign.Center)
+              .accessibilityText($r('app.string.keyboard_segment_reading', this.conversionReading))
+              .id('segment_reading')
+          }
           Scroll() {
             Row({ space: 4 }) {
               ForEach(this.candList, (label: string, index: number) => {

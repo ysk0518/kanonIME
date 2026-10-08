@@ -1,7 +1,7 @@
 /*
  * Kanon IME: MozcEngine (M4)
  * libkanon_bridge.soをCoordinatorのEnginePort面へ包む。IPC不使用・同一プロセス。
- * - ローマ字バッファを自前で保持し、Backspaceはreset＋再送で実現する。
+ * - 通常入力の履歴を保持し、削除・カーソル移動後はMozcのセッションを継続する。
  * - Spaceは空欄で半角空白効果、未確定ありで変換開始、変換中で次候補。
  * - 候補タップ(select)は選択＋確定を合成する（AT-16のSpaceなし確定用）。
  * - 効果テキスト・候補labelはメモリ内のみ。ログに出さない（REQ-07）。
@@ -26,6 +26,9 @@ class ConvOut {
   ok: boolean = false;
   preedit_len: number = 0;
   preedit: string = '';
+  focused_reading: string = '';
+  focused_id: number | undefined = undefined;
+  caret_utf16: number | undefined = undefined;
   ncand: number = 0;
   candidates: Cand[] = [];
   result: string = '';
@@ -42,6 +45,9 @@ function parseOut(json: string): ConvOut {
     out.ok = o.ok === true;
     out.preedit_len = o.preedit_len ?? 0;
     out.preedit = o.preedit ?? '';
+    out.focused_reading = o.focused_reading ?? '';
+    out.focused_id = o.focused_id;
+    out.caret_utf16 = o.caret_utf16;
     out.ncand = o.ncand ?? 0;
     if (o.candidates instanceof Array) {
       out.candidates = o.candidates as Cand[];
@@ -83,6 +89,8 @@ export class MozcEngine implements EnginePort {
   private partial: boolean = false;
   /** Native deletion changes the composer; the original key history is no longer replayable. */
   private sessionOwned: boolean = false;
+  /** A manually adjusted boundary makes candidate taps commit only that segment. */
+  private rangeAdjusted: boolean = false;
 
   /** 強調中の候補位置（診断表示用）。 */
   getSelIdx(): number {
@@ -92,6 +100,20 @@ export class MozcEngine implements EnginePort {
   /** 予測表示用。メモリ内のみ。 */
   getPreedit(): string {
     return this.lastPreedit;
+  }
+
+  getConversionReading(): string {
+    return this.phase === 'converting' ? this.lastOut.focused_reading : '';
+  }
+
+  private caretPosition(out: ConvOut): number {
+    return Math.max(0, Math.min(out.preedit.length, out.caret_utf16 ?? out.preedit.length));
+  }
+
+  getCursorPreview(): string {
+    const caret: number = this.caretPosition(this.lastOut);
+    if (this.phase !== 'composing' || this.lastPreedit.length === 0 || caret === this.lastPreedit.length) { return ''; }
+    return `${this.lastPreedit.slice(0, caret)}│${this.lastPreedit.slice(caret)}`;
   }
 
   /** 直近の候補長さ列（診断用・数値のみ）。 */
@@ -198,13 +220,17 @@ export class MozcEngine implements EnginePort {
     for (let i: number = 0; i < ordered.length; i++) {
       this.lastIds.push(ordered[i].id);
     }
+    if (this.phase === 'converting' && out.focused_id !== undefined) {
+      const selected: number = this.lastIds.indexOf(out.focused_id);
+      this.selIdx = selected >= 0 ? selected : 0;
+    }
     this.lastPreedit = out.preedit;
     this.lastLens = out.candlens.join(',');
     const hasPre: boolean = out.preedit_len > 0;
     return {
       sessionId: sessionId, editorEpoch: epoch, sequence: seq, revision: this.revision,
       consumed: true, hasPreedit: hasPre, preeditLen: hasPre ? out.preedit.length : 0,
-      caretUtf16: hasPre ? out.preedit.length : 0,
+      caretUtf16: hasPre ? this.caretPosition(out) : 0,
       segCount: hasPre ? (out.segcount > 0 ? out.segcount : 1) : 0,
       candidateCount: out.ncand, candidateRevision: this.revision, candidates: labels,
       effects: effects, errorCode: 0, errorRecoverable: true
@@ -296,6 +322,7 @@ export class MozcEngine implements EnginePort {
     this.phase = 'empty';
     this.partial = false;
     this.sessionOwned = false;
+    this.rangeAdjusted = false;
   }
 
   private async dispatchInner(sessionId: string, epoch: number, seq: number, event: UiEvent): Promise<EngineUpdate> {
@@ -314,6 +341,7 @@ export class MozcEngine implements EnginePort {
       this.lastLens = '';
       this.partial = false;
       this.sessionOwned = false;
+      this.rangeAdjusted = false;
       if (kind === 'reset') {
         this.revision = 0;
       } else {
@@ -326,11 +354,14 @@ export class MozcEngine implements EnginePort {
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
-      if (this.phase !== 'composing' || this.partial) {
+      // Partial commit makes the old replay history unusable, but it does not
+      // forbid editing kana in the remaining live composition.
+      if (this.phase !== 'composing') {
         return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
       }
       if (this.sessionOwned) {
-        const previous: string = this.lastPreedit.slice(-1);
+        const caret: number = this.caretPosition(this.lastOut);
+        const previous: string = this.lastPreedit.slice(Math.max(0, caret - 1), caret);
         const kana: string = modifiedKana(previous);
         const roman: string = kanaRoman(kana);
         if (kana === previous || roman.length === 0) {
@@ -408,6 +439,7 @@ export class MozcEngine implements EnginePort {
         this.buffer = out.preedit;
       }
       this.selIdx = 0;
+      this.rangeAdjusted = false;
       this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
       if (this.phase === 'empty') { this.setInputUnits([]); }
       this.revision++;
@@ -426,9 +458,31 @@ export class MozcEngine implements EnginePort {
       this.inputUnits = [];
       this.buffer = out.preedit;
       this.sessionOwned = out.preedit_len > 0;
+      this.rangeAdjusted = false;
       if (!this.sessionOwned) { this.partial = false; }
       this.selIdx = 0;
       this.phase = this.sessionOwned ? 'composing' : 'empty';
+      this.revision++;
+      return this.fromOut(sessionId, epoch, seq, out, []);
+    }
+    if (kind === 'compositionArrow') {
+      if (this.lastPreedit.length === 0) {
+        return this.emptyUpdate(sessionId, epoch, seq);
+      }
+      const out: ConvOut = parseOut(await api.executeAsync(
+        event.text === 'left' ? 'arrowLeft' : 'arrowRight', '', 0));
+      if (!out.ok || out.result.length > 0 || out.preedit_len === 0) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      this.selIdx = 0;
+      if (this.phase === 'converting') {
+        this.rangeAdjusted = true;
+      } else {
+        // An insertion cursor makes the original append-only history obsolete.
+        this.inputUnits = [];
+        this.buffer = out.preedit;
+        this.sessionOwned = true;
+      }
       this.revision++;
       return this.fromOut(sessionId, epoch, seq, out, []);
     }
@@ -465,7 +519,12 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       return this.fromOut(sessionId, epoch, seq, out, []);
     }
-    if (kind === 'select') {
+    // A composing candidate may consume only the prefix before the cursor.
+    // Commit it in the original suggestion state: selecting it first changes
+    // the native state to conversion and loses the partial-suggestion contract.
+    const scopedSelection: boolean = kind === 'select' &&
+      (this.phase === 'composing' || (this.rangeAdjusted && this.phase === 'converting'));
+    if (kind === 'select' && !scopedSelection) {
       let id: number = event.candidateId === undefined ? -1 : event.candidateId as number;
       if (id < 0 && this.phase === 'converting' && this.selIdx < this.lastIds.length) {
         // Enter相当：強調中の候補を確定する。
@@ -498,6 +557,7 @@ export class MozcEngine implements EnginePort {
       this.phase = 'empty';
       this.partial = false;
       this.sessionOwned = false;
+      this.rangeAdjusted = false;
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {
@@ -510,15 +570,19 @@ export class MozcEngine implements EnginePort {
       }
       return u;
     }
-    if (kind === 'partial' || (kind === 'enter' && this.phase === 'converting')) {
+    if (kind === 'partial' || scopedSelection || (kind === 'enter' && this.phase === 'converting')) {
       // Enter during conversion shares the segment-commit path. Submit is
       // still the full commit used by layout changes, paste and cursor moves.
-      if (this.phase !== 'converting' || this.lastIds.length === 0 ||
+      if ((this.phase !== 'converting' && !scopedSelection) || this.lastIds.length === 0 ||
         this.selIdx >= this.lastIds.length) {
         this.revision++;
         return this.emptyUpdate(sessionId, epoch, seq);
       }
-      const id: number = this.lastIds[this.selIdx];
+      const id: number = scopedSelection && event.candidateId !== undefined ?
+        event.candidateId : this.lastIds[this.selIdx];
+      if (this.lastIds.indexOf(id) < 0) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
       let part: ConvOut = new ConvOut();
       part.ok = false;
       try {
@@ -530,19 +594,32 @@ export class MozcEngine implements EnginePort {
         this.revision++;
         return this.errUpdate(sessionId, epoch, seq, true);
       }
+      let remaining: ConvOut = part;
+      // Segment commit also hides the native window. Keep the committed result
+      // separately while refreshing candidates for the remaining composition.
+      if (part.preedit_len > 0 && part.focused_id !== undefined) {
+        try {
+          const shown: ConvOut = parseOut(await api.executeAsync('highlightCandidate', '', part.focused_id));
+          if (shown.ok && shown.result.length === 0 && shown.preedit_len > 0) { remaining = shown; }
+        } catch (error) {
+          // Candidate refresh failure must not discard a successful commit.
+        }
+      }
       // Discard consumed input history: only Mozc owns the remaining reading.
       this.inputUnits = [];
-      this.buffer = part.preedit;
-      this.partial = part.preedit_len > 0;
+      this.buffer = remaining.preedit;
+      this.partial = remaining.preedit_len > 0;
       this.sessionOwned = this.partial;
-      this.phase = !this.partial ? 'empty' : part.ncand > 0 ? 'converting' : 'composing';
+      if (!this.partial) { this.rangeAdjusted = false; }
+      // Suggestions for the remaining reading do not imply conversion state.
+      this.phase = !this.partial ? 'empty' : remaining.focused_id !== undefined ? 'converting' : 'composing';
       this.selIdx = 0;
       this.revision++;
       const effects: CommitEffect[] = [];
       if (part.result.length > 0) {
         effects.push({ effectId: `p${this.revision}`, text: part.result });
       }
-      return this.fromOut(sessionId, epoch, seq, part, effects);
+      return this.fromOut(sessionId, epoch, seq, remaining, effects);
     }
     if (kind === 'submit' || kind === 'enter') {
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
@@ -563,6 +640,7 @@ export class MozcEngine implements EnginePort {
         this.phase = 'empty';
         this.partial = false;
         this.sessionOwned = false;
+        this.rangeAdjusted = false;
         try {
           await api.executeAsync('reset', '', 0);
         } catch (e) {
@@ -596,6 +674,7 @@ export class MozcEngine implements EnginePort {
       this.phase = 'empty';
       this.partial = false;
       this.sessionOwned = false;
+      this.rangeAdjusted = false;
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {

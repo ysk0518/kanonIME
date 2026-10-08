@@ -252,6 +252,15 @@ export class EditorAdapter {
     });
   }
 
+  previewCaret(position: number): Promise<EditorResult> {
+    return this.enqueue('previewCaret', async (client: inputMethodEngine.InputClient): Promise<string> => {
+      await client.selectByRange({ start: position, end: position });
+      const actual: number = await client.getTextIndexAtCursor();
+      // IPC acknowledgement and the editor's observed cursor are separate facts.
+      return `matched=${actual === position}`;
+    });
+  }
+
   private enqueueValue<T>(op: string, fn: (client: inputMethodEngine.InputClient) => Promise<T>): Promise<EditorValue<T>> {
     const epoch: number = this.editorEpoch;
     const run: Promise<EditorValue<T>> = this.queue.then(async (): Promise<EditorValue<T>> => {

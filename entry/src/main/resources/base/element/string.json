@@ -1,5 +1,10 @@
 {
   "string": [
+    { "name": "keyboard_space_drag_range", "value": "← 変換範囲 →" },
+    { "name": "keyboard_space_drag_cursor", "value": "← 入力位置 →" },
+    { "name": "keyboard_space_drag_help", "value": "スペース。長押しして左右に動かすと入力位置や変換範囲を調整" },
+    { "name": "keyboard_composition_cursor", "value": "入力位置：%s" },
+    { "name": "keyboard_segment_reading", "value": "変換対象：%s" },
     { "name": "settings_sync_waiting", "value": "設定は保存済みです。同期・反映の確認を待っています。" },
     { "name": "settings_sync_retry", "value": "同期を再試行" },
     { "name": "settings_applied", "value": "保存してキーボードに反映しました。" },

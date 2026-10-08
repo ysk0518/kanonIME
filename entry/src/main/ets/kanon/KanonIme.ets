@@ -16,6 +16,7 @@ import { DEFAULT_LAYOUT_ORDER, layoutLanguage, languageLayouts, nextLanguageLayo
   readSharedFlickEnabled } from '../common/KeyboardConfig';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import inputMethodEngine from '@ohos.inputMethodEngine';
 
 class KanonIme {
   private coord: ImeCoordinator = new ImeCoordinator(realEditorPort);
@@ -69,6 +70,9 @@ class KanonIme {
     AppStorage.setOrCreate('kanonTick', this.tick);
     AppStorage.setOrCreate('kanonMode', s.mode);
     AppStorage.setOrCreate('kanonState', s.state);
+    AppStorage.setOrCreate('kanonJapaneseComposing', s.mode === 'JP' && s.preeditLen > 0);
+    AppStorage.setOrCreate('kanonConversionReading', s.mode === 'JP' ? this.engine.getConversionReading() : '');
+    AppStorage.setOrCreate('kanonCompositionCursor', s.mode === 'JP' && s.preeditLen > 0 ? this.engine.getCursorPreview() : '');
     AppStorage.setOrCreate('kanonEnglishComposing', s.mode === 'EN' && (this.coord.usesEnglishComposition() ? s.preeditLen > 0 : englishPrediction.getPrefix().length > 0));
     AppStorage.setOrCreate('kanonErr', s.lastError);
     AppStorage.setOrCreate('kanonNeedsRecovery', s.needsRecovery);
@@ -117,6 +121,14 @@ class KanonIme {
       await this.ensure();
       await this.syncEpoch();
       if (requestEpoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
+      // Resolve the arrow's meaning inside the serial queue, after epoch checks.
+      // Keep editing and segment resizing inside the live Japanese composition.
+      if (kind === 'move' && edge === undefined && this.mode === 'JP' &&
+        this.coord.getSnapshot().preeditLen > 0 &&
+        (direction === inputMethodEngine.CURSOR_LEFT || direction === inputMethodEngine.CURSOR_RIGHT)) {
+        kind = 'compositionArrow';
+        text = direction === inputMethodEngine.CURSOR_LEFT ? 'left' : 'right';
+      }
       this.coord.setEnglishCompositionEnabled(this.predictionAllowed());
       if (this.mode === 'EN' && englishPrediction.takeCompositionAbandoned()) {
         this.englishEngine.resetLocal();
@@ -274,7 +286,7 @@ class KanonIme {
         englishPrediction.rememberCompletion(completionPrefix, completionItem.label,
           completionStart + s.commitLength, epoch);
       }
-      if ((kind === 'partial' || kind === 'enter') && s.lastError === 'ok' && s.commitLength > 0) {
+      if (s.mode === 'JP' && s.preeditLen > 0 && s.lastError === 'ok' && s.commitLength > 0) {
         // 部分確定は確定済み＋残り読みの構成が変わる。カーソル再問合せは
         // 確定直後の位置を返さない実機挙動があるため、追跡中の旧起点に
         // 今回確定文字数を足して再アンカーする（決定的）。
@@ -337,7 +349,7 @@ class KanonIme {
       return;
     }
     if (s.mode === 'EN') { englishPrediction.setCompositionCursor(this.compIdx + pre.length); }
-    const ok: boolean = await this.coord.refreshPreview(pre, this.compIdx, this.compIdx + this.compLen);
+    const ok: boolean = await this.coord.refreshPreview(pre, this.compIdx, this.compIdx + this.compLen, s.caretUtf16);
     if (ok) {
       this.compLen = pre.length;
     }
