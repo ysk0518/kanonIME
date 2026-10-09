@@ -32,7 +32,7 @@ export struct NumberMenu {
   private numberList: sourceListType[] = numberSourceListData;
 
   build() {
-    Column({ space: 6 }) {
+    Column({ space: this.inputStyle.keyGap }) {
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
         ForEach(this.numberList.slice(0, 10), (item: sourceListType) => {
           KeyItem({ keyValue: { content: item.content, title: item.content, upperContent: item.content } })
@@ -59,7 +59,7 @@ export struct NumberMenu {
       .width('100%')
       .layoutWeight(1)
 
-      Row({ space: 4 }) {
+      Row({ space: this.inputStyle.bottomKeyGap }) {
         LayoutItem()
         ModeCycleItem()
         KeyItem({ keyValue: { content: '_', title: '_', upperContent: '_' } })

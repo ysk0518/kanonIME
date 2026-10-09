@@ -24,6 +24,7 @@ export function openSettingsRepository(context: common.Context): void {
       const loaded: KeyboardSettingsRecord = JSON.parse(raw) as KeyboardSettingsRecord;
       if (!validSettingsRecord(loaded)) { throw new Error('Invalid settings record'); }
       record = loaded;
+      record.snapshot = copySettings(loaded.snapshot);
       publishSettings(undefined);
     } else {
       const legacy: preferences.Preferences = preferences.getPreferencesSync(context,
@@ -97,6 +98,7 @@ function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   setValue('kanonFlickDistance', snapshot.flickDistance);
   setValue('kanonLongPressMs', snapshot.longPressMs);
   setValue('kanonFlickPreviewEnabled', snapshot.keyPreview);
+  setValue('kanonKeyGap', snapshot.keyGap);
   setValue('kanonHapticLevel', snapshot.hapticLevel);
   setValue('kanonShortcutOrder', snapshot.shortcutOrder);
   if (!previous || previous.heightPercent !== snapshot.heightPercent || AppStorage.get<number>('kanonKeyboardHeightPercent') === undefined) {
@@ -234,5 +236,5 @@ export function receiveSettings(snapshot: KeyboardSettingsSnapshot, actor: strin
 
 export function settingsDiagnostics(): string {
   const snapshot: KeyboardSettingsSnapshot = readSettings();
-  return `store=${store !== undefined} openError=${openError} revision=${record.snapshot.revision} pending=${record.pending.length} flick=${snapshot.flickEnabled} distance=${snapshot.flickDistance} longPress=${snapshot.longPressMs} preview=${snapshot.keyPreview} haptic=${snapshot.hapticLevel} height=${snapshot.heightPercent} shortcuts=${shortcutOrder(snapshot.shortcutOrder).length}`;
+  return `store=${store !== undefined} openError=${openError} revision=${record.snapshot.revision} pending=${record.pending.length} flick=${snapshot.flickEnabled} distance=${snapshot.flickDistance} longPress=${snapshot.longPressMs} preview=${snapshot.keyPreview} keyGap=${snapshot.keyGap} haptic=${snapshot.hapticLevel} height=${snapshot.heightPercent} shortcuts=${shortcutOrder(snapshot.shortcutOrder).length}`;
 }

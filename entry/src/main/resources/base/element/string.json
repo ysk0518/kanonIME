@@ -1,5 +1,7 @@
 {
   "string": [
+    { "name": "settings_key_gap", "value": "キー間隔：%d" },
+    { "name": "settings_key_gap_help", "value": "狭くするとキーが大きく、広くすると小さくなります。" },
     { "name": "keyboard_space_drag_range", "value": "← 変換範囲 →" },
     { "name": "keyboard_space_drag_cursor", "value": "← 入力位置 →" },
     { "name": "keyboard_space_drag_help", "value": "スペース。長押しして左右に動かすと入力位置や変換範囲を調整" },
@@ -38,7 +40,7 @@
     },
     {
       "name": "settings_reset_appearance_scope",
-      "value": "文字プレビューを初期値に戻します。背景画像とサイズは、それぞれの編集画面で変更できます。"
+      "value": "キー間隔と文字プレビューを初期値に戻します。背景画像と高さは、それぞれの編集画面で変更できます。"
     },
     {
       "name": "settings_reset_feedback_scope",
