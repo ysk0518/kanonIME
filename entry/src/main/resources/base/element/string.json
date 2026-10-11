@@ -99,6 +99,10 @@
       "value": "Please input preview content"
     },
     {
+      "name": "Preview_direct_tip",
+      "value": "未確定表示なしの入力確認"
+    },
+    {
       "name": "common_back",
       "value": "戻る"
     },

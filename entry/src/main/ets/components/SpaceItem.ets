@@ -21,9 +21,7 @@ import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfig';
 import { editorAdapter } from '../kanon/EditorAdapter';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import inputMethodEngine from '@ohos.inputMethodEngine';
-
-const SPACE_DRAG_STEP: number = 18;
-const SPACE_TAP_SLOP: number = 12;
+import { SpaceGesture, SpaceGesturePort } from '../kanon/SpaceGesture';
 
 // 空格组件
 @Component
@@ -40,80 +38,36 @@ export struct SpaceItem {
   @StorageLink('kanonList') candidates: string[] = [];
   @State private pressing: boolean = false;
   @State private dragging: boolean = false;
-  private finger: number = -1;
-  private startEpoch: number = -1;
-  private holdTimer: number = -1;
-  private startX: number = 0;
-  private startY: number = 0;
-  private latestX: number = 0;
-  private dragOriginX: number = 0;
-  private sentSteps: number = 0;
+  private spacePort: SpaceGesturePort = {
+    getEpoch: (): number => editorAdapter.getEpoch(),
+    schedule: (callback: () => void, delayMs: number): number => setTimeout(callback, delayMs),
+    unschedule: (timer: number): void => { clearTimeout(timer); },
+    tap: (): void => { kanonIme.keySpace(); },
+    move: (direction: string): Promise<void> => kanonIme.keyMove(direction === 'left' ?
+      inputMethodEngine.CURSOR_LEFT : inputMethodEngine.CURSOR_RIGHT, false),
+    feedback: (): void => { keyboardHaptics.key(); },
+    changed: (pressing: boolean, dragging: boolean): void => {
+      this.pressing = pressing;
+      this.dragging = dragging;
+    }
+  };
+  private spaceGesture: SpaceGesture = new SpaceGesture(this.spacePort);
 
   private cancelTouch(): void {
-    if (this.holdTimer >= 0) { clearTimeout(this.holdTimer); this.holdTimer = -1; }
-    this.pressing = false;
-    this.dragging = false;
-    this.finger = -1;
-    this.startEpoch = -1;
-    this.sentSteps = 0;
+    this.spaceGesture.cancel();
   }
 
   aboutToDisappear(): void { this.cancelTouch(); }
 
-  private dragTo(x: number): void {
-    if (!this.dragging || this.startEpoch !== editorAdapter.getEpoch()) { this.cancelTouch(); return; }
-    const target: number = Math.trunc((x - this.dragOriginX) / SPACE_DRAG_STEP);
-    const delta: number = target - this.sentSteps;
-    if (delta === 0) { return; }
-    const step: number = delta < 0 ? -1 : 1;
-    const direction: number = step < 0 ? inputMethodEngine.CURSOR_LEFT : inputMethodEngine.CURSOR_RIGHT;
-    keyboardHaptics.key();
-    // Submit movement in touch order through the existing IME serial queue.
-    for (let count: number = 0; count < Math.min(16, Math.abs(delta)); count++) {
-      this.sentSteps += step;
-      kanonIme.keyMove(direction, false).catch(() => this.cancelTouch());
-    }
-  }
-
   private touch(event: TouchEvent): void {
     if (event.type === TouchType.Cancel) { this.cancelTouch(); return; }
-    if (event.type === TouchType.Down && this.finger < 0 && event.changedTouches.length > 0) {
+    if (event.type === TouchType.Down && event.changedTouches.length > 0) {
       const point: TouchObject = event.changedTouches[0];
-      this.finger = point.id;
-      this.startEpoch = editorAdapter.getEpoch();
-      this.startX = point.windowX;
-      this.startY = point.windowY;
-      this.latestX = point.windowX;
-      this.pressing = true;
-      this.dragging = false;
-      this.sentSteps = 0;
-      this.holdTimer = setTimeout(() => {
-        this.holdTimer = -1;
-        if (!this.pressing || this.startEpoch !== editorAdapter.getEpoch()) { this.cancelTouch(); return; }
-        this.dragging = true;
-        this.dragOriginX = this.latestX;
-        keyboardHaptics.key();
-      }, this.longPressMs);
+      this.spaceGesture.down(point.id, point.windowX, point.windowY, this.longPressMs);
       return;
     }
     for (const point of event.changedTouches) {
-      if (point.id !== this.finger) { continue; }
-      if (this.startEpoch !== editorAdapter.getEpoch()) { this.cancelTouch(); return; }
-      this.latestX = point.windowX;
-      if (!this.dragging && Math.max(Math.abs(point.windowX - this.startX),
-        Math.abs(point.windowY - this.startY)) > SPACE_TAP_SLOP) {
-        this.cancelTouch();
-        return;
-      }
-      if (this.dragging && (event.type === TouchType.Move || event.type === TouchType.Up)) {
-        this.dragTo(point.windowX);
-      }
-      if (event.type === TouchType.Up) {
-        const tap: boolean = !this.dragging && this.pressing;
-        this.cancelTouch();
-        if (tap) { kanonIme.keySpace(); }
-      }
-      return;
+      this.spaceGesture.contact(point.id, point.windowX, point.windowY, event.type === TouchType.Up);
     }
   }
 

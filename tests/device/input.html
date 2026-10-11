@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kanon IME 入力確認</title>
+<style>
+  :root { color-scheme: light dark; font-family: sans-serif; }
+  body { max-width: 42rem; margin: auto; padding: 1rem; }
+  label { display: block; margin-top: 1.5rem; }
+  input, textarea, button { font: inherit; }
+  input, textarea { box-sizing: border-box; width: 100%; margin-top: .5rem; padding: .75rem; }
+  textarea { min-height: 8rem; }
+  button { margin-top: 1rem; padding: .75rem 1rem; }
+</style>
+<h1>kanon IME 入力確認</h1>
+<p>各ケース前に欄を空にし、配列と入力操作を記録してください。入力内容は送信・保存しません。</p>
+<form onsubmit="return false">
+  <label for="kanon_web_input">単行入力</label>
+  <input id="kanon_web_input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <label for="kanon_web_textarea">複数行入力</label>
+  <textarea id="kanon_web_textarea" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+  <button type="reset">入力欄を空にする</button>
+</form>
+</html>

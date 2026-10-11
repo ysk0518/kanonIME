@@ -121,6 +121,13 @@ GIFの調整欄では「元GIF」と「反映中」の解像度・平均FPS・�
 
 背景プレビューと配列切り替えは画面上部に固定されます。その下の設定項目をスクロールしながら、変更後の背景を確認できます。
 
+## 単体テスト
+
+PC上で入力ロジックとレイアウト計算を確認できます。Node.js 18.20以上で、`tests` ディレクトリから `npm ci` → `npm test` を実行します。
+実行対象・回帰テスト・製品ビルドとの役割分担は [テストの実行方法](tests/README.md) を参照してください。
+PRとmainへのpushでは [PC tests](.github/workflows/unit-tests.yml) が通常テストと不具合検出チェックを自動実行します。HAPビルドと実機確認は別途行います。
+実Mozcを使う [ホスト確認](tests/integration/README.md) と、ネイティブ・Web・コンテナ向けの [固定入力手順](tests/device/README.md) も用意しています。
+
 ## ネイティブ部分
 
 アプリのビルドには同梱済みの `.so` を使います。`libkanon_bridge.so` は辞書を含み約58 MBあります。

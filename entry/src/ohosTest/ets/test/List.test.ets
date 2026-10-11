@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import abilityTest from './Ability.test';
+import nativeBridgeTest from './NativeBridge.test';
 
 export default function testsuite() {
-  abilityTest();
+  nativeBridgeTest();
 }

@@ -29,12 +29,13 @@ export default {
     pluginId: 'kanon-native-alignment',
     apply(node) {
       hvigor.taskGraphResolved(() => {
-        const task = node.getTaskByName('default@PackageHap');
+        const target = hvigor.getParameter().getExtParam('module') === 'entry@ohosTest' ? 'ohosTest' : 'default';
+        const task = node.getTaskByName(`${target}@PackageHap`);
         if (!task) { throw new Error('PackageHap task missing'); }
         task.afterRun(() => {
-          const outputDir = join(__dirname, 'build/default/outputs/default');
-          const unsigned = join(outputDir, 'entry-default-unsigned.hap');
-          const aligned = join(outputDir, 'entry-default-unsigned-aligned.hap');
+          const outputDir = join(__dirname, 'build/default/outputs', target);
+          const unsigned = join(outputDir, `entry-${target}-unsigned.hap`);
+          const aligned = join(outputDir, `entry-${target}-unsigned-aligned.hap`);
           execFileSync(process.execPath, [join(__dirname, '../tools/align-hap.cjs'), unsigned, aligned],
             { stdio: 'inherit' });
           copyFileSync(aligned, unsigned);

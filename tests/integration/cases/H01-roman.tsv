@@ -1,0 +1,8 @@
+# Intermediate consonant is a provisional Mozc representation, not a UI requirement.
+SEND_KEY	k
+EXPECT_PREEDIT	ｋ
+EXPECT_RESULT
+SEND_KEY	i
+EXPECT_PREEDIT	き
+EXPECT_PREEDIT_CURSOR_POS	1
+EXPECT_RESULT

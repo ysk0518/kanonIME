@@ -1,17 +1,7 @@
 import { SubMenuType } from '../model/KeyboardKeyData';
 
-export const DEFAULT_SHORTCUT_ORDER: string = 'settings,clipboard';
-export const SHORTCUT_IDS: string[] = ['settings', 'clipboard', 'edit'];
-
-export function shortcutOrder(value: string): string[] {
-  if (value.trim().length === 0) { return []; }
-  const result: string[] = [];
-  for (const item of value.split(',')) {
-    const id: string = item.trim();
-    if (SHORTCUT_IDS.includes(id) && !result.includes(id)) { result.push(id); }
-  }
-  return result.length > 0 ? result : DEFAULT_SHORTCUT_ORDER.split(',');
-}
+import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
+export { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 
 export function shortcutName(id: string): Resource {
   return id === 'settings' ? $r('app.string.settings_title') : id === 'clipboard' ? $r('app.string.shortcut_clipboard') : $r('app.string.shortcut_edit');

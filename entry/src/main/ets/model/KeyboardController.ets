@@ -22,7 +22,7 @@ import windowManager from '@ohos.window';
 import Log from './Log';
 import { editorAdapter } from '../kanon/EditorAdapter';
 import { kanonIme } from '../kanon/KanonIme';
-import { englishPrediction } from '../kanon/EnglishPrediction';
+import { englishPrediction } from '../kanon/EnglishRuntime';
 import { clipboardHistory } from '../kanon/ClipboardHistory';
 import { BusinessError } from '@ohos.base';
 import { GetHardKeyValue } from './HardKeyUtils';
@@ -420,6 +420,7 @@ class KeyboardController {
     this.mKeyboardDelegate.on('selectionChange', (oldBegin: number, oldEnd: number, newBegin: number, newEnd: number) => {
       editorAdapter.updateSelection(newBegin, newEnd);
       englishPrediction.selectionChanged(newBegin, newEnd);
+      kanonIme.selectionChanged();
       if (isDebug) {
         this.inputHandle.setSelectInfo('selectInfo: from(' + oldBegin + ',' + oldEnd + ') to (' + newBegin + ',' + newEnd + ')');
       }

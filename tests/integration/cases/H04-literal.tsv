@@ -1,0 +1,8 @@
+SEND_KEYS	ki
+SEND_KEY_WITH_OPTION	TextInput	key.key_string="？"	key.input_style=AS_IS	request_suggestion=true
+EXPECT_CONSUMED	true
+EXPECT_PREEDIT	き？
+EXPECT_RESULT
+SEND_KEYS	ku
+EXPECT_PREEDIT	き？く
+EXPECT_RESULT

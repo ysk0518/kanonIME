@@ -1,0 +1,8 @@
+SEND_KEY_WITH_OPTION	TextInput	key.key_string="😀"	key.input_style=AS_IS	request_suggestion=true
+EXPECT_CONSUMED	true
+EXPECT_PREEDIT	😀
+# Mozc cursor units are Unicode characters; bridge UTF-16 conversion is a separate test.
+EXPECT_PREEDIT_CURSOR_POS	1
+SEND_KEY	Backspace
+EXPECT_PREEDIT
+EXPECT_RESULT

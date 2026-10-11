@@ -1,0 +1,9 @@
+# Request fields used by native/bridge/kanon_bridge.cc (not SET_MOBILE_REQUEST).
+SEND_KEY	ON
+RESET_CONTEXT
+SET_CONFIG	use_cascading_window	false
+SET_REQUEST	mixed_conversion	true
+SET_REQUEST	candidate_page_size	20
+SET_REQUEST	is_a11y_talkback_enabled	true
+SET_REQUEST	crossing_edge_behavior	DO_NOTHING
+SWITCH_COMPOSITION_MODE	HIRAGANA

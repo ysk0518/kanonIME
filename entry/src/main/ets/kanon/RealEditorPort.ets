@@ -6,6 +6,9 @@
 
 import { editorAdapter, EditorResult, EditorValue } from './EditorAdapter';
 import { EditorPort, OpResult, TextReadResult } from './ImeCoordinator';
+import { EditorDirection } from './InputEventTypes';
+import { toEditorDirection } from './EditorDirectionMap';
+import { SDK_EDITOR_DIRECTIONS } from './SdkEditorDirections';
 
 function toOp(r: EditorResult): OpResult {
   return { ok: r.ok, code: r.code };
@@ -20,8 +23,8 @@ class RealEditorPort implements EditorPort {
     return editorAdapter.hasSelection();
   }
 
-  async setPreview(text: string, start: number, end: number): Promise<OpResult> {
-    return toOp(await editorAdapter.setPreview(text, start, end));
+  async setPreview(text: string, start: number, end: number, observedEnd?: number): Promise<OpResult> {
+    return toOp(await editorAdapter.setPreview(text, start, end, observedEnd));
   }
 
   async finishPreview(): Promise<OpResult> {
@@ -40,13 +43,17 @@ class RealEditorPort implements EditorPort {
     return toOp(await editorAdapter.deleteBackward(length));
   }
 
-  async moveCursor(direction: number): Promise<OpResult> {
-    return toOp(await editorAdapter.moveCursor(direction));
+  async moveCursor(direction: EditorDirection): Promise<OpResult> {
+    const sdkDirection: number | undefined = toEditorDirection(direction, SDK_EDITOR_DIRECTIONS);
+    if (sdkDirection === undefined) { return { ok: false, code: -1 }; }
+    return toOp(await editorAdapter.moveCursor(sdkDirection));
   }
 
 
-  async selectByMovement(direction: number): Promise<OpResult> {
-    return toOp(await editorAdapter.selectByMovement(direction));
+  async selectByMovement(direction: EditorDirection): Promise<OpResult> {
+    const sdkDirection: number | undefined = toEditorDirection(direction, SDK_EDITOR_DIRECTIONS);
+    if (sdkDirection === undefined) { return { ok: false, code: -1 }; }
+    return toOp(await editorAdapter.selectByMovement(sdkDirection));
   }
 
   async selectAll(): Promise<OpResult> {
@@ -57,8 +64,8 @@ class RealEditorPort implements EditorPort {
     return toOp(await editorAdapter.selectRange(start, end));
   }
 
-  async previewCaret(position: number): Promise<OpResult> {
-    const result: EditorResult = await editorAdapter.previewCaret(position);
+  async previewCaret(position: number, previewStart: number, previewText: string): Promise<OpResult> {
+    const result: EditorResult = await editorAdapter.previewCaret(position, previewStart, previewText);
     if (!result.ok) { return toOp(result); }
     return { ok: result.detail === 'matched=true', code: result.detail === 'matched=true' ? 0 : -7 };
   }

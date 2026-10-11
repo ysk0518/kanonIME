@@ -27,10 +27,13 @@ export default class EntryAbility extends UIAbility {
   private preview: boolean = false;
   private background: boolean = false;
   private mainStage: window.WindowStage | undefined;
+  private previewKeepAwake: boolean = false;
+  private originalKeepScreenOn: boolean | undefined;
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     keyboardSettingsSync.initialize().catch(() => {});
     this.clipboardPermission = want.parameters?.['kanonClipboardPermission'] === true;
     this.preview = want.parameters?.['kanonPreview'] === true;
+    this.previewKeepAwake = this.preview && want.parameters?.['kanonKeepAwake'] === true;
     this.background = want.parameters?.['kanonBackground'] === true;
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onCreate');
   }
@@ -41,6 +44,7 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     this.mainStage = windowStage;
+    this.updatePreviewKeepAwake(this.previewKeepAwake);
     // Main window is created, set main page for this ability
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
@@ -56,6 +60,7 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageDestroy(): void {
     this.mainStage = undefined;
+    this.originalKeepScreenOn = undefined;
     // Main window is destroyed, release UI related resources
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
   }
@@ -63,6 +68,8 @@ export default class EntryAbility extends UIAbility {
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     const stage: window.WindowStage | undefined = this.mainStage;
     if (!stage) { return; }
+    this.previewKeepAwake = want.parameters?.['kanonPreview'] === true && want.parameters?.['kanonKeepAwake'] === true;
+    this.updatePreviewKeepAwake(this.previewKeepAwake);
     const page: string = want.parameters?.['kanonClipboardPermission'] === true ? 'pages/ClipboardPermission' :
       want.parameters?.['kanonPreview'] === true ? 'pages/PrivatePreview' :
       want.parameters?.['kanonBackground'] === true ? 'pages/BackgroundPage' : 'pages/SettingsPage';
@@ -78,6 +85,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onForeground(): void {
+    this.updatePreviewKeepAwake(this.previewKeepAwake);
     keyboardSettingsSync.request().catch(() => {});
     AppStorage.setOrCreate('kanonSettingsForeground', true);
     // Ability has brought to foreground
@@ -85,8 +93,25 @@ export default class EntryAbility extends UIAbility {
   }
 
   onBackground(): void {
+    this.updatePreviewKeepAwake(false);
     AppStorage.setOrCreate('kanonSettingsForeground', false);
     // Ability has back to background
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onBackground');
+  }
+
+  private updatePreviewKeepAwake(enabled: boolean): void {
+    const stage: window.WindowStage | undefined = this.mainStage;
+    if (stage === undefined) { return; }
+    try {
+      const mainWindow: window.Window = stage.getMainWindowSync();
+      if (this.originalKeepScreenOn === undefined) {
+        this.originalKeepScreenOn = mainWindow.getWindowProperties().isKeepScreenOn;
+      }
+      mainWindow.setWindowKeepScreenOn(enabled ? true : this.originalKeepScreenOn).catch(() => {
+        hilog.warn(0x0000, 'testTag', 'Preview keep-screen-on request failed');
+      });
+    } catch (error) {
+      hilog.warn(0x0000, 'testTag', 'Preview window unavailable');
+    }
   }
 }

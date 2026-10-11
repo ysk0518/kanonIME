@@ -1,6 +1,6 @@
 # kanonIME 入力先 API 契約
 
-更新: 2026-10-04。対象は HarmonyOS の `inputMethodEngine.InputClient` と kanon の `EditorAdapter` 境界。
+更新: 2026-10-11。対象は HarmonyOS の `inputMethodEngine.InputClient` と kanon の `EditorAdapter` 境界。
 
 この文書は [KANON_SPEC.md](KANON_SPEC.md) の REQ-01〜07 を、実装時に確認できる API 契約へ落としたもの。根拠は DevEco Studio 同梱 SDK の `default/openharmony/ets/api/@ohos.inputMethodEngine.d.ts` と [KANON_VALIDATION.md](KANON_VALIDATION.md) の G-01。SDK が明記しない挙動を「仕様」と呼ばず、実機観測または未確認として扱う。
 
@@ -35,7 +35,28 @@
 
 `Promise<void>` の resolve は API 呼び出しの完了報告であり、直後の別 API による画面状態の反映時刻までは SDK に明記されていない。表示更新待ちを独自に設ける場合は、目的・最大待ち時間・失敗時の扱いを別途記録する。
 
+### 未確定内のカーソル配置（P20〜P22）
+
+- SDKのselectByRangeは本文の範囲、setPreviewTextの非負rangeはプレビュー内の範囲を指定する。異なる座標として扱い、空文字のプレビュー挿入でカーソル移動を代用しない。
+- OpenHarmony-7.0.0.105のHuaweiブラウザ／固定HTML inputでは、selectByRangeのtarget=1に対してgetTextIndexAtCursorは2を返した。文字更新後もtarget=2、actual=3となった。APIはrejectしなかった。この入力欄で観測した不一致であり、全Web入力欄の非対応とは断定しない。
+- 同じ欄でmoveCursor(CURSOR_LEFT)を使う診断版では2→1、3→2を読み戻し、通知も同じ位置になった。固定native TextInputでも途中移動と未確定の継続を確認した。比較結果は [実機手順と記録](../tests/device/README.md) に残す。
+- 製品のpreviewCaret経路は、Coordinatorが渡した未確定本文と本文内の開始位置から移動先を計算する。既知の範囲内だけをコードポイントごとに左右移動し、各ステップのUTF-16位置を読み戻す。範囲外・サロゲート内部・期待と異なる位置では停止し、追加の移動や再送で補わない。
+- コンテナの比較では、移動API応答の後の照会が旧位置2を返し、API応答の29ms後に位置1のselectionChangeが届いた。各移動の前に目標位置の受領待ちを用意し、SDK応答とcollapsed-positionの観測後に位置を読み戻す。通知に要求IDがあると仮定せず、実際の読み戻しで一致を検証する。
+- APIキューの既存期限とattach／detachで移動処理と位置受領待ちを取り消す。発行済みのAPI自体は取り消せないが、遅い完了の後に次の移動を発行しない。SDKエラーは同じ操作キューで分類し、配置不一致はpreview-caret--7として保持する。
+- P20の表示末尾通知待ちとP21の配置不一致時の本文保持は維持する。未確定表示の成功、カーソル配置の成功、文字の確定は別の状態として扱う。
+
+公開されている [OpenHarmony WebのIMFアダプタ](https://github.com/openharmony/web_webview/blob/bca62eeacad0d102b7b673267c2736d7c4b28e94/ohos_adapter/inputmethodframework_adapter/src/imf_adapter_impl.cpp) は、範囲指定・左右移動・位置照会を別々のlistenerメソッドへ転送する。
+この公開ソースだけではHuaweiブラウザの内部で範囲指定が反映されない条件を特定できない。参照した公開版と端末内バイナリが同一であるとも確認していない。アプリ名によるAPI分岐やプライベートコマンドは追加しない。
+
 ## 3. 実装の境界
+
+### 入力データと方向の境界（P23）
+
+`InputEventTypes`がSDKなしの入力契約を所有する。`UiEvent`は未検証の受付形、`InputEvent`は文字列・候補ID／revision・位置・方向などを操作別に必須としたエンジン契約。CoordinatorのFIFOキュー内で世代照合後に検証・複製し、不足値を空文字・0・-1へ補わない。
+
+方向はコアで`left / right / up / down`を使う。UIが渡すSDK方向はKanonImeで変換し、EditorPortからの方向はRealEditorPortでSDKへ変換する。`SdkEditorDirections`がSDKの名前付きDirection定数の対応表を持ち、`EditorDirectionMap`は供給された値との対応を計算する。Adapter内で行う未確定の相対配置には引き続きSDK定数を使う。不正な方向と方向／端の同時指定は拒否する。
+
+`EditorPort.previewCaret`を必須とし、位置確認を行わない範囲指定の代替経路を削除した。現在のRealEditorPortは従来から専用経路を実装しており、成功条件は位置一致のまま。
 
 1. `EditorAdapter` で API の `true` / `false` / reject / timeout / stale epoch を失わずに分類する。本文はログに出さない。
 2. `ImeCoordinator` は編集結果を受け取り、エンジンの確定効果と入力先の状態を管理する。選択の有無は `selectionChange` を使い、文字数の増減から推測しない。
@@ -44,6 +65,16 @@
 5. 画面キー、編集メニュー、物理キーの編集操作は `KanonIme → ImeCoordinator → EditorAdapter → InputClient` の順に流す。`InputHandler` はキーボード表示と入力開始通知を担当し、入力先の文字を直接編集しない。
 
 ## 4. 現状の差分と未確認事項
+
+### プレビュー非対応欄の英語補完（P24）
+
+KanonImeの直接英語処理を`DirectEnglishInput`へ分離した。位置照会と前方文字列の取得は注入されたPortで行い、書き込みは同じCoordinatorの入力契約・キュー・失敗分類を使う。接頭辞がすでに入力欄にあるため、補完では残りの文字だけを挿入する。
+
+位置照会後に入力先世代が変わった場合は、次の本文読み取りを発行しない。本文読み取り後も世代を照合する。候補のrevisionと接頭辞、最後の選択状態、予測許可は照会後にも再確認する。内部モデルの確認であり、SDKが選択通知の発生源や操作IDを提供すると仮定しない。
+
+挿入結果が失敗・期限切れ・古い入力先ならUndoを記録せず、再送しない。Enterアクションは属性取得前後に同じ入力先を照合し、SDK接続側が送る。
+
+読み取り結果の`queryBefore()`は既存の文字列への変換を維持している。`queryBeforeResult()`の全面適用や、同じ欄で読み取り中に起きるすべてのカーソル変更の検出は、この分離だけで完了したとしない。
 
 | 優先 | 項目 | 現状 |
 |---|---|---|
@@ -61,3 +92,11 @@
 | 低 | サロゲートペアの削除単位 | G-01 では `deleteBackward(1)` が絵文字を分割しないことを観測。`deleteForward(1)` と全入力先への一般化は未確認 |
 
 この差分表は実装や実機観測で更新する。未確認の項目を SDK の保証として実装しない。
+
+### 英語補完Undoの受付と表示復元（P25）
+
+`EnglishCompletionLifecycle`は補完前の候補・接頭辞・文書起点・入力先世代を保持し、成功時の確定長を使ってUndoを記録する。編集APIはCoordinator、未確定表示の復元はCompositionPreviewが担当する。既存の入力操作キュー内で復元完了まで待機する。
+
+自動Undoの記録が無効なら通常Backspaceへ進む。明示Undoは通常削除へ置き換えない。編集後と表示復元後に入力先世代を照合し、旧入力先の結果を新しい表示へ反映しない。編集中の保護は例外でも解除する。
+
+通常欄では補完末尾を削除し、残った接頭辞を選択して未確定表示へ戻す。直接入力欄では接頭辞の予測情報だけ復元する。固定TextInputでの実機結果は[実機確認手順](../tests/device/README.md)に記録する。通知の到着順・同じ欄でのすべての外部操作・Web／コンテナへの一般化は別途確認する。
