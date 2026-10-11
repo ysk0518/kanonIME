@@ -1,10 +1,18 @@
 import { CandidateLabel } from './ImeCoordinator';
+import { EnglishSelectionDecision, evaluateEnglishSelection } from './EnglishSelectionPolicy';
 
 export interface EnglishCompletionUndo {
   prefix: string;
   word: string;
   cursor: number;
   epoch: number;
+}
+
+/** Metadata-only notifications; the runtime decides how to update the UI. */
+export interface EnglishPredictionUiPort {
+  undoChanged(visible: boolean): void;
+  cleared(): void;
+  selectionAbandoned(): void;
 }
 
 // Fixed, locally authored starter vocabulary. No network, history, or learning.
@@ -73,6 +81,7 @@ const WORDS: string[] = (
 ).split(' ');
 
 export class EnglishPrediction {
+  private ui: EnglishPredictionUiPort;
   private prefix: string = '';
   private start: number = -1;
   private revision: number = 0;
@@ -83,6 +92,8 @@ export class EnglishPrediction {
   private selectionCollapsed: boolean = true;
   private undo: EnglishCompletionUndo | undefined = undefined;
   editing: boolean = false;
+
+  constructor(ui: EnglishPredictionUiPort) { this.ui = ui; }
 
   getPrefix(): string { return this.prefix; }
   getCursor(): number { return this.compositionCursor >= 0 ? this.compositionCursor : this.start < 0 ? -1 : this.start + this.prefix.length; }
@@ -109,12 +120,12 @@ export class EnglishPrediction {
 
   rememberCompletion(prefix: string, word: string, cursor: number, epoch: number): void {
     this.undo = { prefix: prefix, word: word, cursor: cursor, epoch: epoch };
-    AppStorage.setOrCreate('kanonEnglishUndo', true);
+    this.ui.undoChanged(true);
   }
 
   dropUndo(): void {
     this.undo = undefined;
-    AppStorage.setOrCreate('kanonEnglishUndo', false);
+    this.ui.undoChanged(false);
   }
 
   takeUndo(): EnglishCompletionUndo | undefined {
@@ -138,8 +149,7 @@ export class EnglishPrediction {
 
   clear(): void {
     this.dropUndo();
-    AppStorage.setOrCreate('kanonEnglishComposing', false);
-    if (AppStorage.get<string>('kanonMode') === 'EN') { AppStorage.setOrCreate('kanonSel', -1); }
+    this.ui.cleared();
     this.prefix = '';
     this.start = -1;
     this.items = [];
@@ -149,18 +159,19 @@ export class EnglishPrediction {
   }
 
   selectionChanged(begin: number, end: number): void {
-    this.selectionCollapsed = begin === end;
-    if (this.editing) { return; }
-    if (this.undo !== undefined && (begin !== end || end !== this.undo.cursor)) { this.dropUndo(); }
-    if (this.prefix.length === 0 && this.compositionCursor < 0) { return; }
-    if (begin !== end || end !== this.getCursor()) {
-      if (this.compositionCursor >= 0) { this.compositionAbandoned = true; }
+    const decision: EnglishSelectionDecision = evaluateEnglishSelection(begin, end, {
+      editing: this.editing,
+      undoCursor: this.undo === undefined ? undefined : this.undo.cursor,
+      hasPrefix: this.prefix.length > 0,
+      expectedCursor: this.getCursor(),
+      hasCompositionCursor: this.compositionCursor >= 0
+    });
+    this.selectionCollapsed = decision.collapsed;
+    if (decision.dropUndo) { this.dropUndo(); }
+    if (decision.clearPrediction) {
+      if (decision.abandonComposition) { this.compositionAbandoned = true; }
       this.clear();
-      if (AppStorage.get<string>('kanonMode') === 'EN') {
-        AppStorage.setOrCreate('kanonList', [] as string[]);
-        AppStorage.setOrCreate('kanonIdList', [] as number[]);
-        AppStorage.setOrCreate('kanonCandidatesExpanded', false);
-      }
+      this.ui.selectionAbandoned();
     }
   }
 
@@ -195,5 +206,3 @@ export class EnglishPrediction {
     }
   }
 }
-
-export const englishPrediction: EnglishPrediction = new EnglishPrediction();

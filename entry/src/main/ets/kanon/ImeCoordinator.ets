@@ -6,6 +6,10 @@
  * - REQ-07: 効果テキストはメモリ内でのみ受け渡し、ログ・snapshot・履歴に出さない。
  */
 
+import { decodeInputEvent } from './InputEventContract';
+import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
+  ModeInputEvent, PartialInputEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
+
 export interface OpResult {
   ok: boolean;
   code: number;
@@ -21,17 +25,18 @@ export interface TextReadResult {
 export interface EditorPort {
   getEpoch(): number;
   hasSelection(): boolean;
-  setPreview(text: string, start: number, end: number): Promise<OpResult>;
+  /** observedEnd is a document-coordinate receipt before a following caret move. */
+  setPreview(text: string, start: number, end: number, observedEnd?: number): Promise<OpResult>;
   finishPreview(): Promise<OpResult>;
   insert(text: string): Promise<OpResult>;
   deleteForward(length: number): Promise<OpResult>;
   deleteBackward(length: number): Promise<OpResult>;
-  moveCursor(direction: number): Promise<OpResult>;
-  selectByMovement(direction: number): Promise<OpResult>;
+  moveCursor(direction: EditorDirection): Promise<OpResult>;
+  selectByMovement(direction: EditorDirection): Promise<OpResult>;
   selectAll(): Promise<OpResult>;
   selectRange(start: number, end: number): Promise<OpResult>;
-  /** Optional readback of a collapsed cursor inside the existing preview. */
-  previewCaret?(position: number): Promise<OpResult>;
+  /** Required placement and readback; success means the position matches. */
+  previewCaret(position: number, previewStart: number, previewText: string): Promise<OpResult>;
   queryPreviewSupported(): Promise<boolean>;
   /** カーソル位置（UTF-16）。失敗時は-1。 */
   queryCursor(): Promise<number>;
@@ -41,19 +46,8 @@ export interface EditorPort {
   queryBeforeResult(length: number): Promise<TextReadResult>;
 }
 
-/** UIイベント。1イベント→1 EngineUpdateが契約。 */
-export interface UiEvent {
-  kind: string; // text / paste / backspace / convert / compositionArrow / submit / cancel / move / selectMove / selectEdge / selectAll / forwardDelete / select / reset / mode
-  text?: string;
-  candidateId?: number;
-  expectedRevision?: number;
-  direction?: number;
-  /** 'begin' | 'end'。カーソル行頭・行末移動（selectRangeで表現）。 */
-  edge?: string;
-  /** 英語補完取り消し用。照合したカーソル位置と入力済み接頭辞の長さ。 */
-  cursor?: number;
-  prefixLength?: number;
-}
+export type ImeUiState = 'JP_EMPTY' | 'JP_COMPOSING' | 'JP_CONVERTING' |
+  'EN_EMPTY' | 'EN_COMPOSING' | 'EN_CONVERTING' | 'DIRECT_EN' | 'ENGINE_ERROR';
 
 export interface CommitEffect {
   effectId: string;
@@ -66,12 +60,16 @@ export interface CandidateLabel {
   label: string;
 }
 
+/** Candidate visibility is independent of the engine's composition phase. */
+export type CompositionPhase = 'empty' | 'composing' | 'converting';
+
 export interface EngineUpdate {
   sessionId: string;
   editorEpoch: number;
   sequence: number;
   revision: number;
   consumed: boolean;
+  phase: CompositionPhase;
   hasPreedit: boolean;
   preeditLen: number;
   caretUtf16: number;
@@ -82,17 +80,16 @@ export interface EngineUpdate {
   effects: CommitEffect[];
   errorCode: number; // 0=なし。非0はエンジン側失敗。
   errorRecoverable: boolean;
-  converting?: boolean;
 }
 
 export interface EnginePort {
-  dispatch(sessionId: string, editorEpoch: number, sequence: number, event: UiEvent): Promise<EngineUpdate>;
+  dispatch(sessionId: string, editorEpoch: number, sequence: number, event: InputEvent): Promise<EngineUpdate>;
 }
 
 /** 文字列内容を持たないUIスナップショット。 */
 export interface ImeSnapshot {
   mode: string; // 'EN' | 'JP'
-  state: string; // EN/JP EMPTY, COMPOSING, CONVERTING; DIRECT_EN fallback; ENGINE_ERROR
+  state: ImeUiState;
   preeditLen: number;
   caretUtf16: number;
   segCount: number;
@@ -123,7 +120,7 @@ export class ImeCoordinator {
   private tail: Promise<void> = Promise.resolve();
 
   private mode: string = 'JP';
-  private state: string = 'JP_EMPTY';
+  private state: ImeUiState = 'JP_EMPTY';
   private sessionId: string = newSessionId();
   private sequence: number = 0;
   private revision: number = 0;
@@ -134,6 +131,7 @@ export class ImeCoordinator {
   private previewStart: number = -1;
   private previewEnd: number = -1;
   private previewText: string = '';
+  private previewCaretAligned: boolean = false;
   private needsRecovery: boolean = false;
   private lastError: string = 'ok';
   private preeditLen: number = 0;
@@ -146,6 +144,9 @@ export class ImeCoordinator {
   private droppedLate: number = 0;
   private dupSuppressed: number = 0;
   private lastCommitLength: number = 0;
+
+  reportCursorSyncFailure(): void { this.lastError = 'cursor-sync'; }
+  isPreviewCaretAligned(): boolean { return this.previewCaretAligned; }
 
   constructor(editor: EditorPort) {
     this.editor = editor;
@@ -163,7 +164,7 @@ export class ImeCoordinator {
   private activeEngine(): EnginePort | undefined {
     return this.mode === 'EN' ? this.englishEngine : this.engine;
   }
-  private emptyState(): string {
+  private emptyState(): ImeUiState {
     return this.mode === 'EN' ? this.usesEnglishComposition() ? 'EN_EMPTY' : 'DIRECT_EN' : 'JP_EMPTY';
   }
 
@@ -202,6 +203,7 @@ export class ImeCoordinator {
   }
 
   private clearPreviewTracking(): void {
+    this.previewCaretAligned = false;
     this.previewShown = false;
     this.previewStart = -1;
     this.previewEnd = -1;
@@ -254,8 +256,14 @@ export class ImeCoordinator {
     return code !== -1 && code !== -4 && code !== -5;
   }
 
-  private async handleSerial(epoch: number, event: UiEvent): Promise<void> {
+  private async handleSerial(epoch: number, request: UiEvent): Promise<void> {
     if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+    const event: InputEvent | undefined = decodeInputEvent(request);
+    if (event === undefined) {
+      this.lastCommitLength = 0;
+      this.lastError = 'invalid-event';
+      return;
+    }
     if (event.kind === 'reset') {
       await this.doReset(epoch);
       return;
@@ -280,7 +288,7 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'mode') {
-      await this.doModeSwitch(epoch, event);
+      await this.doModeSwitch(epoch, event as ModeInputEvent);
       return;
     }
     if (event.kind === 'move' || event.kind === 'selectMove' || event.kind === 'selectEdge' ||
@@ -289,7 +297,7 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'undoCompletion') {
-      await this.undoEnglishCompletion(epoch, event);
+      await this.undoEnglishCompletion(epoch, event as UndoCompletionEvent);
       return;
     }
     if (event.kind === 'paste') {
@@ -297,7 +305,7 @@ export class ImeCoordinator {
         this.lastError = 'paste-needs-submit';
         return;
       }
-      const value: string = event.text ?? '';
+      const value: string = (event as TextInputEvent).text;
       if (value.length === 0) { this.lastError = 'paste-empty'; return; }
       const result: OpResult = await this.editor.insert(value);
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
@@ -312,10 +320,10 @@ export class ImeCoordinator {
   }
 
   /** 補完された末尾だけを取り消す。入力先と単語を照合してから編集する。 */
-  private async undoEnglishCompletion(epoch: number, event: UiEvent): Promise<void> {
-    const word: string = event.text ?? '';
-    const cursor: number = event.cursor ?? -1;
-    const prefixLength: number = event.prefixLength ?? 0;
+  private async undoEnglishCompletion(epoch: number, event: UndoCompletionEvent): Promise<void> {
+    const word: string = event.text;
+    const cursor: number = event.cursor;
+    const prefixLength: number = event.prefixLength;
     if (this.mode !== 'EN' || cursor < word.length || cursor > 4096 ||
       word.length > 40 || prefixLength <= 0 || prefixLength >= word.length) {
       this.lastError = 'undo-stale';
@@ -346,11 +354,11 @@ export class ImeCoordinator {
   }
 
   /** EN直書き。エンジンを通さないがFIFO順序は守る（REQ-05）。 */
-  private async doDirectEn(epoch: number, event: UiEvent): Promise<void> {
+  private async doDirectEn(epoch: number, event: InputEvent): Promise<void> {
     this.state = 'DIRECT_EN';
     if (event.kind === 'cancel') { this.lastError = 'ok'; return; }
     if (event.kind === 'text') {
-      const t: string = event.text ? event.text as string : '';
+      const t: string = (event as TextInputEvent).text;
       if (t.length === 0) {
         return;
       }
@@ -381,7 +389,7 @@ export class ImeCoordinator {
     return await this.editor.deleteForward(1);
   }
 
-  private async doEngineEvent(epoch: number, event: UiEvent): Promise<void> {
+  private async doEngineEvent(epoch: number, event: InputEvent): Promise<void> {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
     // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
     if (event.kind === 'backspace' && this.preeditLen === 0) {
@@ -397,7 +405,8 @@ export class ImeCoordinator {
     }
     // 候補タップ・文節確定は手元のrevisionで先にふるい落とす（REQ-08）。
     if (event.kind === 'select' || event.kind === 'partial') {
-      const exp: number = event.expectedRevision === undefined ? -1 : event.expectedRevision as number;
+      const exp: number = event.kind === 'select' ? (event as CandidateInputEvent).expectedRevision :
+        (event as PartialInputEvent).expectedRevision;
       if (exp !== this.revision) {
         this.lastError = 'stale-revision';
         return;
@@ -479,14 +488,12 @@ export class ImeCoordinator {
     // The engine's preedit may contain only a pending QWERTY consonant.
     // Track the preview actually sent to the editor, not the engine state.
     if (!update.hasPreedit) { this.clearPreviewTracking(); }
-    if (this.mode === 'EN') {
-      this.state = this.preeditLen === 0 ? this.emptyState() : update.converting ? 'EN_CONVERTING' : 'EN_COMPOSING';
-    } else if (this.candidateCount > 0) {
-      this.state = 'JP_CONVERTING';
-    } else if (this.preeditLen > 0) {
-      this.state = 'JP_COMPOSING';
-    } else {
+    if (this.preeditLen === 0) {
       this.state = this.emptyState();
+    } else if (update.phase === 'converting') {
+      this.state = this.mode === 'EN' ? 'EN_CONVERTING' : 'JP_CONVERTING';
+    } else {
+      this.state = this.mode === 'EN' ? 'EN_COMPOSING' : 'JP_COMPOSING';
     }
     this.lastError = 'ok';
   }
@@ -539,7 +546,12 @@ export class ImeCoordinator {
     // start/end are document coordinates for our own tracking, not API range offsets.
     const epoch: number = this.editor.getEpoch();
     const unchanged: boolean = this.previewShown && this.previewStart === start && this.previewText === text;
-    const r: OpResult = unchanged ? { ok: true, code: 0 } : await this.editor.setPreview(text, -1, -1);
+    const caret: number = Math.max(0, Math.min(text.length, caretUtf16));
+    const observedEnd: number | undefined = start >= 0 && caret < text.length ? start + text.length : undefined;
+    // A failed placement must not make the next editor notification overwrite
+    // the engine's insertion point. Preview text may still be valid and editable.
+    this.previewCaretAligned = false;
+    const r: OpResult = unchanged ? { ok: true, code: 0 } : await this.editor.setPreview(text, -1, -1, observedEnd);
     if (epoch !== this.editor.getEpoch()) { return false; }
     if (r.ok) {
       this.previewShown = text.length > 0;
@@ -547,14 +559,14 @@ export class ImeCoordinator {
       this.previewStart = text.length > 0 ? start : -1;
       // endは置換前の範囲。確定置換用には結果の範囲を保持する。
       this.previewEnd = text.length > 0 ? start + text.length : -1;
-      const caret: number = Math.max(0, Math.min(text.length, caretUtf16));
+      this.previewCaretAligned = text.length > 0 && start >= 0 && caret === text.length;
       if (text.length > 0 && start >= 0 && (unchanged || caret < text.length)) {
         // setPreviewText places the editor caret at the end. Move only the
-        // collapsed selection; keep the native composing range and its text.
+        // caret within the known preview; keep its composing range and text.
         const position: number = start + caret;
-        const moved: OpResult = this.editor.previewCaret === undefined ?
-          await this.editor.selectRange(position, position) : await this.editor.previewCaret(position);
+        const moved: OpResult = await this.editor.previewCaret(position, start, text);
         if (epoch !== this.editor.getEpoch()) { return false; }
+        this.previewCaretAligned = moved.ok;
         if (!moved.ok) { this.lastError = `preview-caret-${moved.code}`; }
       }
     } else {
@@ -572,8 +584,8 @@ export class ImeCoordinator {
   }
 
   /** モード切替。表示中の未確定を先に確定し、成功後にモードを反映する（REQ-10/D-03）。 */
-  private async doModeSwitch(epoch: number, event: UiEvent): Promise<void> {
-    const target: string = event.text ? event.text as string : 'EN';
+  private async doModeSwitch(epoch: number, event: ModeInputEvent): Promise<void> {
+    const target: string = event.text;
     if (this.preeditLen > 0) {
       const eng: EnginePort | undefined = this.activeEngine();
       if (eng === undefined) {
@@ -584,7 +596,7 @@ export class ImeCoordinator {
       const seq: number = this.sequence;
       let update: EngineUpdate;
       try {
-        const submit: UiEvent = { kind: 'submit' };
+        const submit: InputEvent = { kind: 'submit' };
         update = await eng.dispatch(this.sessionId, epoch, seq, submit);
       } catch (e) {
         this.lastError = 'engine-throw';
@@ -615,7 +627,7 @@ export class ImeCoordinator {
   }
 
   /** カーソル移動。未確定があれば先に確定し、成功後に欄カーソルを動かす。 */
-  private async doMove(epoch: number, event: UiEvent): Promise<void> {
+  private async doMove(epoch: number, event: InputEvent): Promise<void> {
     if (this.preeditLen > 0) {
       const eng: EnginePort | undefined = this.activeEngine();
       if (eng === undefined) {
@@ -626,7 +638,7 @@ export class ImeCoordinator {
       const seq: number = this.sequence;
       let update: EngineUpdate;
       try {
-        const submit: UiEvent = { kind: 'submit' };
+        const submit: InputEvent = { kind: 'submit' };
         update = await eng.dispatch(this.sessionId, epoch, seq, submit);
       } catch (e) {
         this.lastError = 'engine-throw';
@@ -639,14 +651,14 @@ export class ImeCoordinator {
         return;
       }
     }
-    const edge: string = event.edge ? event.edge as string : '';
+    const edge: string | undefined = event.edge;
     let r: OpResult;
     if (event.kind === 'selectAll') {
       r = await this.editor.selectAll();
     } else if (event.kind === 'forwardDelete') {
       r = await this.editor.deleteBackward(1);
     } else if (event.kind === 'selectMove') {
-      const dir: number = event.direction === undefined ? 0 : event.direction as number;
+      const dir: EditorDirection = (event as DirectionInputEvent).direction;
       r = await this.editor.selectByMovement(dir);
     } else if (event.kind === 'selectEdge') {
       const cursor: number = await this.editor.queryCursor();
@@ -657,7 +669,7 @@ export class ImeCoordinator {
     } else if (edge === 'end') {
       r = await this.editor.selectRange(1000, 1000);
     } else {
-      const dir: number = event.direction === undefined ? 0 : event.direction as number;
+      const dir: EditorDirection = (event as DirectionInputEvent).direction;
       r = await this.editor.moveCursor(dir);
     }
     this.lastError = r.ok ? 'ok' : `edit-${r.code}`;
@@ -671,7 +683,7 @@ export class ImeCoordinator {
     if (eng !== undefined) {
       this.sequence++;
       try {
-        const reset: UiEvent = { kind: 'reset' };
+        const reset: InputEvent = { kind: 'reset' };
         await eng.dispatch(this.sessionId, epoch, this.sequence, reset);
       } catch (e) {
         // reset自体の失敗は符号のみ残し、こちら側は作り直す。

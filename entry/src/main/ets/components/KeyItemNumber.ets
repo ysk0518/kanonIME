@@ -165,6 +165,7 @@ export struct KeyItemNumber {
     })
     .width(this.inputStyle.basicButtonWidth)
     .height('100%')
+    .id(`qwerty_${this.keyValue?.content ?? ''}`)
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
   }
 }

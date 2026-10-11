@@ -9,24 +9,12 @@
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { BusinessError } from '@ohos.base';
 import Log from '../model/Log';
+import { EditorOperationQueue, EditorOperationRuntime, EditorOperationEvent, EditorResult, EditorValue } from './EditorOperationQueue';
+import { PreviewSelectionReceipt, PreviewSelectionWait, writePreviewWithReceipt } from './PreviewSelectionReceipt';
+import { PreviewCaretPlacement, PreviewCaretPort } from './PreviewCaretPlacement';
+export { EditorResult, EditorValue } from './EditorOperationQueue';
 
 const TAG: string = 'KanonEditor->';
-
-/** 操作タイムアウト。枠組み側のpromiseが返らない場合の固まり防止（REQ-05/06）。再送はしない。 */
-const OP_TIMEOUT_MS: number = 3000;
-/** クライアント不在時は -1、タイムアウトは -3。 */
-const CODE_NO_CLIENT: number = -1;
-const CODE_TIMEOUT: number = -3;
-const CODE_UNRESOLVED_WRITE: number = -6;
-
-export interface EditorResult {
-  op: string;
-  ok: boolean;
-  /** 0=成功。失敗時は BusinessError.code。クライアント不在時は -1。 */
-  code: number;
-  /** 長さ・件数・真偽のみ。本文を含めない。 */
-  detail: string;
-}
 
 export interface AttributeSnapshot {
   inputPattern: number;
@@ -34,122 +22,71 @@ export interface AttributeSnapshot {
   isTextPreviewSupported: boolean;
 }
 
-/** 読み取り系の構造化結果。本文の比較は呼び出し側がメモリ内で行い、表示・ログへ出さない。 */
-export interface EditorValue<T> {
-  ok: boolean;
-  code: number;
-  value: T | undefined;
-}
-
-function errCode(err: BusinessError | undefined): number {
+function errCode(err: Error | undefined): number {
   if (err === undefined || err === null) {
     return -2;
   }
-  return err.code;
+  const code: number = (err as BusinessError).code;
+  return typeof code === 'number' && Number.isFinite(code) ? code : -2;
 }
 
 export class EditorAdapter {
-  private client: inputMethodEngine.InputClient | undefined = undefined;
-  private queue: Promise<void> = Promise.resolve();
-  private editorEpoch: number = 0;
-  private unresolvedWriteEpoch: number = -1;
+  private previewSelection: PreviewSelectionReceipt = new PreviewSelectionReceipt();
+  private previewCaretPlacement: PreviewCaretPlacement = new PreviewCaretPlacement();
+  private operationRuntime: EditorOperationRuntime = {
+    schedule: (callback: () => void, delayMs: number): number => setTimeout(callback, delayMs),
+    unschedule: (timer: number): void => { clearTimeout(timer); },
+    errorCode: errCode,
+    log: (op: string, event: EditorOperationEvent, detail: string): void => {
+      if (op === 'setPreview' && event === 'timeout') { this.previewSelection.cancel(); }
+      if (op === 'previewCaret' && event === 'timeout') {
+        this.previewCaretPlacement.cancel();
+        this.previewSelection.cancel();
+      }
+      Log.showInfo(TAG, `kanon: ${op} ${event}${detail.length > 0 ? ' ' + detail : ''}`);
+    }
+  };
+  private operations: EditorOperationQueue<inputMethodEngine.InputClient> =
+    new EditorOperationQueue<inputMethodEngine.InputClient>(this.operationRuntime);
   private selectionStart: number = -1;
   private selectionEnd: number = -1;
 
   attach(client: inputMethodEngine.InputClient): number {
-    this.client = client;
-    this.editorEpoch++;
-    this.unresolvedWriteEpoch = -1;
+    this.previewSelection.cancel();
+    this.previewCaretPlacement.cancel();
+    const epoch: number = this.operations.attach(client);
     this.selectionStart = -1;
     this.selectionEnd = -1;
-    // 旧世代の未解決操作は破棄する（REQ-02）。固まったキューもここで切り直す。
-    this.queue = Promise.resolve();
-    Log.showInfo(TAG, `kanon: attach epoch=${this.editorEpoch}`);
-    return this.editorEpoch;
+    Log.showInfo(TAG, `kanon: attach epoch=${epoch}`);
+    return epoch;
   }
 
   detach(): number {
-    this.client = undefined;
-    this.editorEpoch++;
-    this.unresolvedWriteEpoch = -1;
+    this.previewSelection.cancel();
+    this.previewCaretPlacement.cancel();
+    const epoch: number = this.operations.detach();
     this.selectionStart = -1;
     this.selectionEnd = -1;
-    Log.showInfo(TAG, `kanon: detach epoch=${this.editorEpoch}`);
-    return this.editorEpoch;
+    Log.showInfo(TAG, `kanon: detach epoch=${epoch}`);
+    return epoch;
   }
 
   getEpoch(): number {
-    return this.editorEpoch;
+    return this.operations.getEpoch();
   }
 
   updateSelection(start: number, end: number): void {
     this.selectionStart = start;
     this.selectionEnd = end;
+    this.previewSelection.observe(this.getEpoch(), start, end);
   }
 
   hasSelection(): boolean {
     return this.selectionStart >= 0 && this.selectionEnd >= 0 && this.selectionStart !== this.selectionEnd;
   }
 
-  private withTimeout<T>(op: string, p: Promise<T>, onTimeout?: () => void): Promise<T | undefined> {
-    return new Promise<T | undefined>((resolve: (v: T | undefined) => void, reject: (e: BusinessError) => void) => {
-      const timerId: number = setTimeout((): void => {
-        Log.showInfo(TAG, `kanon: ${op} timeout`);
-        if (onTimeout !== undefined) { onTimeout(); }
-        resolve(undefined);
-      }, OP_TIMEOUT_MS);
-      p.then((v: T): void => {
-        clearTimeout(timerId);
-        resolve(v);
-      }).catch((e: BusinessError): void => {
-        clearTimeout(timerId);
-        reject(e);
-      });
-    });
-  }
-
   private enqueue(op: string, fn: (client: inputMethodEngine.InputClient) => Promise<string | null>): Promise<EditorResult> {
-    const epoch: number = this.editorEpoch;
-    const run: Promise<EditorResult> = this.queue.then(async (): Promise<EditorResult> => {
-      if (epoch !== this.editorEpoch) { return { op: op, ok: false, code: -4, detail: 'stale-epoch' }; }
-      if (this.unresolvedWriteEpoch === epoch) {
-        return { op: op, ok: false, code: CODE_UNRESOLVED_WRITE, detail: 'unresolved-write' };
-      }
-      const client: inputMethodEngine.InputClient | undefined = this.client;
-      if (client === undefined) {
-        Log.showInfo(TAG, `kanon: ${op} no-client`);
-        return { op: op, ok: false, code: CODE_NO_CLIENT, detail: 'no-client' };
-      }
-      try {
-        const pending: Promise<string | null> = fn(client);
-        const raced: string | null | undefined = await this.withTimeout<string | null>(op, pending, (): void => {
-          if (epoch !== this.editorEpoch) { return; }
-          this.unresolvedWriteEpoch = epoch;
-          pending.then((): void => {
-            if (this.unresolvedWriteEpoch === epoch) { this.unresolvedWriteEpoch = -1; }
-          }).catch((): void => {
-            if (this.unresolvedWriteEpoch === epoch) { this.unresolvedWriteEpoch = -1; }
-          });
-        });
-        if (raced === undefined) {
-          return { op: op, ok: false, code: CODE_TIMEOUT, detail: 'timeout' };
-        }
-        if (raced === null) {
-          Log.showInfo(TAG, `kanon: ${op} rejected`);
-          return { op: op, ok: false, code: -5, detail: 'rejected' };
-        }
-        const detail: string = raced;
-        Log.showInfo(TAG, `kanon: ${op} ok ${detail}`);
-        return { op: op, ok: true, code: 0, detail: detail };
-      } catch (err) {
-        const code: number = errCode(err);
-        Log.showInfo(TAG, `kanon: ${op} fail code=${code}`);
-        return { op: op, ok: false, code: code, detail: `code=${code}` };
-      }
-    });
-    // 後続操作が止まらないよう、キュー自体は常に解決させる。
-    this.queue = run.then((): void => undefined).catch((): void => undefined);
-    return run;
+    return this.operations.enqueue(op, fn);
   }
 
   fetchAttribute(): Promise<EditorResult> {
@@ -164,13 +101,17 @@ export class EditorAdapter {
     });
   }
 
-  setPreview(text: string, start: number, end: number): Promise<EditorResult> {
+  setPreview(text: string, start: number, end: number, observedEnd?: number): Promise<EditorResult> {
     const len: number = text.length;
-    return this.enqueue('setPreview', async (client: inputMethodEngine.InputClient): Promise<string> => {
+    return this.enqueue('setPreview', async (client: inputMethodEngine.InputClient): Promise<string | null> => {
       // (-1,-1) is the documented range for replacing or clearing the entire preview.
       // A nonnegative range addresses positions inside the preview, not document coordinates.
       const range: inputMethodEngine.Range = { start: start, end: end };
-      await client.setPreviewText(text, range);
+      const wait: PreviewSelectionWait | undefined = observedEnd === undefined ? undefined :
+        this.previewSelection.arm(this.getEpoch(), observedEnd);
+      const observed: boolean = await writePreviewWithReceipt(
+        (): Promise<void> => client.setPreviewText(text, range), wait);
+      if (!observed) { return null; }
       return `len=${len} range=[${start},${end}]`;
     });
   }
@@ -252,43 +193,26 @@ export class EditorAdapter {
     });
   }
 
-  previewCaret(position: number): Promise<EditorResult> {
+  previewCaret(position: number, previewStart: number, previewText: string): Promise<EditorResult> {
     return this.enqueue('previewCaret', async (client: inputMethodEngine.InputClient): Promise<string> => {
-      await client.selectByRange({ start: position, end: position });
-      const actual: number = await client.getTextIndexAtCursor();
-      // IPC acknowledgement and the editor's observed cursor are separate facts.
-      return `matched=${actual === position}`;
+      const port: PreviewCaretPort = {
+        getEpoch: (): number => this.getEpoch(),
+        queryCursor: (): Promise<number> => client.getTextIndexAtCursor(),
+        moveCursor: async (direction: number, expectedPosition: number): Promise<void> => {
+          const wait: PreviewSelectionWait = this.previewSelection.arm(this.getEpoch(), expectedPosition);
+          // A reply can precede the selection notification in container clients.
+          await writePreviewWithReceipt((): Promise<void> => client.moveCursor(direction < 0 ?
+            inputMethodEngine.Direction.CURSOR_LEFT : inputMethodEngine.Direction.CURSOR_RIGHT), wait);
+        }
+      };
+      const matched: boolean = await this.previewCaretPlacement.place(port,
+        { text: previewText, start: previewStart, position: position });
+      return `matched=${matched}`;
     });
   }
 
   private enqueueValue<T>(op: string, fn: (client: inputMethodEngine.InputClient) => Promise<T>): Promise<EditorValue<T>> {
-    const epoch: number = this.editorEpoch;
-    const run: Promise<EditorValue<T>> = this.queue.then(async (): Promise<EditorValue<T>> => {
-      if (epoch !== this.editorEpoch) { return { ok: false, code: -4, value: undefined }; }
-      if (this.unresolvedWriteEpoch === epoch) {
-        return { ok: false, code: CODE_UNRESOLVED_WRITE, value: undefined };
-      }
-      const client: inputMethodEngine.InputClient | undefined = this.client;
-      if (client === undefined) {
-        Log.showInfo(TAG, `kanon: ${op} no-client`);
-        return { ok: false, code: -1, value: undefined };
-      }
-      try {
-        const raced: T | undefined = await this.withTimeout<T>(op, fn(client));
-        if (raced === undefined) {
-          return { ok: false, code: CODE_TIMEOUT, value: undefined };
-        }
-        const value: T = raced;
-        Log.showInfo(TAG, `kanon: ${op} ok`);
-        return { ok: true, code: 0, value: value };
-      } catch (err) {
-        const code: number = errCode(err);
-        Log.showInfo(TAG, `kanon: ${op} fail code=${code}`);
-        return { ok: false, code: code, value: undefined };
-      }
-    });
-    this.queue = run.then((): void => undefined).catch((): void => undefined);
-    return run;
+    return this.operations.enqueueValue(op, fn);
   }
 
   queryAttribute(): Promise<EditorValue<AttributeSnapshot>> {

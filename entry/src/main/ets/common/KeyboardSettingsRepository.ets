@@ -2,11 +2,15 @@ import common from '@ohos.app.ability.common';
 import preferences from '@ohos.data.preferences';
 import { debugLog, debugErrorCode } from './DebugLog';
 import { KeyboardSettingsSnapshot, KeyboardSettingsPatch, KeyboardSettingsRecord, KeyboardSettingsChange,
-  SettingsPeer, applySettingsPatch, mergeSettingsPatch, copySettings, validSettingsRecord } from './KeyboardSettingsModel';
+  SettingsPeer, applySettingsPatch, copySettings, validSettingsRecord, decodeSettingsRecord } from './KeyboardSettingsModel';
+import { LegacyKeyboardSettings, migrateLegacySettings } from './KeyboardSettingsMigration';
+import { SettingsStoragePort, saveSettingsRecord } from './SettingsPersistence';
+import { copySettingsRecord, effectiveSettings, advanceSettingsRecord, committedSettingsRecord,
+  queuedSettingsRecord, QueuedSettingsRecord, receivedSettingsRecord, acceptedSettingsRecord } from './SettingsRecordPolicy';
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS, DEFAULT_HAPTIC_LEVEL,
-  DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_FLICK_ENABLED, languageLayouts } from './KeyboardConfigValues';
-import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfig';
-import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPercent } from './KeyboardLayout';
+  DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_FLICK_ENABLED } from './KeyboardConfigValues';
+import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
+import { DEFAULT_KEYBOARD_HEIGHT_PERCENT } from './KeyboardLayout';
 
 const CONFIG_FILE: string = 'kanon_keyboard_config';
 const RECORD_KEY: string = 'settings_record_v1';
@@ -21,10 +25,7 @@ export function openSettingsRepository(context: common.Context): void {
     const raw: preferences.ValueType = store.getSync(RECORD_KEY, '');
     if (typeof raw !== 'string') { throw new Error('Invalid settings storage'); }
     if (raw.length > 0) {
-      const loaded: KeyboardSettingsRecord = JSON.parse(raw) as KeyboardSettingsRecord;
-      if (!validSettingsRecord(loaded)) { throw new Error('Invalid settings record'); }
-      record = loaded;
-      record.snapshot = copySettings(loaded.snapshot);
+      record = decodeSettingsRecord(raw);
       publishSettings(undefined);
     } else {
       const legacy: preferences.Preferences = preferences.getPreferencesSync(context,
@@ -50,42 +51,34 @@ function legacyHas(primary: preferences.Preferences, legacy: preferences.Prefere
   catch (error) { throw new Error('Legacy settings read failed'); }
 }
 
-function bounded(value: preferences.ValueType, minimum: number, maximum: number, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
-}
-
 function migrateSettings(primary: preferences.Preferences, legacy: preferences.Preferences): KeyboardSettingsRecord {
-  const next = new KeyboardSettingsRecord();
-  const snapshot = new KeyboardSettingsSnapshot();
+  const values: LegacyKeyboardSettings = new LegacyKeyboardSettings();
   const order: preferences.ValueType = legacyValue(primary, legacy, 'layout_order',
     AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER);
   const flick: preferences.ValueType = legacyValue(primary, legacy, 'flick_enabled', DEFAULT_FLICK_ENABLED);
-  snapshot.flickEnabled = typeof flick === 'boolean' ? flick : DEFAULT_FLICK_ENABLED;
-  snapshot.layoutOrder = languageLayouts(typeof order === 'string' ? order : DEFAULT_LAYOUT_ORDER).join(',');
-  snapshot.flickDistance = bounded(AppStorage.get<number>('kanonFlickDistance') ?? DEFAULT_FLICK_DISTANCE, 12, 30, DEFAULT_FLICK_DISTANCE);
-  snapshot.longPressMs = bounded(AppStorage.get<number>('kanonLongPressMs') ?? DEFAULT_LONG_PRESS_MS, 250, 650, DEFAULT_LONG_PRESS_MS);
-  snapshot.keyPreview = AppStorage.get<boolean>('kanonFlickPreviewEnabled') ?? DEFAULT_KEY_PREVIEW_ENABLED;
+  values.flickEnabled = typeof flick === 'boolean' ? flick : DEFAULT_FLICK_ENABLED;
+  values.layoutOrder = typeof order === 'string' ? order : DEFAULT_LAYOUT_ORDER;
+  values.flickDistance = AppStorage.get<number>('kanonFlickDistance') ?? DEFAULT_FLICK_DISTANCE;
+  values.longPressMs = AppStorage.get<number>('kanonLongPressMs') ?? DEFAULT_LONG_PRESS_MS;
+  values.keyPreview = AppStorage.get<boolean>('kanonFlickPreviewEnabled') ?? DEFAULT_KEY_PREVIEW_ENABLED;
   const haptic: preferences.ValueType = legacyValue(primary, legacy, 'haptic_level', DEFAULT_HAPTIC_LEVEL);
-  snapshot.hapticLevel = haptic === 0 || haptic === 2 ? haptic : DEFAULT_HAPTIC_LEVEL;
-  snapshot.shortcutOrder = shortcutOrder(AppStorage.get<string>('kanonShortcutOrder') ?? DEFAULT_SHORTCUT_ORDER).join(',');
+  values.hapticLevel = typeof haptic === 'number' ? haptic : DEFAULT_HAPTIC_LEVEL;
+  values.shortcutOrder = AppStorage.get<string>('kanonShortcutOrder') ?? DEFAULT_SHORTCUT_ORDER;
   const height: preferences.ValueType = legacyValue(primary, legacy, 'height_percent', DEFAULT_KEYBOARD_HEIGHT_PERCENT);
-  snapshot.heightPercent = keyboardHeightPercent(typeof height === 'number' ? height : DEFAULT_KEYBOARD_HEIGHT_PERCENT);
-  next.snapshot = applySettingsPatch(snapshot, {});
-  next.legacyHeightPresent = legacyHas(primary, legacy, 'height_percent');
-  next.legacyLayoutPresent = typeof order === 'string';
-  next.heightChosen = next.legacyHeightPresent;
+  values.heightPercent = typeof height === 'number' ? height : DEFAULT_KEYBOARD_HEIGHT_PERCENT;
+  values.heightPresent = legacyHas(primary, legacy, 'height_percent');
+  values.layoutPresent = typeof order === 'string';
+  const next: KeyboardSettingsRecord = migrateLegacySettings(values);
   debugLog.record('config', 'legacy settings migrated');
   return next;
 }
 
 function copyRecord(): KeyboardSettingsRecord {
-  return JSON.parse(JSON.stringify(record)) as KeyboardSettingsRecord;
+  return copySettingsRecord(record);
 }
 
 export function readSettings(): KeyboardSettingsSnapshot {
-  let snapshot: KeyboardSettingsSnapshot = copySettings(record.snapshot);
-  for (const change of record.pending) { snapshot = applySettingsPatch(snapshot, change.patch); }
-  return snapshot;
+  return effectiveSettings(record);
 }
 
 function setValue(key: string, value: string | number | boolean): void {
@@ -115,10 +108,13 @@ function persist(next: KeyboardSettingsRecord): void {
   if (!validSettingsRecord(next)) { throw new Error('Invalid settings record'); }
   const previous: KeyboardSettingsSnapshot = readSettings();
   try {
-    const payload: string = JSON.stringify(next);
-    if (payload.length > preferences.MAX_VALUE_LENGTH) { throw new Error('Settings storage limit'); }
-    store.putSync(RECORD_KEY, payload);
-    store.flushSync();
+    const storage: preferences.Preferences = store;
+    const port: SettingsStoragePort = {
+      maximumLength: preferences.MAX_VALUE_LENGTH,
+      write: (payload: string): void => { storage.putSync(RECORD_KEY, payload); },
+      flush: (): void => { storage.flushSync(); }
+    };
+    saveSettingsRecord(next, port);
   } catch (error) {
     debugLog.record('config', `repository save failed code=${debugErrorCode(error)}`);
     throw new Error('Keyboard settings save failed');
@@ -128,7 +124,7 @@ function persist(next: KeyboardSettingsRecord): void {
 }
 
 function advance(next: KeyboardSettingsRecord): void {
-  next.snapshot.revision = Math.max(Date.now(), next.snapshot.revision + 1);
+  advanceSettingsRecord(next, Date.now());
 }
 
 export function ensureSettingsRevision(): KeyboardSettingsSnapshot {
@@ -141,34 +137,15 @@ export function ensureSettingsRevision(): KeyboardSettingsSnapshot {
 }
 
 export function commitSettings(patch: KeyboardSettingsPatch): KeyboardSettingsSnapshot {
-  const next: KeyboardSettingsRecord = copyRecord();
-  next.snapshot = applySettingsPatch(next.snapshot, patch);
-  if (patch.heightPercent !== undefined) { next.heightChosen = true; }
-  if (patch.layoutOrder !== undefined) { next.languagesChosen = true; }
-  advance(next);
+  const next: KeyboardSettingsRecord = committedSettingsRecord(record, patch, Date.now());
   persist(next);
   return copySettings(next.snapshot);
 }
 
 export function queueSettings(patch: KeyboardSettingsPatch): KeyboardSettingsChange {
-  // Validate before putting a change into the durable outbox.
-  applySettingsPatch(readSettings(), patch);
-  const next: KeyboardSettingsRecord = copyRecord();
-  // Only the head is sent. The unsent tail can safely combine later edits without
-  // changing its sequence or modifying a request the owner may already have applied.
-  if (next.pending.length > 1) {
-    const tail: KeyboardSettingsChange = next.pending[1];
-    tail.patch = mergeSettingsPatch(tail.patch, patch);
-    persist(next);
-    return tail;
-  }
-  const change = new KeyboardSettingsChange();
-  change.actor = next.actor;
-  change.sequence = next.nextSequence++;
-  change.patch = JSON.parse(JSON.stringify(patch)) as KeyboardSettingsPatch;
-  next.pending.push(change);
-  persist(next);
-  return change;
+  const queued: QueuedSettingsRecord = queuedSettingsRecord(record, patch);
+  persist(queued.record);
+  return queued.change;
 }
 
 export function nextSettingsChange(): KeyboardSettingsChange | undefined {
@@ -176,6 +153,7 @@ export function nextSettingsChange(): KeyboardSettingsChange | undefined {
 }
 
 export function settingsActor(): string { return record.actor; }
+export function settingsIssuedSequence(): number { return record.nextSequence - 1; }
 export function settingsRepositoryReady(): boolean { return store !== undefined; }
 export function publishCurrentSettings(): void { publishSettings(undefined); }
 export function settingsPendingCount(): number { return record.pending.length; }
@@ -206,31 +184,17 @@ export function importLegacySettings(snapshot: KeyboardSettingsSnapshot, heightP
 }
 
 export function acceptSettingsChange(change: KeyboardSettingsChange): SettingsPeer {
-  const existing: SettingsPeer | undefined = record.peers.find((peer: SettingsPeer) => peer.actor === change.actor);
-  if (existing && change.sequence <= existing.sequence) { return existing; }
-  if (existing && change.sequence !== existing.sequence + 1) { return existing; }
-  const next: KeyboardSettingsRecord = copyRecord();
-  next.snapshot = applySettingsPatch(next.snapshot, change.patch);
-  if (change.patch.heightPercent !== undefined) { next.heightChosen = true; }
-  if (change.patch.layoutOrder !== undefined) { next.languagesChosen = true; }
-  const peer = new SettingsPeer();
-  peer.actor = change.actor;
-  peer.sequence = change.sequence;
-  next.peers = next.peers.filter((entry: SettingsPeer) => entry.actor !== change.actor);
-  next.peers.push(peer);
-  if (next.peers.length > 32) { next.peers.shift(); }
-  advance(next);
+  const next: KeyboardSettingsRecord | undefined = acceptedSettingsRecord(record, change, Date.now());
+  if (next === undefined) {
+    return record.peers.find((peer: SettingsPeer) => peer.actor === change.actor) as SettingsPeer;
+  }
+  const peer: SettingsPeer = next.peers[next.peers.length - 1];
   persist(next);
   return peer;
 }
 
 export function receiveSettings(snapshot: KeyboardSettingsSnapshot, actor: string, sequence: number): void {
-  const next: KeyboardSettingsRecord = copyRecord();
-  if (snapshot.revision >= next.snapshot.revision) { next.snapshot = copySettings(snapshot); }
-  if (actor === next.actor && sequence >= 0 && sequence < next.nextSequence) {
-    next.pending = next.pending.filter((change: KeyboardSettingsChange) => change.sequence > sequence);
-  }
-  next.bootstrapComplete = true;
+  const next: KeyboardSettingsRecord = receivedSettingsRecord(record, snapshot, actor, sequence);
   persist(next);
 }
 

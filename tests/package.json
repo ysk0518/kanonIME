@@ -1,0 +1,11 @@
+{
+  "name": "kanonime-unit-tests",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=18.20.0" },
+  "scripts": {
+    "test": "node run.cjs",
+    "test:mutations": "node mutations.cjs"
+  },
+  "devDependencies": { "typescript": "5.9.3" }
+}

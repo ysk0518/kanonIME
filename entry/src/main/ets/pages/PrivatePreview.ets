@@ -52,6 +52,7 @@ struct PrivatePreview {
         placeholder: $r('app.string.Preview_tip'),
         controller: this.controllerPreview
       })
+        .id('kanon_validation_input')
         .placeholderFont({ size: 16, weight: 400 })
         .placeholderColor($r('app.color.text_secondary'))
         .width('100%')
@@ -68,6 +69,27 @@ struct PrivatePreview {
         .onSubmit(() => {
           this.addLog('preViewText onSubmit.');
         })
+
+      // Fixed SDK fixture for the direct-input fallback; no input contents in logs.
+      TextInput({
+        text: this.accountText,
+        placeholder: $r('app.string.Preview_direct_tip'),
+        controller: this.controllerPrivate
+      })
+        .id('kanon_validation_direct_input')
+        .enablePreviewText(false)
+        .placeholderFont({ size: 16, weight: 400 })
+        .placeholderColor($r('app.color.text_secondary'))
+        .width('100%')
+        .height(56)
+        .margin(10)
+        .fontSize(16)
+        .fontColor($r('app.color.text_normal'))
+        .backgroundColor($r('app.color.key_item_normal'))
+        .border({ width: 1, color: Color.Gray, radius: 18 })
+        .maxLength(50)
+        .onChange(() => { this.addLog('direct validation onChange.'); })
+        .onSubmit(() => { this.addLog('direct validation onSubmit.'); })
     }
     .width('100%')
     .padding(20)

@@ -1,6 +1,6 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, KEYBOARD_LAYOUTS, languageLayouts } from './KeyboardConfigValues';
-import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfig';
+import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
 
@@ -151,4 +151,12 @@ export function validSettingsRecord(record: KeyboardSettingsRecord): boolean {
       typeof peer.actor === 'string' && peer.actor.length <= 64 && /^\d+-\d+$/.test(peer.actor) && Number.isSafeInteger(peer.sequence) && peer.sequence >= 0) &&
     typeof record.legacyHeightPresent === 'boolean' && typeof record.legacyLayoutPresent === 'boolean' &&
     typeof record.heightChosen === 'boolean' && typeof record.languagesChosen === 'boolean' && typeof record.bootstrapComplete === 'boolean';
+}
+
+/** Decode and normalize schema-1 storage without accessing preferences or UI. */
+export function decodeSettingsRecord(payload: string): KeyboardSettingsRecord {
+  const loaded: KeyboardSettingsRecord = JSON.parse(payload) as KeyboardSettingsRecord;
+  if (!validSettingsRecord(loaded)) { throw new Error('Invalid settings record'); }
+  loaded.snapshot = copySettings(loaded.snapshot);
+  return loaded;
 }

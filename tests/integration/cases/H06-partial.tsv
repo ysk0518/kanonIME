@@ -1,0 +1,16 @@
+SEND_KEYS	kyouha
+SEND_KEY	Space
+SEND_KEY	VirtualLeft
+EXPECT_IN_ALL_CANDIDATE_WORDS	今日
+SUBMIT_CANDIDATE_BY_VALUE	今日
+EXPECT_RESULT	今日
+EXPECT_PREEDIT	は
+# Remaining text is still converting. MozcEngine restores it as literal composition
+# before accepting more input (dispatchInner's converting-input branch).
+RESET_CONTEXT
+SEND_KEY_WITH_OPTION	TextInput	key.key_string="は"	key.input_style=AS_IS	request_suggestion=true
+EXPECT_PREEDIT	は
+EXPECT_RESULT
+SEND_KEYS	ga
+EXPECT_PREEDIT	はが
+EXPECT_RESULT
