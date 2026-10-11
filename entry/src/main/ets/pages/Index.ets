@@ -40,7 +40,7 @@ import { KeyboardSizeSettings } from '../components/KeyboardSizeSettings';
 import { FlickPreview } from '../components/FlickPreview';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
-import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
+import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../common/KeyboardLayout';
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
 
 const TAG: string = 'index->';
@@ -57,6 +57,7 @@ struct Index {
   @StorageLink('kanonBackgroundY') backgroundY: number = 0;
   @StorageLink('kanonBackgroundBrightness') photoBrightness: number = 75;
   @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
+  @StorageLink('kanonKeyGap') @Watch('updateMeasuredStyle') keyGap: number = DEFAULT_KEY_GAP;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
@@ -98,8 +99,9 @@ struct Index {
     const width: number = Math.min(720, this.measuredWidth);
     const panelHeight: number = this.submenuType === SubMenuType.SIZE ? this.heightPreview : this.measuredHeight;
     const height: number = Math.max(1, panelHeight - this.toolbarHeight);
-    if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5) {
-      AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(width, height));
+    if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5 ||
+      this.inputStyle.keyGap !== effectiveKeyGap(width, height, this.keyGap)) {
+      AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(width, height, this.keyGap));
     }
   }
 

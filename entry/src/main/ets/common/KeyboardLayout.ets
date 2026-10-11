@@ -2,11 +2,24 @@
 // The native phone keyboard uses narrower action columns than its three text columns.
 export const FLICK_ACTION_COLUMN_WIDTH: string = '17%';
 export const FLICK_KEY_GAP: number = 6;
+export const DEFAULT_KEY_GAP: number = FLICK_KEY_GAP;
+export const MIN_KEY_GAP: number = 0;
+export const MAX_KEY_GAP: number = 10;
 export const FLICK_SIDE_PADDING: number = 8;
 export const DEFAULT_TOOLBAR_HEIGHT: number = 40;
 export const DEFAULT_KEYBOARD_HEIGHT_PERCENT: number = 100;
 export const MIN_KEYBOARD_HEIGHT_PERCENT: number = 80;
 export const MAX_KEYBOARD_HEIGHT_PERCENT: number = 150;
+
+export function keyboardKeyGap(value: number): number {
+  return Number.isFinite(value) ? clampSize(Math.round(value), MIN_KEY_GAP, MAX_KEY_GAP) : DEFAULT_KEY_GAP;
+}
+
+export function effectiveKeyGap(width: number, height: number, value: number): number {
+  // Fit ten QWERTY keys and four rows even in a narrow or short input panel.
+  return Math.min(keyboardKeyGap(value), Math.max(0, (width - 12 - 10 * 16) / 9),
+    Math.max(0, (height - 12 - 4 * 24) / 3));
+}
 
 export function keyboardHeightPercent(value: number): number {
   if (!Number.isFinite(value)) { return DEFAULT_KEYBOARD_HEIGHT_PERCENT; }

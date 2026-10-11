@@ -8,6 +8,9 @@ import { DebugConsole } from './DebugConsole';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
+import { DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
+import { BackgroundKeyPreview } from './BackgroundKeyPreview';
+import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
 
 @Component
 export struct KeyboardSettings {
@@ -22,6 +25,8 @@ export struct KeyboardSettings {
   @State private flickDistance: number = DEFAULT_FLICK_DISTANCE;
   @State private longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @State private previewEnabled: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
+  @State private keyGap: number = DEFAULT_KEY_GAP;
+  @State private spacingPreviewQwerty: boolean = false;
   @State private hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
   @StorageLink('kanonSettingsSyncState') @Watch('syncConfirmed') syncState: string = '';
@@ -34,6 +39,7 @@ export struct KeyboardSettings {
 
   aboutToAppear(): void {
     this.loadSaved();
+    this.spacingPreviewQwerty = !this.selectedFlick;
     keyboardSettingsSync.request().catch(() => {});
   }
 
@@ -60,6 +66,7 @@ export struct KeyboardSettings {
     this.flickDistance = snapshot.flickDistance;
     this.longPressMs = snapshot.longPressMs;
     this.previewEnabled = snapshot.keyPreview;
+    this.keyGap = snapshot.keyGap;
     this.hapticLevel = snapshot.hapticLevel;
     this.savedSettingsKey = this.currentSettingsKey();
   }
@@ -67,7 +74,7 @@ export struct KeyboardSettings {
   private currentSettingsKey(): string {
     return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
       this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
-      this.previewEnabled ? '1' : '0', this.hapticLevel.toString()].join('|');
+      this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString()].join('|');
   }
 
   private hasChanges(): boolean {
@@ -115,7 +122,7 @@ export struct KeyboardSettings {
       return this.selectedFlick !== DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick') ||
         this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
     }
-    if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED; }
+    if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP; }
     return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
   }
 
@@ -128,6 +135,7 @@ export struct KeyboardSettings {
       this.longPressMs = DEFAULT_LONG_PRESS_MS;
     } else if (tab === 1) {
       this.previewEnabled = DEFAULT_KEY_PREVIEW_ENABLED;
+      this.keyGap = DEFAULT_KEY_GAP;
     } else {
       this.hapticLevel = DEFAULT_HAPTIC_LEVEL;
       this.selectedShortcuts = DEFAULT_SHORTCUT_ORDER.split(',');
@@ -159,6 +167,7 @@ export struct KeyboardSettings {
       if (this.flickDistance !== saved.flickDistance) { patch.flickDistance = this.flickDistance; }
       if (this.longPressMs !== saved.longPressMs) { patch.longPressMs = this.longPressMs; }
       if (this.previewEnabled !== saved.keyPreview) { patch.keyPreview = this.previewEnabled; }
+      if (this.keyGap !== saved.keyGap) { patch.keyGap = this.keyGap; }
       if (this.hapticLevel !== saved.hapticLevel) { patch.hapticLevel = this.hapticLevel; }
       if (this.selectedShortcuts.join(',') !== saved.shortcutOrder) { patch.shortcutOrder = this.selectedShortcuts.join(','); }
       const result = await keyboardSettingsSync.save(patch);
@@ -244,6 +253,22 @@ export struct KeyboardSettings {
     Column({ space: 12 }) {
           Text($r('app.string.settings_size_help'))
             .fontSize(12).fontColor($r('app.color.text_secondary'))
+          Text($r('app.string.settings_key_gap', this.keyGap))
+            .fontSize(15).fontColor($r('app.color.text_normal'))
+          Slider({ value: this.keyGap, min: MIN_KEY_GAP, max: MAX_KEY_GAP, step: 1 })
+            .enabled(!this.saving)
+            .onChange((value: number) => { this.keyGap = keyboardKeyGap(value); })
+            .accessibilityText($r('app.string.settings_key_gap', this.keyGap))
+            .id('keyboard_config_key_gap')
+          Text($r('app.string.settings_key_gap_help'))
+            .fontSize(12).fontColor($r('app.color.text_secondary'))
+          KeyboardPreviewLayoutSwitch({ qwerty: this.spacingPreviewQwerty, disabled: this.saving,
+            idPrefix: 'keyboard_config_gap_preview',
+            onChange: (qwerty: boolean) => { this.spacingPreviewQwerty = qwerty; } })
+          Stack() {
+            BackgroundKeyPreview({ qwerty: this.spacingPreviewQwerty, gap: this.keyGap })
+          }.width('100%').height(152).borderRadius(8)
+            .backgroundColor($r('app.color.keyboard_background')).id('keyboard_config_key_gap_preview')
           Button($r('app.string.settings_background')).width('100%').enabled(!this.saving && !this.hasChanges())
             .onClick(() => { this.backgroundOpen = true; }).id('keyboard_config_background')
           if (this.hasChanges()) {

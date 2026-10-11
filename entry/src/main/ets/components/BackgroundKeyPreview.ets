@@ -1,17 +1,22 @@
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { keySourceListData, keySourceListType } from '../model/KeyboardKeyData';
+import { DEFAULT_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
 
 /** Appearance-only keys; gestures belong to the background editor underneath. */
 @Component
 export struct BackgroundKeyPreview {
   @Prop qwerty: boolean = false;
   @Prop keyOpacity: number = 100;
+  @Prop gap: number | undefined = undefined;
+  @StorageLink('kanonKeyGap') storedGap: number = DEFAULT_KEY_GAP;
   @StorageLink('kanonBackgroundThemeVersion') themeVersion: number = 0;
   @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   private kanaRows: string[][] = [
     ['記号', 'あ', 'か', 'さ', '⌫'], ['←', 'た', 'な', 'は', '→'],
     ['あA1', 'ま', 'や', 'ら', '空白'], ['QWERTY', '小゛゜', 'わ', '、。?!', 'Enter']
   ];
+
+  private keyGap(): number { return keyboardKeyGap(this.gap ?? this.storedGap); }
 
   @Builder
   previewKey(label: string, weight: number = 1, control: boolean = false) {
@@ -24,23 +29,23 @@ export struct BackgroundKeyPreview {
   }
 
   build() {
-    Column({ space: 4 }) {
+    Column({ space: this.keyGap() }) {
       if (this.qwerty) {
         ForEach([0, 1], (row: number) => {
-          Row({ space: 4 }) {
+          Row({ space: this.keyGap() }) {
             ForEach(keySourceListData.slice(row === 0 ? 0 : 10, row === 0 ? 10 : 19),
               (key: keySourceListType) => { this.previewKey(key.content) }, (key: keySourceListType) => key.content)
             if (row === 1) { this.previewKey('ー') }
           }.width('100%').layoutWeight(1)
         })
-        Row({ space: 4 }) {
+        Row({ space: this.keyGap() }) {
           this.previewKey('⇧', 1.5, true)
           ForEach(keySourceListData.slice(19), (key: keySourceListType) => {
             this.previewKey(key.content)
           }, (key: keySourceListType) => key.content)
           this.previewKey('⌫', 1.5, true)
         }.width('100%').layoutWeight(1)
-        Row({ space: 4 }) {
+        Row({ space: this.keyGap() * 2 / 3 }) {
           this.previewKey(this.flickEnabled ? '12' : '#+=', 1, true)
           this.previewKey('あA1', 1.5, true)
           this.previewKey('、')
@@ -50,7 +55,7 @@ export struct BackgroundKeyPreview {
         }.width('100%').layoutWeight(1)
       } else {
         ForEach(this.kanaRows, (row: string[]) => {
-          Row({ space: 4 }) {
+          Row({ space: this.keyGap() }) {
             ForEach(row, (label: string, index: number) => {
               this.previewKey(label, index === 0 || index === 4 ? 0.8 : 1, index === 0 || index === 4)
             })
