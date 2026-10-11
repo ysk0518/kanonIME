@@ -406,6 +406,8 @@ exports.mutate = (filename, source, name) => {
   const mutation = mutations[name];
   if (!mutation) { throw new Error(`Unknown mutation: ${name}`); }
   if (filename.replace(/\\/g, '/') !== mutation.file) { return source; }
+  // Git checkouts can use CRLF on Windows. Match mutations against LF in memory.
+  source = source.replace(/\r\n/g, '\n');
   if (source.split(mutation.before).length !== 2) {
     throw new Error(`Mutation must match exactly once: ${name}`);
   }
