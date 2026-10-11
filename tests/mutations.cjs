@@ -1,8 +1,8 @@
 const { spawnSync } = require('node:child_process');
-const { resolve } = require('node:path');
+const { testArguments } = require('./support/test-arguments.cjs');
 
-function run(env, args = []) {
-  const result = spawnSync(process.execPath, [resolve(__dirname, 'run.cjs'), ...args], {
+function run(env, args = [], group) {
+  const result = spawnSync(process.execPath, testArguments(__dirname, args, group), {
     env, encoding: 'utf8'
   });
   if (result.error) { throw result.error; }
@@ -45,7 +45,7 @@ for (const [mutation, testId] of [['suggestion', 'R02'], ['modifier', 'R06'], ['
   ['runtimeCursorEpoch', 'P27'], ['runtimeStoredConfirmation', 'P27'], ['runtimeLayoutHistory', 'P27'],
   ['presentationCandidateSource', 'P27'], ['presentationCandidateRevision', 'P27'],
   ['presentationDiagnosticSource', 'P27'], ['presentationTargetEpoch', 'P27'], ['regressionLayoutReset', 'P28']]) {
-  const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', `${testId}:`]);
+  const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', `${testId}:`], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${testId}:`).test(result.output);
   if (result.status === 0 || !matchingFailure || !result.output.includes('AssertionError')) {
     process.stderr.write(result.output);

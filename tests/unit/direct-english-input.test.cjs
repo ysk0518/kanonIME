@@ -266,8 +266,14 @@ test('P24: the existing operation queue keeps a following Enter behind pending c
   r.hooks.dispatch=async event=>{started.resolve();await finish.promise;await r.coordinator.postEvent(event);};
   const first=queue.enqueue(()=>r.input.handle('enter'));
   const second=queue.enqueue(()=>r.input.handle('enter'));
-  await started.promise;assert.equal(r.prediction.editing,true);assert.equal(r.calls.filter(c=>c[0]==='enter').length,0);
-  finish.resolve();await first;await second;
-  assert.equal(r.editor.text,'hello');assert.equal(r.editor.count('insert'),1);
-  assert.deepEqual(r.calls.filter(c=>c[0]==='enter'),[['enter',1]]);assert.equal(r.prediction.editing,false);
+  try {
+    const entered=await Promise.race([started.promise.then(()=>true),first.then(()=>false)]);
+    assert.equal(entered,true,'completion must start before the first Enter finishes');
+    assert.equal(r.prediction.editing,true);assert.equal(r.calls.filter(c=>c[0]==='enter').length,0);
+    finish.resolve();await first;await second;
+    assert.equal(r.editor.text,'hello');assert.equal(r.editor.count('insert'),1);
+    assert.deepEqual(r.calls.filter(c=>c[0]==='enter'),[['enter',1]]);assert.equal(r.prediction.editing,false);
+  } finally {
+    finish.resolve();await Promise.allSettled([first,second]);
+  }
 });
