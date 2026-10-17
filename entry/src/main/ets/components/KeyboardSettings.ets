@@ -11,6 +11,8 @@ import { readSettings } from '../common/KeyboardSettingsRepository';
 import { DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
+import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from '../common/CandidateLayout';
+import { CandidateAppearancePreview } from './CandidateAppearancePreview';
 
 @Component
 export struct KeyboardSettings {
@@ -26,6 +28,8 @@ export struct KeyboardSettings {
   @State private longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @State private previewEnabled: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
   @State private keyGap: number = DEFAULT_KEY_GAP;
+  @State private candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
+  @State private candidateRows: number = DEFAULT_CANDIDATE_ROWS;
   @State private spacingPreviewQwerty: boolean = false;
   @State private hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
@@ -67,6 +71,8 @@ export struct KeyboardSettings {
     this.longPressMs = snapshot.longPressMs;
     this.previewEnabled = snapshot.keyPreview;
     this.keyGap = snapshot.keyGap;
+    this.candidateFontSize = snapshot.candidateFontSize;
+    this.candidateRows = snapshot.candidateRows;
     this.hapticLevel = snapshot.hapticLevel;
     this.savedSettingsKey = this.currentSettingsKey();
   }
@@ -74,7 +80,8 @@ export struct KeyboardSettings {
   private currentSettingsKey(): string {
     return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
       this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
-      this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString()].join('|');
+      this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString(),
+      this.candidateFontSize.toString(), this.candidateRows.toString()].join('|');
   }
 
   private hasChanges(): boolean {
@@ -122,7 +129,8 @@ export struct KeyboardSettings {
       return this.selectedFlick !== DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick') ||
         this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
     }
-    if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP; }
+    if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP ||
+      this.candidateFontSize !== DEFAULT_CANDIDATE_FONT_SIZE || this.candidateRows !== DEFAULT_CANDIDATE_ROWS; }
     return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
   }
 
@@ -136,6 +144,8 @@ export struct KeyboardSettings {
     } else if (tab === 1) {
       this.previewEnabled = DEFAULT_KEY_PREVIEW_ENABLED;
       this.keyGap = DEFAULT_KEY_GAP;
+      this.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE;
+      this.candidateRows = DEFAULT_CANDIDATE_ROWS;
     } else {
       this.hapticLevel = DEFAULT_HAPTIC_LEVEL;
       this.selectedShortcuts = DEFAULT_SHORTCUT_ORDER.split(',');
@@ -168,6 +178,8 @@ export struct KeyboardSettings {
       if (this.longPressMs !== saved.longPressMs) { patch.longPressMs = this.longPressMs; }
       if (this.previewEnabled !== saved.keyPreview) { patch.keyPreview = this.previewEnabled; }
       if (this.keyGap !== saved.keyGap) { patch.keyGap = this.keyGap; }
+      if (this.candidateFontSize !== saved.candidateFontSize) { patch.candidateFontSize = this.candidateFontSize; }
+      if (this.candidateRows !== saved.candidateRows) { patch.candidateRows = this.candidateRows; }
       if (this.hapticLevel !== saved.hapticLevel) { patch.hapticLevel = this.hapticLevel; }
       if (this.selectedShortcuts.join(',') !== saved.shortcutOrder) { patch.shortcutOrder = this.selectedShortcuts.join(','); }
       const result = await keyboardSettingsSync.save(patch);
@@ -251,6 +263,22 @@ export struct KeyboardSettings {
   @Builder
   appearanceOptions() {
     Column({ space: 12 }) {
+          Text($r('app.string.settings_candidate_font', this.candidateFontSize))
+            .fontSize(15).fontColor($r('app.color.text_normal'))
+          Slider({ value: this.candidateFontSize, min: MIN_CANDIDATE_FONT_SIZE, max: MAX_CANDIDATE_FONT_SIZE, step: 1 })
+            .enabled(!this.saving).onChange((value: number) => { this.candidateFontSize = Math.round(value); })
+            .accessibilityText($r('app.string.settings_candidate_font', this.candidateFontSize)).id('keyboard_config_candidate_font')
+          Row({ space: 8 }) {
+            Text($r('app.string.settings_candidate_rows')).fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            ForEach([1, 2], (rows: number) => {
+              Button($r('app.string.settings_candidate_row_count', rows))
+                .backgroundColor(this.candidateRows === rows ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+                .fontColor($r('app.color.text_normal')).enabled(!this.saving)
+                .onClick(() => { this.candidateRows = rows; }).id(`keyboard_config_candidate_rows_${rows}`)
+            })
+          }.width('100%')
+          CandidateAppearancePreview({ fontSize: this.candidateFontSize, rows: this.candidateRows })
+          Text($r('app.string.settings_candidate_rows_help')).fontSize(12).fontColor($r('app.color.text_secondary'))
           Text($r('app.string.settings_size_help'))
             .fontSize(12).fontColor($r('app.color.text_secondary'))
           Text($r('app.string.settings_key_gap', this.keyGap))

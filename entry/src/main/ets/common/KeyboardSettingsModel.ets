@@ -1,6 +1,7 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, KEYBOARD_LAYOUTS, languageLayouts } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
+import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
 
@@ -13,6 +14,8 @@ export class KeyboardSettingsSnapshot {
   longPressMs: number = DEFAULT_LONG_PRESS_MS;
   keyPreview: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
   keyGap: number = DEFAULT_KEY_GAP;
+  candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
+  candidateRows: number = DEFAULT_CANDIDATE_ROWS;
   hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
   shortcutOrder: string = DEFAULT_SHORTCUT_ORDER;
   heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT;
@@ -27,6 +30,8 @@ export interface KeyboardSettingsPatch {
   longPressMs?: number;
   keyPreview?: boolean;
   keyGap?: number;
+  candidateFontSize?: number;
+  candidateRows?: number;
   hapticLevel?: number;
   shortcutOrder?: string;
   heightPercent?: number;
@@ -82,6 +87,8 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
     (patch.longPressMs === undefined || inRange(patch.longPressMs, 250, 650)) &&
     (patch.keyPreview === undefined || typeof patch.keyPreview === 'boolean') &&
     (patch.keyGap === undefined || inRange(patch.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
+    (patch.candidateFontSize === undefined || Number.isInteger(patch.candidateFontSize) && inRange(patch.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
+    (patch.candidateRows === undefined || patch.candidateRows === 1 || patch.candidateRows === 2) &&
     (patch.hapticLevel === undefined || patch.hapticLevel === 0 || patch.hapticLevel === 1 || patch.hapticLevel === 2) &&
     (patch.shortcutOrder === undefined || validShortcuts(patch.shortcutOrder)) &&
     (patch.heightPercent === undefined || inRange(patch.heightPercent, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT));
@@ -93,6 +100,8 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
     inRange(snapshot.flickDistance, 12, 30) && inRange(snapshot.longPressMs, 250, 650) &&
     typeof snapshot.keyPreview === 'boolean' &&
     (snapshot.keyGap === undefined || inRange(snapshot.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
+    (snapshot.candidateFontSize === undefined || Number.isInteger(snapshot.candidateFontSize) && inRange(snapshot.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
+    (snapshot.candidateRows === undefined || snapshot.candidateRows === 1 || snapshot.candidateRows === 2) &&
     (snapshot.hapticLevel === 0 || snapshot.hapticLevel === 1 || snapshot.hapticLevel === 2) &&
     validShortcuts(snapshot.shortcutOrder) && inRange(snapshot.heightPercent, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT) &&
     (snapshot.flickEnabled || snapshot.layoutOrder.split(',').every((id: string) => id.endsWith('_qwerty')));
@@ -102,6 +111,8 @@ export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettin
   const copy: KeyboardSettingsSnapshot = JSON.parse(JSON.stringify(snapshot)) as KeyboardSettingsSnapshot;
   // Schema 1 records from older versions omit this newly added setting.
   if (copy.keyGap === undefined) { copy.keyGap = DEFAULT_KEY_GAP; }
+  if (copy.candidateFontSize === undefined) { copy.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE; }
+  if (copy.candidateRows === undefined) { copy.candidateRows = DEFAULT_CANDIDATE_ROWS; }
   return copy;
 }
 
@@ -114,6 +125,8 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.longPressMs !== undefined) { next.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { next.keyPreview = patch.keyPreview; }
   if (patch.keyGap !== undefined) { next.keyGap = Math.round(patch.keyGap); }
+  if (patch.candidateFontSize !== undefined) { next.candidateFontSize = patch.candidateFontSize; }
+  if (patch.candidateRows !== undefined) { next.candidateRows = patch.candidateRows; }
   if (patch.hapticLevel !== undefined) { next.hapticLevel = patch.hapticLevel; }
   if (patch.shortcutOrder !== undefined) { next.shortcutOrder = shortcutOrder(patch.shortcutOrder).join(','); }
   if (patch.heightPercent !== undefined) { next.heightPercent = Math.round(patch.heightPercent); }
@@ -132,6 +145,8 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.longPressMs !== undefined) { merged.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { merged.keyPreview = patch.keyPreview; }
   if (patch.keyGap !== undefined) { merged.keyGap = patch.keyGap; }
+  if (patch.candidateFontSize !== undefined) { merged.candidateFontSize = patch.candidateFontSize; }
+  if (patch.candidateRows !== undefined) { merged.candidateRows = patch.candidateRows; }
   if (patch.hapticLevel !== undefined) { merged.hapticLevel = patch.hapticLevel; }
   if (patch.shortcutOrder !== undefined) { merged.shortcutOrder = patch.shortcutOrder; }
   if (patch.heightPercent !== undefined) { merged.heightPercent = patch.heightPercent; }
