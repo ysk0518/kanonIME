@@ -9,7 +9,7 @@
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { BusinessError } from '@ohos.base';
 import Log from '../model/Log';
-import { EditorOperationQueue, EditorOperationRuntime, EditorOperationEvent, EditorResult, EditorValue } from './EditorOperationQueue';
+import { EditorOperationQueue, EditorOperationRuntime, EditorOperationEvent, EditorResult, EditorValue, EDITOR_STALE_EPOCH } from './EditorOperationQueue';
 import { PreviewSelectionReceipt, PreviewSelectionWait, writePreviewWithReceipt } from './PreviewSelectionReceipt';
 import { PreviewCaretPlacement, PreviewCaretPort } from './PreviewCaretPlacement';
 export { EditorResult, EditorValue } from './EditorOperationQueue';
@@ -236,6 +236,33 @@ export class EditorAdapter {
     return this.enqueueValue('qForward', async (client: inputMethodEngine.InputClient): Promise<string> => {
       return await client.getForward(length);
     });
+  }
+
+  /** An empty notification or position zero alone does not prove an empty field. */
+  async queryEmpty(): Promise<EditorValue<boolean>> {
+    const epoch: number = this.getEpoch();
+    // Surrounding-text APIs can exclude selected text. Selecting the entire
+    // field must not be mistaken for an empty field.
+    if (this.hasSelection()) { return { ok: true, code: 0, value: false }; }
+    // Each SDK call has its own queue result. A timed-out read must never
+    // resume later and start another SDK call after this probe has returned.
+    const first: EditorValue<number> = await this.queryIndex();
+    if (epoch !== this.getEpoch()) { return { ok: false, code: EDITOR_STALE_EPOCH, value: undefined }; }
+    if (!first.ok || first.value === undefined) { return { ok: false, code: first.code, value: undefined }; }
+    if (first.value !== 0) { return { ok: true, code: 0, value: false }; }
+    const before: EditorValue<string> = await this.queryForward(1);
+    if (epoch !== this.getEpoch()) { return { ok: false, code: EDITOR_STALE_EPOCH, value: undefined }; }
+    if (!before.ok || before.value === undefined) { return { ok: false, code: before.code, value: undefined }; }
+    if (before.value.length !== 0) { return { ok: true, code: 0, value: false }; }
+    const after: EditorValue<string> = await this.enqueueValue('qBackward',
+      (client: inputMethodEngine.InputClient): Promise<string> => client.getBackward(1));
+    if (epoch !== this.getEpoch()) { return { ok: false, code: EDITOR_STALE_EPOCH, value: undefined }; }
+    if (!after.ok || after.value === undefined) { return { ok: false, code: after.code, value: undefined }; }
+    if (after.value.length !== 0) { return { ok: true, code: 0, value: false }; }
+    const last: EditorValue<number> = await this.queryIndex();
+    if (epoch !== this.getEpoch()) { return { ok: false, code: EDITOR_STALE_EPOCH, value: undefined }; }
+    return { ok: last.ok, code: last.code,
+      value: last.value === undefined ? undefined : last.value === 0 && !this.hasSelection() };
   }
 
 }

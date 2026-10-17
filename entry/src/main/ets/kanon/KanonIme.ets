@@ -15,6 +15,7 @@ import { MozcEngine } from './MozcEngine';
 import { NativeMozcBridge } from './NativeMozcBridge';
 import { CompositionPreview, CompositionPreviewPort } from './CompositionPreview';
 import { CompositionCursorSync, CompositionCursorPort, CompositionCursorResult } from './CompositionCursorSync';
+import { EmptyEditorRead, ExternalEditorPort, ExternalEditorResult, ExternalEditorSync } from './ExternalEditorSync';
 import { cancelEditorPreview } from './PreviewLifecycle';
 import { createInputEvent, resolveInputMovement } from './InputEventContract';
 import { InputOperationQueue } from './InputOperationQueue';
@@ -31,6 +32,7 @@ import { DirectEnglishConversion, DirectEnglishInput, DirectEnglishPort } from '
 import { ImeLocalRequest, ImeLocalRequestPort, ImeLocalRequests } from './ImeLocalRequests';
 import { layoutLanguage, languageLayouts } from '../common/KeyboardConfigValues';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import Log from '../model/Log';
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest;
@@ -52,6 +54,16 @@ class KanonIme {
   private directEnglish: DirectEnglishInput = new DirectEnglishInput(englishPrediction, this.directEnglishPort);
   private ready: boolean = false;
   private lastEpoch: number = -1;
+  private compositionGeneration: number = 0;
+  private editorSyncQueued: boolean = false;
+  private externalEditorPort: ExternalEditorPort = {
+    getEpoch: (): number => realEditorPort.getEpoch(),
+    queryEmpty: async (): Promise<EmptyEditorRead> => {
+      const result = await editorAdapter.queryEmpty();
+      return { ok: result.ok, code: result.code, value: result.value };
+    }
+  };
+  private editorSync: ExternalEditorSync = new ExternalEditorSync(this.externalEditorPort);
   private mode: string = 'JP';
   private previewPort: CompositionPreviewPort = {
     getEpoch: (): number => realEditorPort.getEpoch(),
@@ -136,6 +148,8 @@ class KanonIme {
   private async syncEpoch(): Promise<void> {
     const e: number = realEditorPort.getEpoch();
     if (this.lastEpoch !== e) {
+      this.compositionGeneration++;
+      this.editorSync.reset();
       this.coord.onEditorChanged();
       await this.engine.resetLocal();
       this.englishEngine.resetLocal();
@@ -144,7 +158,38 @@ class KanonIme {
       this.lastEpoch = e;
       this.preview.reset();
       this.cursorSync.reset();
+      // A new connection can arrive without a key event. Publish the reset
+      // before exposing the panel so old composing indicators do not linger.
+      this.publish(this.coord.getSnapshot(), e);
     }
+  }
+
+  /** Explicit SDK request from the application, distinct from a text hint. */
+  async discardTypingText(): Promise<void> {
+    const epoch: number = realEditorPort.getEpoch();
+    Log.showInfo('KanonIme->', `kanon: editor-discard epoch=${epoch}`);
+    await this.inputQueue.enqueue(async (): Promise<ImeSnapshot> => {
+      await this.ensure();
+      await this.syncEpoch();
+      if (epoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
+      this.compositionGeneration++;
+      if (this.preview.getLength() > 0) {
+        // Clear only our active preview, then end its SDK session. Never
+        // submit the old conversion or delete the application's committed text.
+        const result = await cancelEditorPreview(realEditorPort);
+        Log.showInfo('KanonIme->', `kanon: discard-preview ok=${result.ok} code=${result.code}`);
+        if (epoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
+      }
+      this.coord.onEditorChanged();
+      await this.engine.resetLocal();
+      this.englishEngine.resetLocal();
+      englishPrediction.clear();
+      this.preview.reset();
+      this.cursorSync.reset();
+      this.editorSync.reset();
+      this.publish(this.coord.getSnapshot(), epoch);
+      return this.coord.getSnapshot();
+    });
   }
 
   private publish(s: ImeSnapshot, epoch: number = realEditorPort.getEpoch()): void {
@@ -154,7 +199,67 @@ class KanonIme {
     this.presentation.publish(s, epoch);
   }
 
-  selectionChanged(): void { this.cursorSync.notify(realEditorPort.getEpoch()); }
+  selectionChanged(begin: number, end: number): void {
+    const epoch: number = realEditorPort.getEpoch();
+    this.cursorSync.notify(epoch);
+    this.editorSync.selectionChanged(epoch, begin, end);
+    this.scheduleEditorSync();
+  }
+
+  textChanged(empty: boolean): void {
+    this.editorSync.textChanged(realEditorPort.getEpoch(), empty);
+    this.scheduleEditorSync();
+  }
+
+  editorVisibilityChanged(): void {
+    const epoch: number = realEditorPort.getEpoch();
+    this.editorSync.visibilityChanged(epoch);
+    this.scheduleEditorSync();
+  }
+
+  private scheduleEditorSync(): void {
+    if (!this.ready || this.editorSyncQueued || !this.editorSync.hasPending()) { return; }
+    this.editorSyncQueued = true;
+    const revision: number = this.editorSync.getRevision();
+    this.inputQueue.enqueue(async (): Promise<ImeSnapshot> => {
+      await this.syncEpoch();
+      await this.synchronizeExternalEditor();
+      return this.coord.getSnapshot();
+    }).catch((): ImeSnapshot => this.coord.getSnapshot()).finally((): void => {
+      this.editorSyncQueued = false;
+      if (revision !== this.editorSync.getRevision() && this.editorSync.hasPending()) {
+        this.scheduleEditorSync();
+      }
+    });
+  }
+
+  private async synchronizeExternalEditor(): Promise<boolean> {
+    const epoch: number = realEditorPort.getEpoch();
+    let result: ExternalEditorResult;
+    do {
+      // An unsupported/failed preview may exist only in the engine. An empty
+      // editor is then normal and must not be mistaken for external deletion.
+      const shownComposition: boolean = this.coord.getSnapshot().preeditLen > 0 && this.preview.getLength() > 0;
+      const directEnglish: boolean = this.mode === 'EN' && !this.coord.usesEnglishComposition() &&
+        englishPrediction.getPrefix().length > 0;
+      result = await this.editorSync.reconcile(shownComposition || directEnglish);
+    } while (result === 'retry');
+    if (result === 'failed' || result === 'stale') { return false; }
+    if (result !== 'empty') { return true; }
+    // Forget local state only after confirming an empty field. Do not edit
+    // the application's draft or infer submission from visibility/errors.
+    this.compositionGeneration++;
+    this.coord.onEditorChanged();
+    await this.engine.resetLocal();
+    this.englishEngine.resetLocal();
+    englishPrediction.clear();
+    this.preview.reset();
+    this.cursorSync.reset();
+    if (epoch !== realEditorPort.getEpoch()) { return false; }
+    Log.showInfo('KanonIme->', `kanon: editor-reset epoch=${epoch} reason=${result}`);
+    this.publish(this.coord.getSnapshot(), epoch);
+    return true;
+  }
 
   private async synchronizeCompositionCursor(): Promise<boolean> {
     const epoch: number = realEditorPort.getEpoch();
@@ -183,15 +288,22 @@ class KanonIme {
 
   private async postRequest(request: ImeRequest): Promise<ImeSnapshot> {
     // プレビュー更新も含めて直列化する。次の打鍵が前の表示・確定へ割り込まない。
+    const generation: number = this.compositionGeneration;
     return this.inputQueue.enqueue((): Promise<ImeSnapshot> =>
-      this.postSerial(request));
+      this.postSerial(request, generation));
   }
 
-  private async postSerial(request: ImeRequest): Promise<ImeSnapshot> {
+  private async postSerial(request: ImeRequest, generation: number = this.compositionGeneration): Promise<ImeSnapshot> {
     const requestEpoch: number = realEditorPort.getEpoch();
     try {
       await this.ensure();
       await this.syncEpoch();
+      if (requestEpoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
+      if (!await this.synchronizeExternalEditor()) { return this.coord.getSnapshot(); }
+      if (generation !== this.compositionGeneration &&
+        (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish')) {
+        return this.coord.getSnapshot();
+      }
       if (requestEpoch !== realEditorPort.getEpoch()) { return this.coord.getSnapshot(); }
       if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
         !await this.synchronizeCompositionCursor()) { return this.coord.getSnapshot(); }
