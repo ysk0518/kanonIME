@@ -1,5 +1,20 @@
 {
     "string":  [
+      { "name": "settings_candidate_font", "value": "候选文字大小：%d" },
+      { "name": "settings_candidate_rows", "value": "候选行数" },
+      { "name": "settings_candidate_row_count", "value": "%d行" },
+      { "name": "settings_candidate_rows_help", "value": "输入时按键位置保持不变。窗口较矮时显示一行。" },
+      { "name": "candidate_menu", "value": "键盘菜单" },
+      { "name": "candidate_expand", "value": "展开候选" },
+      { "name": "candidate_collapse", "value": "收起候选" },
+      { "name": "candidate_cancel", "value": "取消" },
+      { "name": "candidate_partial", "value": "确认当前词组" },
+      { "name": "candidate_sample_0", "value": "今天" },
+      { "name": "candidate_sample_1", "value": "明天" },
+      { "name": "candidate_sample_2", "value": "时间" },
+      { "name": "candidate_sample_3", "value": "谢谢" },
+      { "name": "candidate_sample_4", "value": "现在" },
+      { "name": "candidate_sample_5", "value": "一起" },
                    {
                        "name":  "entry_desc",
                        "value":  "kanon の日本語・英語キーボード"

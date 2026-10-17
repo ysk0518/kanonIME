@@ -1,5 +1,20 @@
 {
     "string":  [
+      { "name": "settings_candidate_font", "value": "Candidate text size: %d" },
+      { "name": "settings_candidate_rows", "value": "Candidate rows" },
+      { "name": "settings_candidate_row_count", "value": "%d row(s)" },
+      { "name": "settings_candidate_rows_help", "value": "Key positions stay fixed while typing. Short windows use one row." },
+      { "name": "candidate_menu", "value": "Keyboard menu" },
+      { "name": "candidate_expand", "value": "Expand candidates" },
+      { "name": "candidate_collapse", "value": "Collapse candidates" },
+      { "name": "candidate_cancel", "value": "Cancel" },
+      { "name": "candidate_partial", "value": "Commit segment" },
+      { "name": "candidate_sample_0", "value": "Today" },
+      { "name": "candidate_sample_1", "value": "Tomorrow" },
+      { "name": "candidate_sample_2", "value": "Time" },
+      { "name": "candidate_sample_3", "value": "Thank you" },
+      { "name": "candidate_sample_4", "value": "This" },
+      { "name": "candidate_sample_5", "value": "Together" },
                    {
                        "name":  "entry_desc",
                        "value":  "kanon の日本語・英語キーボード"

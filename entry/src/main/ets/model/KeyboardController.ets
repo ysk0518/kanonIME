@@ -28,11 +28,12 @@ import { BusinessError } from '@ohos.base';
 import { GetHardKeyValue } from './HardKeyUtils';
 import { KeyCode } from '@ohos.multimodalInput.keyCode';
 import { StyleConfiguration } from '../common/StyleConfiguration';
-import { panelHeight, toolbarHeight, DEFAULT_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
+import { toolbarHeight, DEFAULT_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   MIN_KEYBOARD_HEIGHT_PERCENT, keyboardHeightPreviewPercent } from '../common/KeyboardLayout';
 import { openKeyboardPreferences, refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent, layoutLanguage } from '../common/KeyboardConfig';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardBackground } from '../common/KeyboardBackground';
+import { candidateAreaHeight, candidatePanelHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
 interface CursorInfo {
   x: number;
@@ -182,7 +183,10 @@ class KeyboardController {
     refreshKeyboardHeightPercent();
     keyboardBackground.initialize(context, true).catch(() => {});
     keyboardSettingsSync.onApplied = async (snapshot, heightChanged: boolean, fromPeer: boolean) => {
-      if (heightChanged) { this.refreshKeyboardHeight(); }
+      const candidateKey: string = `${snapshot.candidateFontSize}:${snapshot.candidateRows}`;
+      const candidatesChanged: boolean = this.candidateSettingsKey !== candidateKey;
+      this.candidateSettingsKey = candidateKey;
+      if (heightChanged || candidatesChanged) { this.refreshKeyboardHeight(); }
       if (fromPeer) {
         await kanonIme.prepare();
         const activeLayout: string = AppStorage.get<string>('kanonLayout') ?? '';
@@ -275,6 +279,14 @@ class KeyboardController {
     this.resizePanel();
   }
 
+  private candidateSettingsKey: string = '';
+
+  private keyboardPanelHeight(width: number, height: number, fontScale: number, percent: number): number {
+    return candidatePanelHeight(width, height, fontScale, percent,
+      AppStorage.get<number>('kanonCandidateFontSize') ?? DEFAULT_CANDIDATE_FONT_SIZE,
+      AppStorage.get<number>('kanonCandidateRows') ?? DEFAULT_CANDIDATE_ROWS);
+  }
+
   private applyPanelRect(panel: inputMethodEngine.Panel): void {
     try {
       const screen: display.Display = display.getDefaultDisplaySync();
@@ -288,16 +300,16 @@ class KeyboardController {
       this.updateHeightPreview(heightPercent);
       // Allocate the maximum canvas once while adjusting. Dragging never resizes the OS window.
       const panelPercent: number = this.heightAdjustment ? MAX_KEYBOARD_HEIGHT_PERCENT : heightPercent;
-      const portraitHeight: number = Math.round(panelHeight(shortPx / density, longPx / density, fontScale, panelPercent) * density);
-      const landscapeHeight: number = Math.round(panelHeight(longPx / density, shortPx / density, fontScale, panelPercent) * density);
+      const portraitHeight: number = Math.round(this.keyboardPanelHeight(shortPx / density, longPx / density, fontScale, panelPercent) * density);
+      const landscapeHeight: number = Math.round(this.keyboardPanelHeight(longPx / density, shortPx / density, fontScale, panelPercent) * density);
       AppStorage.setOrCreate('kanonHeightAdjustmentBottomVp',
         this.heightAdjustment && this.adjustmentBottomInset >= 0 ? this.adjustmentBottomInset / density : 0);
       // Fixed panels are positioned by HarmonyOS, including system navigation area.
       // Register both orientations together instead of racing resize() and moveTo().
       if (this.heightAdjustment && this.adjustmentBottomInset >= 0) {
-        const portraitMinimum: number = Math.round(panelHeight(shortPx / density, longPx / density,
+        const portraitMinimum: number = Math.round(this.keyboardPanelHeight(shortPx / density, longPx / density,
           fontScale, MIN_KEYBOARD_HEIGHT_PERCENT) * density);
-        const landscapeMinimum: number = Math.round(panelHeight(longPx / density, shortPx / density,
+        const landscapeMinimum: number = Math.round(this.keyboardPanelHeight(longPx / density, shortPx / density,
           fontScale, MIN_KEYBOARD_HEIGHT_PERCENT) * density);
         // Enhanced rectangles include the system inset. Keep the expansion area outside
         // the avoidance region, so the system keyboard background does not cover it.
@@ -318,8 +330,12 @@ class KeyboardController {
       AppStorage.setOrCreate('isLandscape', screen.width > screen.height);
       const initialHeight: number = screen.width > screen.height ? landscapeHeight : portraitHeight;
       if (!this.panelReady) {
+        const candidateFont: number = AppStorage.get<number>('kanonCandidateFontSize') ?? DEFAULT_CANDIDATE_FONT_SIZE;
+        const preferredRows: number = AppStorage.get<number>('kanonCandidateRows') ?? DEFAULT_CANDIDATE_ROWS;
+        const bar: number = toolbarHeight(fontScale);
+        const rows: number = initialHeight / density - candidateAreaHeight(bar, candidateFont, 2, fontScale) >= 160 ? preferredRows : 1;
         AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(Math.min(720, screen.width / density),
-          Math.max(1, initialHeight / density - toolbarHeight(fontScale))));
+          Math.max(1, initialHeight / density - candidateAreaHeight(bar, candidateFont, rows, fontScale))));
       }
     } catch (error) {
       Log.showInfo(TAG, `panel-layout failed code=${(error as BusinessError).code}`);
@@ -351,7 +367,7 @@ class KeyboardController {
     if (this.previewScreenWidth <= 0 || this.previewScreenHeight <= 0) { return; }
     const fontScale: number = AppStorage.get<number>('kanonFontScale') ?? 1;
     AppStorage.setOrCreate('kanonHeightPreviewVp',
-      panelHeight(this.previewScreenWidth, this.previewScreenHeight, fontScale, percent));
+      this.keyboardPanelHeight(this.previewScreenWidth, this.previewScreenHeight, fontScale, percent));
   }
 
   public beginKeyboardHeightAdjustment(): void {

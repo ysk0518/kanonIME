@@ -53,13 +53,13 @@ export function standardKeyHeight(width: number, height: number): number {
 }
 
 export function panelHeight(width: number, height: number, fontScale: number,
-  heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT): number {
+  heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT, headerHeight: number = toolbarHeight(fontScale)): number {
   const landscape: boolean = width > height;
   const standardKeys: number = standardKeyHeight(width, height);
   const keys: number = Math.max(landscape ? 160 : 176, standardKeys * keyboardHeightPreviewPercent(heightPercent) / 100);
   // Keep space for the editor; the available height takes precedence on small windows.
   const limit: number = Math.min(height * (landscape ? 0.55 : 0.48), Math.max(1, height - 96));
-  return Math.max(1, Math.floor(Math.min(keys + toolbarHeight(fontScale), limit)));
+  return Math.max(1, Math.floor(Math.min(keys + headerHeight, limit)));
 }
 
 export function clipboardColumns(width: number, fontScale: number): number {

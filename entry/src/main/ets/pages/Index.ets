@@ -42,6 +42,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../common/KeyboardLayout';
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
+import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
 const TAG: string = 'index->';
 
@@ -58,6 +59,9 @@ struct Index {
   @StorageLink('kanonBackgroundBrightness') photoBrightness: number = 75;
   @StorageLink('kanonToolbarHeight') @Watch('updateMeasuredStyle') toolbarHeight: number = DEFAULT_TOOLBAR_HEIGHT;
   @StorageLink('kanonKeyGap') @Watch('updateMeasuredStyle') keyGap: number = DEFAULT_KEY_GAP;
+  @StorageLink('kanonCandidateFontSize') @Watch('updateMeasuredStyle') candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
+  @StorageLink('kanonCandidateRows') @Watch('updateMeasuredStyle') candidateRows: number = DEFAULT_CANDIDATE_ROWS;
+  @StorageLink('kanonFontScale') @Watch('updateMeasuredStyle') fontScale: number = 1;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
@@ -98,7 +102,12 @@ struct Index {
     if (this.measuredWidth <= 0 || this.measuredHeight <= 0) { return; }
     const width: number = Math.min(720, this.measuredWidth);
     const panelHeight: number = this.submenuType === SubMenuType.SIZE ? this.heightPreview : this.measuredHeight;
-    const height: number = Math.max(1, panelHeight - this.toolbarHeight);
+    // On short windows retain enough height for the keys; typing never changes this choice.
+    const rows: number = panelHeight - candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, 2, this.fontScale) >= 160 ? this.candidateRows : 1;
+    if (AppStorage.get<number>('kanonCandidateDisplayRows') !== rows) { AppStorage.setOrCreate('kanonCandidateDisplayRows', rows); }
+    const barHeight: number = this.submenuType === SubMenuType.NORMAL ?
+      candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, rows, this.fontScale) : this.toolbarHeight;
+    const height: number = Math.max(1, panelHeight - barHeight);
     if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5 ||
       this.inputStyle.keyGap !== effectiveKeyGap(width, height, this.keyGap)) {
       AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(width, height, this.keyGap));

@@ -92,6 +92,8 @@ function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   setValue('kanonLongPressMs', snapshot.longPressMs);
   setValue('kanonFlickPreviewEnabled', snapshot.keyPreview);
   setValue('kanonKeyGap', snapshot.keyGap);
+  setValue('kanonCandidateFontSize', snapshot.candidateFontSize);
+  setValue('kanonCandidateRows', snapshot.candidateRows);
   setValue('kanonHapticLevel', snapshot.hapticLevel);
   setValue('kanonShortcutOrder', snapshot.shortcutOrder);
   if (!previous || previous.heightPercent !== snapshot.heightPercent || AppStorage.get<number>('kanonKeyboardHeightPercent') === undefined) {
