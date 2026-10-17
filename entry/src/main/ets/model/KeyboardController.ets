@@ -138,6 +138,11 @@ class KeyboardController {
   private inputHandle: InputHandler = InputHandler.getInstance();
   private mKeyboardDelegate: inputMethodEngine.KeyboardDelegate | undefined;
   private privateCommandRegistered: boolean = false;
+  private discardTypingRegistered: boolean = false;
+  private typingDiscarded: () => void = (): void => {
+    if (!this.active) { return; }
+    kanonIme.discardTypingText().catch(() => {});
+  };
   private privateCommandReceived: (record: Record<string, inputMethodEngine.CommandDataType>) => void =
     (record: Record<string, inputMethodEngine.CommandDataType>): void => {
       this.inputHandle.addLog('keyboard privateCommand' + JSON.stringify(record));
@@ -224,6 +229,14 @@ class KeyboardController {
         AppStorage.setOrCreate('kanonPanelWidthPx', size.width);
         AppStorage.setOrCreate('kanonPanelHeightPx', size.height);
       });
+      // The OS can hide the panel on focus loss without keyboardHide.
+      // Observe the panel itself; visibility is only a hint to read the editor.
+      panel.on('show', () => {
+        if (this.active && generation === this.panelGeneration) { kanonIme.editorVisibilityChanged(); }
+      });
+      panel.on('hide', () => {
+        if (this.active && generation === this.panelGeneration) { kanonIme.editorVisibilityChanged(); }
+      });
       this.applyPanelRect(panel);
       await panel.setUiContent('pages/Index');
       if (!this.active || generation !== this.panelGeneration) { return; }
@@ -242,7 +255,11 @@ class KeyboardController {
     const panel: inputMethodEngine.Panel | undefined = this.panel;
     this.panel = undefined;
     if (panel) {
-      try { panel.off('sizeChange'); } catch (error) {
+      try {
+        panel.off('sizeChange');
+        panel.off('show');
+        panel.off('hide');
+      } catch (error) {
         Log.showInfo(TAG, `panel-listener-release failed code=${(error as BusinessError).code}`);
       }
       InputMethodEngine.destroyPanel(panel).catch((error: BusinessError) => {
@@ -385,6 +402,12 @@ class KeyboardController {
     });
     InputMethodEngine.on('keyboardHide', () => { AppStorage.setOrCreate('kanonKeyboardVisible', false); });
     InputMethodEngine.on('inputStop', this.inputStopped);
+    try {
+      InputMethodEngine.on('discardTypingText', this.typingDiscarded);
+      this.discardTypingRegistered = true;
+    } catch (error) {
+      Log.showInfo(TAG, `discard-listener unavailable code=${(error as BusinessError).code}`);
+    }
 
     this.inputHandle.addLog('pre on privateCommand');
     try {
@@ -420,12 +443,13 @@ class KeyboardController {
     this.mKeyboardDelegate.on('selectionChange', (oldBegin: number, oldEnd: number, newBegin: number, newEnd: number) => {
       editorAdapter.updateSelection(newBegin, newEnd);
       englishPrediction.selectionChanged(newBegin, newEnd);
-      kanonIme.selectionChanged();
+      kanonIme.selectionChanged(newBegin, newEnd);
       if (isDebug) {
         this.inputHandle.setSelectInfo('selectInfo: from(' + oldBegin + ',' + oldEnd + ') to (' + newBegin + ',' + newEnd + ')');
       }
     });
     this.mKeyboardDelegate.on('textChange', (text: string) => {
+      kanonIme.textChanged(text.length === 0);
       if (isDebug) { this.inputHandle.setTextInfo('textInfo: ' + text); }
     });
   }
@@ -563,6 +587,11 @@ class KeyboardController {
     InputMethodEngine.off('keyboardHide');
     InputMethodEngine.off('inputStart');
     InputMethodEngine.off('inputStop', this.inputStopped);
+    if (this.discardTypingRegistered) {
+      try { InputMethodEngine.off('discardTypingText', this.typingDiscarded); }
+      catch (error) { Log.showInfo(TAG, `discard-listener-release failed code=${(error as BusinessError).code}`); }
+      this.discardTypingRegistered = false;
+    }
     if (this.privateCommandRegistered) {
       try {
         InputMethodEngine.off('privateCommand', this.privateCommandReceived);
@@ -580,9 +609,7 @@ class KeyboardController {
       this.mKeyboardDelegate.off('keyUp');
       this.mKeyboardDelegate.off('selectionChange');
       this.mKeyboardDelegate.off('cursorContextChange');
-      if (isDebug) {
-        this.mKeyboardDelegate.off('textChange');
-      }
+      this.mKeyboardDelegate.off('textChange');
     }
   }
 }
