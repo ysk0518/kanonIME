@@ -39,6 +39,7 @@ export interface ImeSessionPorts {
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest;
+type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
 
 export class ImeSession {
   private ports: ImeSessionPorts;
@@ -161,18 +162,38 @@ export class ImeSession {
     if (this.lastEpoch !== e) {
       this.compositionGeneration++;
       this.editorSync.reset();
-      this.coord.onEditorChanged();
-      await this.engine.resetLocal();
-      this.englishEngine.resetLocal();
-      this.ports.prediction.clear();
+      await this.resetCoordinatorAndMozc();
+      this.resetLocalEnglish();
       await this.coord.loadPreviewSupport();
       this.lastEpoch = e;
-      this.preview.reset();
-      this.cursorSync.reset();
       // A new connection can arrive without a key event. Publish the reset
       // before exposing the panel so old composing indicators do not linger.
-      this.publish(this.coord.getSnapshot(), e);
+      this.finishLocalReset(e, 'epoch');
     }
+  }
+
+  // Keep the existing wait for Mozc at each call site. Only an input-target
+  // change reloads preview support before the range reset and publication.
+  private resetCoordinatorAndMozc(): Promise<void> {
+    this.coord.onEditorChanged();
+    return this.engine.resetLocal();
+  }
+
+  private resetLocalEnglish(): void {
+    this.englishEngine.resetLocal();
+    this.ports.prediction.clear();
+  }
+
+  private finishLocalReset(epoch: number, reason: LocalResetReason): boolean {
+    this.preview.reset();
+    this.cursorSync.reset();
+    if (reason === 'discard') { this.editorSync.reset(); }
+    if (reason === 'external-empty') {
+      if (epoch !== this.ports.editor.getEpoch()) { return false; }
+      this.ports.log('KanonIme->', `kanon: editor-reset epoch=${epoch} reason=empty`);
+    }
+    this.publish(this.coord.getSnapshot(), epoch);
+    return true;
   }
 
   /** Explicit SDK request from the application, distinct from a text hint. */
@@ -191,14 +212,9 @@ export class ImeSession {
         this.ports.log('KanonIme->', `kanon: discard-preview ok=${result.ok} code=${result.code}`);
         if (epoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
       }
-      this.coord.onEditorChanged();
-      await this.engine.resetLocal();
-      this.englishEngine.resetLocal();
-      this.ports.prediction.clear();
-      this.preview.reset();
-      this.cursorSync.reset();
-      this.editorSync.reset();
-      this.publish(this.coord.getSnapshot(), epoch);
+      await this.resetCoordinatorAndMozc();
+      this.resetLocalEnglish();
+      this.finishLocalReset(epoch, 'discard');
       return this.coord.getSnapshot();
     });
   }
@@ -260,16 +276,9 @@ export class ImeSession {
     // Forget local state only after confirming an empty field. Do not edit
     // the application's draft or infer submission from visibility/errors.
     this.compositionGeneration++;
-    this.coord.onEditorChanged();
-    await this.engine.resetLocal();
-    this.englishEngine.resetLocal();
-    this.ports.prediction.clear();
-    this.preview.reset();
-    this.cursorSync.reset();
-    if (epoch !== this.ports.editor.getEpoch()) { return false; }
-    this.ports.log('KanonIme->', `kanon: editor-reset epoch=${epoch} reason=${result}`);
-    this.publish(this.coord.getSnapshot(), epoch);
-    return true;
+    await this.resetCoordinatorAndMozc();
+    this.resetLocalEnglish();
+    return this.finishLocalReset(epoch, 'external-empty');
   }
 
   private async synchronizeCompositionCursor(): Promise<boolean> {

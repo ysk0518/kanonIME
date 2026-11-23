@@ -66,8 +66,8 @@ const mutations = {
   },
   sessionDiscardExternalHints: {
     file: 'kanon/ImeSession.ets',
-    before: "this.editorSync.reset();\n      this.publish(this.coord.getSnapshot(), epoch);",
-    after: "this.publish(this.coord.getSnapshot(), epoch);"
+    before: "if (reason === 'discard') { this.editorSync.reset(); }",
+    after: "// Incorrectly keep external editor hints after discard."
   },
   regressionLayoutReset: {
     file: 'kanon/ImeLocalRequests.ets',
