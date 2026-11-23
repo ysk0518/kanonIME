@@ -17,7 +17,7 @@ if (baseline.status !== 0) {
   throw new Error('Baseline tests must pass before checking mutations');
 }
 console.log('Baseline: passed');
-for (const [mutation, testId] of [['suggestion', 'R02'], ['modifier', 'R06'], ['preview', 'R08'],
+for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 'R06'], ['preview', 'R08'],
   ['anchor', 'R05'], ['releaseTap', 'R11'], ['staleMovement', 'R12'], ['candidatePhase', 'P02'],
   ['reviveHistory', 'P03'], ['displayLimit', 'P05'], ['previewGeneration', 'P06'],
   ['eventValidation', 'P07'], ['emptyMovement', 'P07'], ['queueEpoch', 'P08'], ['queueOrder', 'P08'],
@@ -44,9 +44,25 @@ for (const [mutation, testId] of [['suggestion', 'R02'], ['modifier', 'R06'], ['
   ['localPasteFailure', 'P26'], ['localPasteEpoch', 'P26'], ['runtimePasswordPolicy', 'P27'],
   ['runtimeCursorEpoch', 'P27'], ['runtimeStoredConfirmation', 'P27'], ['runtimeLayoutHistory', 'P27'],
   ['presentationCandidateSource', 'P27'], ['presentationCandidateRevision', 'P27'],
-  ['presentationDiagnosticSource', 'P27'], ['presentationTargetEpoch', 'P27'], ['regressionLayoutReset', 'P28']]) {
-  const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', `${testId}:`], testId);
-  const matchingFailure = new RegExp(`not ok \\d+ - ${testId}:`).test(result.output);
+  ['presentationDiagnosticSource', 'P27'], ['presentationTargetEpoch', 'P27'], ['regressionLayoutReset', 'P28'],
+  ['queueEpoch', 'P29', 'R-01'],
+  ['sessionEpochDuringAdmission', 'P29', 'R-01'],
+  ['sessionObsoleteComposition', 'P29', 'R-02'],
+  ['sessionCursorBypass', 'P29', 'R-03'],
+  ['sessionCursorFailure', 'P29', 'R-03'],
+  ['sessionExternalReadFailure', 'P29', 'R-04'],
+  ['sessionPrepareUndo', 'P29', 'R-05'],
+  ['sessionStaleUndoPublish', 'P29', 'R-06'],
+  ['sessionDirectConvertSpace', 'P29', 'R-07'],
+  ['sessionPastePrecommit', 'P29', 'R-08'],
+  ['sessionHandledBackspace', 'P29', 'R-09'],
+  ['sessionDirectCommands', 'P29', 'R-10'],
+  ['sessionEnterAction', 'P29', 'R-11'],
+  ['sessionExceptionPublish', 'P29', 'R-12'],
+  ['sessionDiscardExternalHints', 'P29', 'reset:']]) {
+  const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
+  const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
+  const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
   if (result.status === 0 || !matchingFailure || !result.output.includes('AssertionError')) {
     process.stderr.write(result.output);
     throw new Error(`Mutation was not detected by the expected assertion: ${mutation}`);
