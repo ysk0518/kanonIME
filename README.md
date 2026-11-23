@@ -37,7 +37,7 @@ HarmonyOS向けの日本語・英語キーボード。Mozcによる日本語変�
 - [使い方・設定](docs/USAGE.md)
 - [ビルド・実機導入・開発](docs/DEVELOPMENT.md)
 - [テストの実行方法](tests/README.md)
-- [実装仕様](docs/KANON_SPEC.md)・[IME API契約](docs/IME_API_CONTRACT.md)
+- [入力動作の仕様](docs/INPUT_BEHAVIOR.md)・[実装仕様](docs/KANON_SPEC.md)
 
 ## ライセンス
 
