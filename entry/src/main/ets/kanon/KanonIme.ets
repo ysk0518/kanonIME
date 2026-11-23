@@ -18,8 +18,6 @@ import Log from '../model/Log';
 import { EmptyEditorRead } from './ExternalEditorSync';
 import { ImeSession, ImeSessionPorts } from './ImeSession';
 
-export { kanonRevTick } from './ImeSession';
-
 /** SDK access stays at the runtime boundary, shared by composing and direct input. */
 async function sendEnterAction(epoch: number): Promise<void> {
   if (epoch !== realEditorPort.getEpoch()) { return; }

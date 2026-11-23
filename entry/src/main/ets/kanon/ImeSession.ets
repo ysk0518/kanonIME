@@ -222,7 +222,6 @@ export class ImeSession {
   private publish(s: ImeSnapshot, epoch: number = this.ports.editor.getEpoch()): void {
     if (epoch !== this.ports.editor.getEpoch()) { return; }
     this.mode = s.mode;
-    kanonRevTick++;
     this.presentation.publish(s, epoch);
   }
 
@@ -583,6 +582,3 @@ export class ImeSession {
     return this.ports.enterKeyAction(epoch);
   }
 }
-
-/** 候補更新ごとに単調増加する表示用 tick。ForEachのキー空間切替に使う。 */
-export let kanonRevTick: number = 0;
