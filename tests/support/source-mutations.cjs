@@ -1,4 +1,74 @@
 const mutations = {
+  sessionEpochDuringAdmission: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }\n      if (!await this.synchronizeExternalEditor())",
+    after: "if (!await this.synchronizeExternalEditor())"
+  },
+  sessionObsoleteComposition: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (generation !== this.compositionGeneration &&",
+    after: "if (false &&"
+  },
+  sessionCursorBypass: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&",
+    after: "if ("
+  },
+  sessionCursorFailure: {
+    file: 'kanon/ImeSession.ets',
+    before: "!await this.synchronizeCompositionCursor()) { return this.coord.getSnapshot(); }",
+    after: "!await this.synchronizeCompositionCursor()) { /* Continue after sync failure. */ }"
+  },
+  sessionExternalReadFailure: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (result === 'failed' || result === 'stale') { return false; }\n    if (result !== 'empty')",
+    after: "if (result !== 'empty')"
+  },
+  sessionPrepareUndo: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (request.kind === 'prepare') {\n        return await this.localRequests.handle(request, requestEpoch);",
+    after: "if (request.kind === 'prepare') {\n        this.ports.prediction.dropUndo();\n        return await this.localRequests.handle(request, requestEpoch);"
+  },
+  sessionStaleUndoPublish: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (result !== 'stale') { this.publish(snapshot, requestEpoch); }",
+    after: "this.publish(snapshot, requestEpoch);"
+  },
+  sessionDirectConvertSpace: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (result === 'space') { return await this.postSerial({ kind: 'text', text: ' ' }); }",
+    after: "if (result === 'space') { return this.coord.getSnapshot(); }"
+  },
+  sessionPastePrecommit: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (kind === 'paste' && !await this.localRequests.beforePaste(requestEpoch)) {\n        return this.coord.getSnapshot();",
+    after: "if (kind === 'paste' && !await this.localRequests.beforePaste(requestEpoch)) {\n        // Incorrectly continue to Coordinator."
+  },
+  sessionHandledBackspace: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (result === 'handled') {\n          const snapshot: ImeSnapshot = this.coord.getSnapshot();",
+    after: "if (false) {\n          const snapshot: ImeSnapshot = this.coord.getSnapshot();"
+  },
+  sessionDirectCommands: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (this.mode === 'EN' && !this.coord.usesEnglishComposition() && (kind === 'select' || kind === 'cancel' || kind === 'enter'))",
+    after: "if (false)"
+  },
+  sessionEnterAction: {
+    file: 'kanon/ImeSession.ets',
+    before: " && s.lastError === 'empty-submit') {\n        await this.sendEnterAction(epoch);",
+    after: ") {\n        await this.sendEnterAction(epoch);"
+  },
+  sessionExceptionPublish: {
+    file: 'kanon/ImeSession.ets',
+    before: "} catch (e) {\n      const s: ImeSnapshot = this.coord.getSnapshot();\n      this.publish(s, requestEpoch);",
+    after: "} catch (e) {\n      const s: ImeSnapshot = this.coord.getSnapshot();"
+  },
+  sessionDiscardExternalHints: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (reason === 'discard') { this.editorSync.reset(); }",
+    after: "// Incorrectly keep external editor hints after discard."
+  },
   regressionLayoutReset: {
     file: 'kanon/ImeLocalRequests.ets',
     before: 'this.port.resetComposition();',
