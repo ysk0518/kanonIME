@@ -59,7 +59,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['sessionDirectCommands', 'P29', 'R-10'],
   ['sessionEnterAction', 'P29', 'R-11'],
   ['sessionExceptionPublish', 'P29', 'R-12'],
-  ['sessionDiscardExternalHints', 'P29', 'reset:']]) {
+  ['sessionDiscardExternalHints', 'P29', 'reset:'],
+  ['sessionAdmissionStop', 'P29', 'R-04']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
