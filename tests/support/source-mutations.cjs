@@ -1,4 +1,14 @@
 const mutations = {
+  mozcBackspaceHighlight: {
+    file: 'kanon/MozcEngine.ets',
+    before: "return this.phase === 'converting' ? this.selIdx : -1;",
+    after: 'return this.selIdx;'
+  },
+  revertConversionGuard: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (snapshot.state === 'JP_CONVERTING' || snapshot.state === 'EN_CONVERTING') {",
+    after: 'if (true) {'
+  },
   inputBehaviorDecision: {
     file: 'docs/INPUT_BEHAVIOR.md',
     before: '| Q1 | 合意 |',

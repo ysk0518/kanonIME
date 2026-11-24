@@ -86,6 +86,34 @@ async function completedWord(r) {
   assert.equal(r.editor.text, 'hello');
 }
 
+for (const converting of [false, true]) {
+  test(`P35: candidate cancel closes the list while ${converting ? 'reverting conversion' : 'preserving input'}`, async () => {
+    const candidates = [{ id: 1, value: 'きょう' }];
+    const steps = [{ operation: 'literal', text: 'きょ', output: response('きょ', { candidates }) }];
+    if (converting) {
+      steps.push({ operation: 'space', output: response('今日', {
+        focused_reading: 'きょ', focused_id: 2, candidates: [{ id: 2, value: '今日' }]
+      }) }, { operation: 'backspace', output: response('きょ', { candidates }) });
+    }
+    const r = rig({ mode: 'JP', origin: 'A', steps: [...steps, { operation: 'reset', output: response() }] });
+    await r.session.keyText('きょ');
+    if (converting) { await r.session.keySpace(); }
+    r.store.set('kanonCandidatesExpanded', true);
+    const kinds = recordDispatch(r.session);
+    await r.session.revertConversion();
+    assert.equal(r.store.get('kanonCandidatesExpanded'), false);
+    assert.equal(r.editor.text, 'Aきょ');
+    assert.equal(r.store.get('kanonState'), 'JP_COMPOSING');
+    assert.equal(r.store.get('kanonSel'), -1);
+    assert.deepEqual(kinds, converting ? ['backspace'] : []);
+    assert.equal(r.editor.count('insert'), 0);
+    await r.session.cancelCompose();
+    assert.equal(r.editor.text, 'A');
+    assert.equal(kinds.at(-1), 'cancel');
+    r.bridge.assertDone();
+  });
+}
+
 test('P29: R-01: requests queued for the old editor return the latest snapshot without dispatch', async () => {
   const r = rig({ mode: 'JP' });
   const started = deferred(), release = deferred();

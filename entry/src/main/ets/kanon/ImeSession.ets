@@ -38,7 +38,8 @@ export interface ImeSessionPorts {
 }
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
-type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest;
+interface RevertConversionRequest { kind: 'revertConversion'; }
+type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest | RevertConversionRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
 interface ImeAdmissionContinue { kind: 'continue'; }
 interface ImeAdmissionStopped { kind: 'stop'; snapshot: ImeSnapshot; }
@@ -336,11 +337,13 @@ export class ImeSession {
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (!await this.synchronizeExternalEditor()) { return this.stopAdmission(); }
     if (generation !== this.compositionGeneration &&
-      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish')) {
+      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' ||
+        request.kind === 'revertConversion')) {
       return this.stopAdmission();
     }
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
+      request.kind !== 'revertConversion' &&
       !await this.synchronizeCompositionCursor()) { return this.stopAdmission(); }
     const admission: ImeAdmissionContinue = { kind: 'continue' };
     return admission;
@@ -356,6 +359,14 @@ export class ImeSession {
   }
 
   private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
+    if (request.kind === 'revertConversion') {
+      this.ports.bindings.closeCandidates();
+      const snapshot: ImeSnapshot = this.coord.getSnapshot();
+      if (snapshot.state === 'JP_CONVERTING' || snapshot.state === 'EN_CONVERTING') {
+        return this.dispatchNormal({ kind: 'backspace' }, requestEpoch);
+      }
+      return snapshot;
+    }
     this.coord.setEnglishCompositionEnabled(this.ports.bindings.predictionAllowed());
     if (this.mode === 'EN' && this.ports.prediction.takeCompositionAbandoned()) {
       this.englishEngine.resetLocal();
@@ -542,6 +553,10 @@ export class ImeSession {
 
   async cancelCompose(): Promise<void> {
     await this.post('cancel');
+  }
+
+  async revertConversion(): Promise<void> {
+    await this.postRequest({ kind: 'revertConversion' });
   }
 
   async switchMode(): Promise<void> {

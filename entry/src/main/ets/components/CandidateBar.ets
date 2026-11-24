@@ -159,7 +159,7 @@ export struct CandidateBar {
           .scrollBar(BarState.Auto).onAppear(() => { this.selectionChanged(); }).id('cand_expanded_list')
         Row({ space: 20 }) {
           Text($r('app.string.candidate_cancel')).fontSize(14).fontColor($r('app.color.text_secondary')).padding(8)
-            .onClick(() => { kanonIme.cancelCompose(); }).id('cand_cancel')
+            .onClick(() => { kanonIme.revertConversion(); }).id('cand_cancel')
           if (this.mode === 'JP') {
             Text($r('app.string.candidate_partial')).fontSize(14).fontColor($r('app.color.text_secondary')).padding(8)
               .onClick(() => { kanonIme.partialCommit(); }).id('cand_partial')

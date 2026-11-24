@@ -152,6 +152,10 @@ class KanonIme {
     await this.session.cancelCompose();
   }
 
+  async revertConversion(): Promise<void> {
+    await this.session.revertConversion();
+  }
+
   async switchMode(): Promise<void> {
     await this.session.switchMode();
   }
