@@ -365,6 +365,9 @@ export class ImeSession {
       if (snapshot.state === 'JP_CONVERTING' || snapshot.state === 'EN_CONVERTING') {
         return this.dispatchNormal({ kind: 'backspace' }, requestEpoch);
       }
+      if (this.isDirectEnglish() && this.directEnglish.revertSelection()) {
+        this.publish(snapshot, requestEpoch);
+      }
       return snapshot;
     }
     this.coord.setEnglishCompositionEnabled(this.ports.bindings.predictionAllowed());
@@ -389,6 +392,11 @@ export class ImeSession {
       return this.coord.getSnapshot();
     }
     if (this.mode === 'EN' && kind === 'backspace') {
+      if (this.isDirectEnglish() && this.directEnglish.revertSelection()) {
+        const snapshot: ImeSnapshot = this.coord.getSnapshot();
+        this.publish(snapshot, requestEpoch);
+        return snapshot;
+      }
       const result: EnglishUndoResult = await this.completion.undo('backspace', requestEpoch);
       if (result === 'stale') { return this.coord.getSnapshot(); }
       if (result === 'handled') {

@@ -1,4 +1,9 @@
 const mutations = {
+  directEnglishRevertSelection: {
+    file: 'kanon/DirectEnglishInput.ets',
+    before: 'if (this.prediction.getSelectedIndex() < 0) { return false; }',
+    after: 'return false;'
+  },
   mozcBackspaceHighlight: {
     file: 'kanon/MozcEngine.ets',
     before: "return this.phase === 'converting' ? this.selIdx : -1;",

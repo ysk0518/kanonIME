@@ -66,7 +66,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['duplicateAppStorageKey', 'P32', 'AppStorage key values are unique'],
   ['missingStorageDecoratorKey', 'P32', 'storage decorator keys are defined in AppStorageKeys'],
   ['coreAppStorageDependency', 'P32', 'SDK-free kanon modules load without AppStorage'],
-  ['inputBehaviorDecision', 'P34'], ['mozcBackspaceHighlight', 'P35'], ['revertConversionGuard', 'P35']]) {
+  ['inputBehaviorDecision', 'P34'], ['mozcBackspaceHighlight', 'P35'], ['revertConversionGuard', 'P35'],
+  ['directEnglishRevertSelection', 'P36', 'direct English Delete']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

@@ -114,6 +114,30 @@ for (const converting of [false, true]) {
   });
 }
 
+for (const action of ['Delete', 'candidate cancel']) {
+  test(`P36: direct English ${action} clears the highlight before the next Delete edits the field`, async () => {
+    const r = rig({ supported: false });
+    await r.session.keyText('he');
+    await r.session.keySpace();
+    assert.ok(r.prediction.getSelectedIndex() >= 0);
+    const candidates = r.prediction.getItems();
+    const kinds = recordDispatch(r.session);
+    if (action === 'Delete') { await r.session.keyDelete(); }
+    else { await r.session.revertConversion(); }
+    assert.equal(r.editor.text, 'he');
+    assert.equal(r.prediction.getPrefix(), 'he');
+    assert.deepEqual(r.prediction.getItems(), candidates);
+    assert.equal(r.store.get('kanonSel'), -1);
+    assert.deepEqual(kinds, []);
+    assert.equal(r.editor.count('deleteForward'), 0);
+    await r.session.keyDelete();
+    assert.equal(r.editor.text, 'h');
+    assert.equal(r.prediction.getPrefix(), 'h');
+    assert.deepEqual(kinds, ['backspace']);
+    assert.equal(r.editor.count('deleteForward'), 1);
+  });
+}
+
 test('P29: R-01: requests queued for the old editor return the latest snapshot without dispatch', async () => {
   const r = rig({ mode: 'JP' });
   const started = deferred(), release = deferred();
