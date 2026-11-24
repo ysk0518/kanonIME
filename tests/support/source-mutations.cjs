@@ -74,6 +74,26 @@ const mutations = {
     before: "if (admission.kind === 'stop') { return admission.snapshot; }",
     after: '// Incorrectly route the request after admission stopped it.'
   },
+  panelAdjustmentCanvas: {
+    file: 'common/KeyboardPanelGeometry.ets',
+    before: 'const panelPercent: number = adjusting ? MAX_KEYBOARD_HEIGHT_PERCENT : percent;',
+    after: 'const panelPercent: number = percent;'
+  },
+  panelStyleRows: {
+    file: 'common/KeyboardPanelGeometry.ets',
+    before: 'const rows: number = initialHeightVp - twoRows >= 160 ? settings.candidateRows : 1;',
+    after: 'const rows: number = settings.candidateRows;'
+  },
+  hardKeyShiftChord: {
+    file: 'model/HardKeyInput.ets',
+    before: 'if (shiftHeld && keyCodes.length === 2 && !isKeyCodeAZ(keyCode, codes)) {',
+    after: 'if (false) {'
+  },
+  hardKeyFunctionRelease: {
+    file: 'model/HardKeyInput.ets',
+    before: 'const handled: boolean = releasedFunctionKey || !state.specialKeyPress;',
+    after: 'const handled: boolean = !state.specialKeyPress;'
+  },
   regressionLayoutReset: {
     file: 'kanon/ImeLocalRequests.ets',
     before: 'this.port.resetComposition();',

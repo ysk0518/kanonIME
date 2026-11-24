@@ -60,7 +60,9 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['sessionEnterAction', 'P29', 'R-11'],
   ['sessionExceptionPublish', 'P29', 'R-12'],
   ['sessionDiscardExternalHints', 'P29', 'reset:'],
-  ['sessionAdmissionStop', 'P29', 'R-04']]) {
+  ['sessionAdmissionStop', 'P29', 'R-04'],
+  ['panelAdjustmentCanvas', 'P31'], ['panelStyleRows', 'P31'], ['hardKeyShiftChord', 'P31'],
+  ['hardKeyFunctionRelease', 'P31']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
