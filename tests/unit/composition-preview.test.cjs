@@ -40,12 +40,17 @@ test('P06: partial commit advances the tracked origin once and resets replaced l
   assert.equal(r.calls.filter(call => call[0] === 'query').length, 1);
 });
 
-test('P06 provisional: partial commit without origin retains cursor and zero fallbacks', async () => {
-  for (const cursor of [7, -1]) {
-    const r = rig(); r.cursor = cursor;
-    await r.preview.reconcile(snapshot({ commitLength: 2 }), 'select', 'JP');
-    assert.equal(r.preview.getStart(), cursor < 0 ? 2 : 9);
-  }
+test('P06: partial commit without origin uses a known cursor fallback', async () => {
+  const r = rig(); r.cursor = 7;
+  assert.equal(await r.preview.reconcile(snapshot({ commitLength: 2 }), 'select', 'JP'), true);
+  assert.equal(r.preview.getStart(), 9);
+});
+
+test('P38: partial commit with no cursor skips preview restoration', async () => {
+  const r = rig(); r.cursor = -1;
+  assert.equal(await r.preview.reconcile(snapshot({ commitLength: 2 }), 'select', 'JP'), false);
+  assert.equal(r.preview.getStart(), -1);
+  assert.deepEqual(r.calls, [['query']]);
 });
 
 test('P06: failed commit does not advance origin', async () => {

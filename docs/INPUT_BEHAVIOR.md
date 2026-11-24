@@ -153,7 +153,7 @@ PCのエディターモデルとScriptedBridgeを、HarmonyOSや実Mozcの観測
 | DE-07 | 候補選択中のDeleteで本文`he`を保持し、次のDeleteで`h`にする | P36 / `ime-session.test.cjs`、直接英語の実機確認 |
 | JP-04、EN-10、DE-07、CM-06 | ZWJ連結や結合文字を1回のDeleteで削除する | P37 / `grapheme-delete.test.cjs`、`ime-coordinator.test.cjs`、`english-input.test.cjs`、`ime-session.test.cjs`、実機D25 |
 | CM-07 | Spaceドラッグの感度と移動上限 | `space-gesture.test.cjs`、実機D10 |
-| Q7 | 部分確定の起点とカーソルが不明なら、未確定表示を保持する | P38 / `composition-position.test.cjs`、`composition-preview.test.cjs` |
+| Q7 | 部分確定の起点とカーソルが不明なら、未確定表示を保持する | P38 / `composition-position.test.cjs`、`composition-preview.test.cjs`、`ime-session.test.cjs` |
 | Q1〜Q8 | 決定表と採用行の記載 | P34 / `input-behavior.test.cjs` |
 | EN-11、DE-06 | 補完Undo後の本文・予測・次のDeleteを保持 | P25 / `english-completion-lifecycle.test.cjs`、実機D20・D21 |
 | CM-01〜CM-03 | 確定失敗時は切替／貼り付けの次操作を実行しない | P26 / `ime-local-requests.test.cjs`、P28 / `ime-regression.test.cjs`。切替は実機D22、クリップボード実経路は未確認 |

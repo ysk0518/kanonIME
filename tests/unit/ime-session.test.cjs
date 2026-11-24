@@ -145,6 +145,29 @@ test('P37: direct English Delete uses the same grapheme deletion as Japanese con
   assert.deepEqual(r.editor.calls, [{ operation: 'deleteForward', length: 2 }]);
 });
 
+test('P38: session does not retry preview placement after an unknown partial-commit origin', async () => {
+  const r = rig({ mode: 'JP', origin: 'A', steps: [
+    { operation: 'literal', text: 'きょうは', output: response('きょうは') },
+    { operation: 'space', output: response('今日は', {
+      focused_id: 1, candidates: [{ id: 1, value: '今日' }]
+    }) },
+    { operation: 'submitCandidate', candidateId: 1, output: response('は', { result: '今日' }) }
+  ] });
+  await r.session.keyText('きょうは');
+  await r.session.keySpace();
+  r.session.preview.reset();
+  let queries = 0;
+  r.editor.queryCursor = async () => ++queries === 1 ? -1 : r.editor.cursor;
+  const previews = r.editor.count('setPreview');
+  await r.session.keyReturn();
+  assert.equal(r.editor.text, 'A今日');
+  assert.equal(r.session.coord.getSnapshot().preeditLen, 1);
+  assert.equal(r.session.preview.getStart(), -1);
+  assert.equal(queries, 1);
+  assert.equal(r.editor.count('setPreview'), previews);
+  r.bridge.assertDone();
+});
+
 test('P29: R-01: requests queued for the old editor return the latest snapshot without dispatch', async () => {
   const r = rig({ mode: 'JP' });
   const started = deferred(), release = deferred();

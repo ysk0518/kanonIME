@@ -454,10 +454,11 @@ export class ImeSession {
     if (directEnglish) { this.directEnglish.afterEvent(kind, event.text, cursor, s.lastError === 'ok'); }
     else if (kind === 'mode') { this.ports.prediction.clear(); }
     if (completion !== undefined) { this.completion.remember(completion, s); }
-    await this.preview.reconcile(s, kind, this.mode);
-    this.ports.prediction.editing = english;
-    try { await this.refreshPreview(s); }
-    finally { this.ports.prediction.editing = false; }
+    if (await this.preview.reconcile(s, kind, this.mode)) {
+      this.ports.prediction.editing = english;
+      try { await this.refreshPreview(s); }
+      finally { this.ports.prediction.editing = false; }
+    }
     const updated: ImeSnapshot = this.coord.getSnapshot();
     this.publish(updated, requestEpoch);
     return updated;

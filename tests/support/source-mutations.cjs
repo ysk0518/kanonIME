@@ -1,4 +1,14 @@
 const mutations = {
+  unknownCompositionStart: {
+    file: 'kanon/CompositionPosition.ets',
+    before: 'return base >= 0 ? base + commitLength : -1;',
+    after: 'return (base >= 0 ? base : 0) + commitLength;'
+  },
+  unknownCompositionRestoration: {
+    file: 'kanon/CompositionPreview.ets',
+    before: 'if (start < 0) { return false; }',
+    after: 'if (false) { return false; }'
+  },
   graphemeRegionalPair: {
     file: 'kanon/GraphemeDelete.ets',
     before: 'if (isRegionalIndicator(text.codePointAt(previous) ?? 0)) { start = previous; }',
@@ -526,8 +536,8 @@ const mutations = {
   },
   anchor: {
     file: 'kanon/CompositionPosition.ets',
-    before: 'return (base >= 0 ? base : 0) + commitLength;',
-    after: 'return (base >= 0 ? base : 0);'
+    before: 'return base >= 0 ? base + commitLength : -1;',
+    after: 'return base >= 0 ? base : -1;'
   },
   releaseTap: {
     file: 'kanon/SpaceGesture.ets',
