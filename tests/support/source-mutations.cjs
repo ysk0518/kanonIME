@@ -1,4 +1,9 @@
 const mutations = {
+  inputBehaviorDecision: {
+    file: 'docs/INPUT_BEHAVIOR.md',
+    before: '| Q1 | 合意 |',
+    after: '| Q1 | 提案 |'
+  },
   duplicateAppStorageKey: {
     file: 'common/AppStorageKeys.ets',
     before: "export const KANON_LENS2: string = 'kanonLens2';",
