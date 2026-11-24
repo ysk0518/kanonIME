@@ -40,6 +40,9 @@ export interface ImeSessionPorts {
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
+interface ImeAdmissionContinue { kind: 'continue'; }
+interface ImeAdmissionStopped { kind: 'stop'; snapshot: ImeSnapshot; }
+type ImeAdmission = ImeAdmissionContinue | ImeAdmissionStopped;
 
 export class ImeSession {
   private ports: ImeSessionPorts;
@@ -266,7 +269,7 @@ export class ImeSession {
       // An unsupported/failed preview may exist only in the engine. An empty
       // editor is then normal and must not be mistaken for external deletion.
       const shownComposition: boolean = this.coord.getSnapshot().preeditLen > 0 && this.preview.getLength() > 0;
-      const directEnglish: boolean = this.mode === 'EN' && !this.coord.usesEnglishComposition() &&
+      const directEnglish: boolean = this.isDirectEnglish() &&
         this.ports.prediction.getPrefix().length > 0;
       result = await this.editorSync.reconcile(shownComposition || directEnglish);
     } while (result === 'retry');
@@ -315,105 +318,130 @@ export class ImeSession {
   private async postSerial(request: ImeRequest, generation: number = this.compositionGeneration): Promise<ImeSnapshot> {
     const requestEpoch: number = this.ports.editor.getEpoch();
     try {
-      await this.ensure();
-      await this.syncEpoch();
+      const admission: ImeAdmission = await this.admit(request, generation, requestEpoch);
+      if (admission.kind === 'stop') { return admission.snapshot; }
+      // Validate the epoch after both synchronization and the admission await.
       if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
-      if (!await this.synchronizeExternalEditor()) { return this.coord.getSnapshot(); }
-      if (generation !== this.compositionGeneration &&
-        (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish')) {
-        return this.coord.getSnapshot();
-      }
-      if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
-      if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
-        !await this.synchronizeCompositionCursor()) { return this.coord.getSnapshot(); }
-      if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
-      // Resolve the arrow's meaning inside the serial queue, after epoch checks.
-      // Keep editing and segment resizing inside the live Japanese composition.
-      this.coord.setEnglishCompositionEnabled(this.ports.bindings.predictionAllowed());
-      if (this.mode === 'EN' && this.ports.prediction.takeCompositionAbandoned()) {
-        this.englishEngine.resetLocal();
-        this.coord.onEditorChanged();
-        this.preview.reset();
-      }
-      if (request.kind === 'prepare') {
-        return await this.localRequests.handle(request, requestEpoch);
-      }
-      if (request.kind !== 'backspace' && request.kind !== 'select' && request.kind !== 'undoEnglish') { this.ports.prediction.dropUndo(); }
-      if (request.kind === 'cycle' || request.kind === 'config') {
-        return await this.localRequests.handle(request, requestEpoch);
-      }
-      if (request.kind === 'undoEnglish') {
-        const result: EnglishUndoResult = await this.completion.undo('undoEnglish', requestEpoch);
-        const snapshot: ImeSnapshot = this.coord.getSnapshot();
-        if (result !== 'stale') { this.publish(snapshot, requestEpoch); }
-        return snapshot;
-      }
-      let kind: UiEventKind = request.kind;
-      let text: string | undefined = request.text;
-      const candidateId: number | undefined = request.candidateId;
-      const expectedRevision: number | undefined = request.expectedRevision;
-      if (this.mode === 'EN' && !this.coord.usesEnglishComposition() && kind === 'convert') {
-        const result: DirectEnglishConversion = await this.directEnglish.convert(requestEpoch);
-        if (result === 'stale') { return this.coord.getSnapshot(); }
-        if (result === 'space') { return await this.postSerial({ kind: 'text', text: ' ' }); }
-        const snapshot: ImeSnapshot = this.coord.getSnapshot();
-        this.publish(snapshot, requestEpoch);
-        return snapshot;
-      }
-      if (kind === 'paste' && !await this.localRequests.beforePaste(requestEpoch)) {
-        return this.coord.getSnapshot();
-      }
-      if (this.mode === 'EN' && kind === 'backspace') {
-        const result: EnglishUndoResult = await this.completion.undo('backspace', requestEpoch);
-        if (result === 'stale') { return this.coord.getSnapshot(); }
-        if (result === 'handled') {
-          const snapshot: ImeSnapshot = this.coord.getSnapshot();
-          this.publish(snapshot, requestEpoch);
-          return snapshot;
-        }
-      }
-      if (this.mode === 'EN' && !this.coord.usesEnglishComposition() && (kind === 'select' || kind === 'cancel' || kind === 'enter')) {
-        await this.directEnglish.handle(kind, candidateId, expectedRevision);
-        const snapshot: ImeSnapshot = this.coord.getSnapshot();
-        this.publish(snapshot, requestEpoch);
-        return snapshot;
-      }
-      const english: boolean = this.mode === 'EN';
-      const directEnglish: boolean = english && !this.coord.usesEnglishComposition();
-      const epoch: number = this.ports.editor.getEpoch();
-      const cursor: number = directEnglish && kind === 'text' ?
-        await this.directEnglish.beforeText(text ?? '', epoch) : this.ports.prediction.getCursor();
-      if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return this.coord.getSnapshot(); }
-      const ev: UiEvent = resolveInputMovement(
-        request,
-        this.mode, this.coord.getSnapshot().preeditLen);
-      kind = ev.kind;
-      text = ev.text;
-      const completion: EnglishCompletionContext | undefined = english && !directEnglish ?
-        this.completion.capture(kind, candidateId, this.englishEngine.getTypedText(), this.preview.getStart(), epoch) : undefined;
-      this.ports.prediction.editing = english;
-      try { await this.coord.postEvent(ev); }
-      finally { this.ports.prediction.editing = false; }
-      const s: ImeSnapshot = this.coord.getSnapshot();
-      if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return s; }
-      if ((!english || !directEnglish) && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
-        await this.sendEnterAction(epoch);
-      }
-      if (directEnglish) { this.directEnglish.afterEvent(kind, text, cursor, s.lastError === 'ok'); }
-      else if (kind === 'mode') { this.ports.prediction.clear(); }
-      if (completion !== undefined) { this.completion.remember(completion, s); }
-      await this.preview.reconcile(s, kind, this.mode);
-      this.ports.prediction.editing = english;
-      try { await this.refreshPreview(s); }
-      finally { this.ports.prediction.editing = false; }
-      const updated: ImeSnapshot = this.coord.getSnapshot();
-      this.publish(updated, requestEpoch);
-      return updated;
+      return await this.routeRequest(request, requestEpoch);
     } catch (e) {
       const s: ImeSnapshot = this.coord.getSnapshot();
       this.publish(s, requestEpoch);
       return s;
     }
+  }
+
+  private async admit(request: ImeRequest, generation: number, requestEpoch: number): Promise<ImeAdmission> {
+    await this.ensure();
+    await this.syncEpoch();
+    if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
+    if (!await this.synchronizeExternalEditor()) { return this.stopAdmission(); }
+    if (generation !== this.compositionGeneration &&
+      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish')) {
+      return this.stopAdmission();
+    }
+    if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
+    if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
+      !await this.synchronizeCompositionCursor()) { return this.stopAdmission(); }
+    const admission: ImeAdmissionContinue = { kind: 'continue' };
+    return admission;
+  }
+
+  private stopAdmission(): ImeAdmissionStopped {
+    const admission: ImeAdmissionStopped = { kind: 'stop', snapshot: this.coord.getSnapshot() };
+    return admission;
+  }
+
+  private isDirectEnglish(): boolean {
+    return this.mode === 'EN' && !this.coord.usesEnglishComposition();
+  }
+
+  private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
+    this.coord.setEnglishCompositionEnabled(this.ports.bindings.predictionAllowed());
+    if (this.mode === 'EN' && this.ports.prediction.takeCompositionAbandoned()) {
+      this.englishEngine.resetLocal();
+      this.coord.onEditorChanged();
+      this.preview.reset();
+    }
+    if (request.kind === 'prepare') {
+      return this.localRequests.handle(request, requestEpoch);
+    }
+    if (request.kind !== 'backspace' && request.kind !== 'select' && request.kind !== 'undoEnglish') {
+      this.ports.prediction.dropUndo();
+    }
+    if (request.kind === 'cycle' || request.kind === 'config') {
+      return this.localRequests.handle(request, requestEpoch);
+    }
+    if (request.kind === 'undoEnglish') { return this.undoEnglish(requestEpoch); }
+    const kind: UiEventKind = request.kind;
+    if (this.isDirectEnglish() && kind === 'convert') { return this.convertDirectEnglish(requestEpoch); }
+    if (kind === 'paste' && !await this.localRequests.beforePaste(requestEpoch)) {
+      return this.coord.getSnapshot();
+    }
+    if (this.mode === 'EN' && kind === 'backspace') {
+      const result: EnglishUndoResult = await this.completion.undo('backspace', requestEpoch);
+      if (result === 'stale') { return this.coord.getSnapshot(); }
+      if (result === 'handled') {
+        const snapshot: ImeSnapshot = this.coord.getSnapshot();
+        this.publish(snapshot, requestEpoch);
+        return snapshot;
+      }
+    }
+    if (this.isDirectEnglish() && (kind === 'select' || kind === 'cancel' || kind === 'enter')) {
+      await this.directEnglish.handle(kind, request.candidateId, request.expectedRevision);
+      const snapshot: ImeSnapshot = this.coord.getSnapshot();
+      this.publish(snapshot, requestEpoch);
+      return snapshot;
+    }
+    return this.dispatchNormal(request, requestEpoch);
+  }
+
+  private async undoEnglish(requestEpoch: number): Promise<ImeSnapshot> {
+    const result: EnglishUndoResult = await this.completion.undo('undoEnglish', requestEpoch);
+    const snapshot: ImeSnapshot = this.coord.getSnapshot();
+    if (result !== 'stale') { this.publish(snapshot, requestEpoch); }
+    return snapshot;
+  }
+
+  private async convertDirectEnglish(requestEpoch: number): Promise<ImeSnapshot> {
+    const result: DirectEnglishConversion = await this.directEnglish.convert(requestEpoch);
+    if (result === 'stale') { return this.coord.getSnapshot(); }
+    if (result === 'space') { return await this.postSerial({ kind: 'text', text: ' ' }); }
+    const snapshot: ImeSnapshot = this.coord.getSnapshot();
+    this.publish(snapshot, requestEpoch);
+    return snapshot;
+  }
+
+  private async dispatchNormal(request: UiEvent, requestEpoch: number): Promise<ImeSnapshot> {
+    const english: boolean = this.mode === 'EN';
+    const directEnglish: boolean = this.isDirectEnglish();
+    const epoch: number = this.ports.editor.getEpoch();
+    const cursor: number = directEnglish && request.kind === 'text' ?
+      await this.directEnglish.beforeText(request.text ?? '', epoch) : this.ports.prediction.getCursor();
+    if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return this.coord.getSnapshot(); }
+    // Resolve arrows against the live composition after the epoch check.
+    const event: UiEvent = resolveInputMovement(request, this.mode, this.coord.getSnapshot().preeditLen);
+    const kind: UiEventKind = event.kind;
+    const completion: EnglishCompletionContext | undefined = english && !directEnglish ?
+      this.completion.capture(kind, request.candidateId, this.englishEngine.getTypedText(),
+        this.preview.getStart(), epoch) : undefined;
+    this.ports.prediction.editing = english;
+    try { await this.coord.postEvent(event); }
+    finally { this.ports.prediction.editing = false; }
+    const s: ImeSnapshot = this.coord.getSnapshot();
+    if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return s; }
+    if (!directEnglish && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
+      await this.sendEnterAction(epoch);
+    }
+    if (directEnglish) { this.directEnglish.afterEvent(kind, event.text, cursor, s.lastError === 'ok'); }
+    else if (kind === 'mode') { this.ports.prediction.clear(); }
+    if (completion !== undefined) { this.completion.remember(completion, s); }
+    await this.preview.reconcile(s, kind, this.mode);
+    this.ports.prediction.editing = english;
+    try { await this.refreshPreview(s); }
+    finally { this.ports.prediction.editing = false; }
+    const updated: ImeSnapshot = this.coord.getSnapshot();
+    this.publish(updated, requestEpoch);
+    return updated;
   }
 
   /** 未確定previewの表示更新。前回範囲を置換する（G-01置換順序）。失敗時はinsert確定のみへ落とす。 */
@@ -501,7 +529,8 @@ export class ImeSession {
   }
 
   async selectCandidate(id: number): Promise<void> {
-    const rev: number = this.mode === 'EN' && !this.coord.usesEnglishComposition() ? this.ports.prediction.getRevision() : this.coord.getCandidateRevision();
+    const rev: number = this.isDirectEnglish() ?
+      this.ports.prediction.getRevision() : this.coord.getCandidateRevision();
     await this.post('select', undefined, id, rev);
   }
 
