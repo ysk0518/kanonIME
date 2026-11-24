@@ -1,4 +1,19 @@
 const mutations = {
+  duplicateAppStorageKey: {
+    file: 'common/AppStorageKeys.ets',
+    before: "export const KANON_LENS2: string = 'kanonLens2';",
+    after: "export const KANON_LENS2: string = 'kanonLens';"
+  },
+  missingStorageDecoratorKey: {
+    file: 'common/AppStorageKeys.ets',
+    before: "export const SUBMENU_TYPE: string = 'submenuType';",
+    after: "export const SUBMENU_TYPE: string = 'subMenuType';"
+  },
+  coreAppStorageDependency: {
+    file: 'kanon/ImeViewPublisher.ets',
+    before: 'this.port.number(KANON_TICK, view.tick);',
+    after: 'AppStorage.setOrCreate(KANON_TICK, view.tick);'
+  },
   sessionEpochDuringAdmission: {
     file: 'kanon/ImeSession.ets',
     before: "if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }\n    if (!await this.synchronizeExternalEditor())",
@@ -111,18 +126,18 @@ const mutations = {
   },
   runtimeCursorEpoch: {
     file: 'kanon/ImeRuntimeBindings.ets',
-    before: "if (epoch === this.port.getEpoch()) { this.port.number('kanonCursor', position); }",
-    after: "this.port.number('kanonCursor', position);"
+    before: 'if (epoch === this.port.getEpoch()) { this.port.number(KANON_CURSOR, position); }',
+    after: 'this.port.number(KANON_CURSOR, position);'
   },
   runtimeStoredConfirmation: {
     file: 'kanon/ImeRuntimeBindings.ets',
-    before: "return this.port.readString('kanonLayoutOrder') === order;",
+    before: 'return this.port.readString(KANON_LAYOUT_ORDER) === order;',
     after: 'return this.configuredOrder() === order;'
   },
   runtimeLayoutHistory: {
     file: 'kanon/ImeRuntimeBindings.ets',
-    before: "this.port.string('kanonLastLayout', layout);",
-    after: "this.port.string('kanonLastLayout', 'jp_flick');"
+    before: 'this.port.string(KANON_LAST_LAYOUT, layout);',
+    after: "this.port.string(KANON_LAST_LAYOUT, 'jp_flick');"
   },
   presentationCandidateSource: {
     file: 'kanon/ImePresentation.ets',

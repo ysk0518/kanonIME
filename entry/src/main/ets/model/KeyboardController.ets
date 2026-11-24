@@ -1,3 +1,10 @@
+import {
+  ENTER_KEY_TYPE, INPUT_HANDLER, INPUT_PATTERN, INPUT_STYLE, IS_LANDSCAPE, KANON_CANDIDATES_EXPANDED,
+  KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_PREVIEW, KANON_FLICK_PREVIEW_OWNER,
+  KANON_FONT_SCALE, KANON_HEIGHT_ADJUSTMENT_BOTTOM_VP, KANON_HEIGHT_PREVIEW_VP, KANON_ID_LIST,
+  KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEYBOARD_VISIBLE, KANON_LAYOUT, KANON_LIST, KANON_MODE,
+  KANON_PANEL_HEIGHT_PX, KANON_PANEL_WIDTH_PX, KANON_TOOLBAR_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
+} from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
@@ -58,10 +65,10 @@ export class InputHandler {
   }
 
   public static getInstance(): InputHandler {
-    let instance = AppStorage.get<InputHandler>('inputHandler');
+    let instance = AppStorage.get<InputHandler>(INPUT_HANDLER);
     if (instance === undefined) {
       instance = new InputHandler();
-      AppStorage.setOrCreate('inputHandler', instance);
+      AppStorage.setOrCreate(INPUT_HANDLER, instance);
     }
     return instance;
   }
@@ -74,17 +81,17 @@ export class InputHandler {
     refreshSharedHapticLevel();
     refreshKeyboardHeightPercent();
     englishPrediction.clear();
-    AppStorage.setOrCreate('kanonList', [] as string[]);
-    AppStorage.setOrCreate('kanonIdList', [] as number[]);
-    AppStorage.setOrCreate('kanonCandidatesExpanded', false);
+    AppStorage.setOrCreate(KANON_LIST, [] as string[]);
+    AppStorage.setOrCreate(KANON_ID_LIST, [] as number[]);
+    AppStorage.setOrCreate(KANON_CANDIDATES_EXPANDED, false);
     editorAdapter.queryAttribute().then((res): void => {
       if (epoch !== editorAdapter.getEpoch()) { return; }
       if (!res.ok || res.value === undefined) {
         this.addLog(`onInputStart getEditorAttribute failed code=${res.code}`);
         return;
       }
-      AppStorage.setOrCreate('enterKeyType', res.value.enterKeyType);
-      AppStorage.setOrCreate('inputPattern', res.value.inputPattern);
+      AppStorage.setOrCreate(ENTER_KEY_TYPE, res.value.enterKeyType);
+      AppStorage.setOrCreate(INPUT_PATTERN, res.value.inputPattern);
     });
   }
 
@@ -190,9 +197,9 @@ class KeyboardController {
       if (heightChanged || candidatesChanged) { this.refreshKeyboardHeight(); }
       if (fromPeer) {
         await kanonIme.prepare();
-        const activeLayout: string = AppStorage.get<string>('kanonLayout') ?? '';
+        const activeLayout: string = AppStorage.get<string>(KANON_LAYOUT) ?? '';
         if (!snapshot.layoutOrder.split(',').includes(activeLayout) ||
-          AppStorage.get<string>('kanonMode') !== layoutLanguage(activeLayout)) { throw new Error('Layout application pending'); }
+          AppStorage.get<string>(KANON_MODE) !== layoutLanguage(activeLayout)) { throw new Error('Layout application pending'); }
       }
     };
     keyboardSettingsSync.initialize(true).catch(() => {});
@@ -206,7 +213,7 @@ class KeyboardController {
 
   public onDestroy(): void {
     if (!this.active) { return; }
-    AppStorage.setOrCreate('kanonKeyboardVisible', false);
+    AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false);
     this.active = false;
     clipboardHistory.stop();
     this.inputHandle.addLog('onDestroy');
@@ -231,8 +238,8 @@ class KeyboardController {
       this.panelReady = false;
       panel.on('sizeChange', (size: windowManager.Size) => {
         if (generation !== this.panelGeneration || size.width <= 0 || size.height <= 0) { return; }
-        AppStorage.setOrCreate('kanonPanelWidthPx', size.width);
-        AppStorage.setOrCreate('kanonPanelHeightPx', size.height);
+        AppStorage.setOrCreate(KANON_PANEL_WIDTH_PX, size.width);
+        AppStorage.setOrCreate(KANON_PANEL_HEIGHT_PX, size.height);
       });
       // The OS can hide the panel on focus loss without keyboardHide.
       // Observe the panel itself; visibility is only a hint to read the editor.
@@ -275,8 +282,8 @@ class KeyboardController {
 
   public updateFontScale(scale: number): void {
     const fontScale: number = Number.isFinite(scale) && scale > 0 ? Math.min(2, scale) : 1;
-    AppStorage.setOrCreate('kanonFontScale', fontScale);
-    AppStorage.setOrCreate('kanonToolbarHeight', toolbarHeight(fontScale));
+    AppStorage.setOrCreate(KANON_FONT_SCALE, fontScale);
+    AppStorage.setOrCreate(KANON_TOOLBAR_HEIGHT, toolbarHeight(fontScale));
     this.resizePanel();
   }
 
@@ -285,8 +292,8 @@ class KeyboardController {
   private panelSettings(fontScale: number): PanelSettings {
     return {
       fontScale: fontScale,
-      candidateFontSize: AppStorage.get<number>('kanonCandidateFontSize') ?? DEFAULT_CANDIDATE_FONT_SIZE,
-      candidateRows: AppStorage.get<number>('kanonCandidateRows') ?? DEFAULT_CANDIDATE_ROWS
+      candidateFontSize: AppStorage.get<number>(KANON_CANDIDATE_FONT_SIZE) ?? DEFAULT_CANDIDATE_FONT_SIZE,
+      candidateRows: AppStorage.get<number>(KANON_CANDIDATE_ROWS) ?? DEFAULT_CANDIDATE_ROWS
     };
   }
 
@@ -294,14 +301,14 @@ class KeyboardController {
     try {
       const screen: display.Display = display.getDefaultDisplaySync();
       const dimensions: PanelScreen = panelScreen(screen.width, screen.height, screen.densityPixels);
-      const fontScale: number = AppStorage.get<number>('kanonFontScale') ?? 1;
-      const heightPercent: number = AppStorage.get<number>('kanonKeyboardHeightPercent') ?? DEFAULT_KEYBOARD_HEIGHT_PERCENT;
+      const fontScale: number = AppStorage.get<number>(KANON_FONT_SCALE) ?? 1;
+      const heightPercent: number = AppStorage.get<number>(KANON_KEYBOARD_HEIGHT_PERCENT) ?? DEFAULT_KEYBOARD_HEIGHT_PERCENT;
       this.previewScreenWidth = dimensions.widthVp;
       this.previewScreenHeight = dimensions.heightVp;
       this.updateHeightPreview(heightPercent);
       const geometry: PanelGeometry = keyboardPanelGeometry(dimensions, heightPercent, this.heightAdjustment,
         this.adjustmentBottomInset, this.panelSettings(fontScale));
-      AppStorage.setOrCreate('kanonHeightAdjustmentBottomVp', geometry.adjustmentBottomVp);
+      AppStorage.setOrCreate(KANON_HEIGHT_ADJUSTMENT_BOTTOM_VP, geometry.adjustmentBottomVp);
       // Fixed panels are positioned by HarmonyOS, including system navigation area.
       // Register both orientations together instead of racing resize() and moveTo().
       const portraitRect: windowManager.Rect = {
@@ -322,12 +329,12 @@ class KeyboardController {
         const rect: inputMethodEngine.PanelRect = { portraitRect: portraitRect, landscapeRect: landscapeRect };
         panel.adjustPanelRect(inputMethodEngine.PanelFlag.FLG_FIXED, rect);
       }
-      AppStorage.setOrCreate('windowWidth', screen.width);
-      AppStorage.setOrCreate('windowHeight', screen.height);
-      AppStorage.setOrCreate('isLandscape', dimensions.landscape);
+      AppStorage.setOrCreate(WINDOW_WIDTH, screen.width);
+      AppStorage.setOrCreate(WINDOW_HEIGHT, screen.height);
+      AppStorage.setOrCreate(IS_LANDSCAPE, dimensions.landscape);
       if (!this.panelReady) {
         const size: PanelStyleSize = panelStyleSize(dimensions.widthVp, geometry.initialHeightVp, this.panelSettings(fontScale));
-        AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(size.width, size.height));
+        AppStorage.setOrCreate(INPUT_STYLE, StyleConfiguration.getInputStyle(size.width, size.height));
       }
     } catch (error) {
       Log.showInfo(TAG, `panel-layout failed code=${(error as BusinessError).code}`);
@@ -342,23 +349,23 @@ class KeyboardController {
 
   public refreshKeyboardHeight(): void {
     refreshKeyboardHeightPercent();
-    AppStorage.setOrCreate('kanonFlickPreview', '');
-    AppStorage.setOrCreate('kanonFlickPreviewOwner', '');
+    AppStorage.setOrCreate(KANON_FLICK_PREVIEW, '');
+    AppStorage.setOrCreate(KANON_FLICK_PREVIEW_OWNER, '');
     this.resizePanel();
   }
 
   public previewKeyboardHeight(percent: number): void {
     const value: number = keyboardHeightPreviewPercent(percent);
-    AppStorage.setOrCreate('kanonKeyboardHeightPercent', value);
-    AppStorage.setOrCreate('kanonFlickPreview', '');
-    AppStorage.setOrCreate('kanonFlickPreviewOwner', '');
+    AppStorage.setOrCreate(KANON_KEYBOARD_HEIGHT_PERCENT, value);
+    AppStorage.setOrCreate(KANON_FLICK_PREVIEW, '');
+    AppStorage.setOrCreate(KANON_FLICK_PREVIEW_OWNER, '');
     this.updateHeightPreview(value);
   }
 
   private updateHeightPreview(percent: number): void {
     if (this.previewScreenWidth <= 0 || this.previewScreenHeight <= 0) { return; }
-    const fontScale: number = AppStorage.get<number>('kanonFontScale') ?? 1;
-    AppStorage.setOrCreate('kanonHeightPreviewVp',
+    const fontScale: number = AppStorage.get<number>(KANON_FONT_SCALE) ?? 1;
+    AppStorage.setOrCreate(KANON_HEIGHT_PREVIEW_VP,
       keyboardPanelHeight(this.previewScreenWidth, this.previewScreenHeight, percent, this.panelSettings(fontScale)));
   }
 
@@ -403,12 +410,12 @@ class KeyboardController {
       // Refresh both layout and flick availability before showing the existing panel.
       refreshSharedLayoutOrder();
       refreshSharedHapticLevel();
-      AppStorage.setOrCreate('kanonKeyboardVisible', true);
+      AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, true);
       keyboardBackground.requestSync().catch(() => {});
       refreshKeyboardHeightPercent();
       this.resizePanel();
     });
-    InputMethodEngine.on('keyboardHide', () => { AppStorage.setOrCreate('kanonKeyboardVisible', false); });
+    InputMethodEngine.on('keyboardHide', () => { AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false); });
     InputMethodEngine.on('inputStop', this.inputStopped);
     try {
       InputMethodEngine.on('discardTypingText', this.typingDiscarded);

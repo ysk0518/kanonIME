@@ -1,3 +1,4 @@
+import { INPUT_STYLE, KANON_CANDIDATE_DISPLAY_ROWS } from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -104,13 +105,13 @@ struct Index {
     const panelHeight: number = this.submenuType === SubMenuType.SIZE ? this.heightPreview : this.measuredHeight;
     // On short windows retain enough height for the keys; typing never changes this choice.
     const rows: number = panelHeight - candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, 2, this.fontScale) >= 160 ? this.candidateRows : 1;
-    if (AppStorage.get<number>('kanonCandidateDisplayRows') !== rows) { AppStorage.setOrCreate('kanonCandidateDisplayRows', rows); }
+    if (AppStorage.get<number>(KANON_CANDIDATE_DISPLAY_ROWS) !== rows) { AppStorage.setOrCreate(KANON_CANDIDATE_DISPLAY_ROWS, rows); }
     const barHeight: number = this.submenuType === SubMenuType.NORMAL ?
       candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, rows, this.fontScale) : this.toolbarHeight;
     const height: number = Math.max(1, panelHeight - barHeight);
     if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5 ||
       this.inputStyle.keyGap !== effectiveKeyGap(width, height, this.keyGap)) {
-      AppStorage.setOrCreate('inputStyle', StyleConfiguration.getInputStyle(width, height, this.keyGap));
+      AppStorage.setOrCreate(INPUT_STYLE, StyleConfiguration.getInputStyle(width, height, this.keyGap));
     }
   }
 

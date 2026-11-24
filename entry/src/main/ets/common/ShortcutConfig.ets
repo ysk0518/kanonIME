@@ -1,3 +1,4 @@
+import { KANON_SHORTCUT_ORDER } from './AppStorageKeys';
 import { SubMenuType } from '../model/KeyboardKeyData';
 
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
@@ -18,6 +19,6 @@ export function shortcutTarget(id: string): number {
 
 export function initializeShortcutConfig(): void {
   PersistentStorage.persistProp('kanonShortcutOrder', DEFAULT_SHORTCUT_ORDER);
-  const saved: string = AppStorage.get<string>('kanonShortcutOrder') ?? DEFAULT_SHORTCUT_ORDER;
-  AppStorage.setOrCreate('kanonShortcutOrder', shortcutOrder(saved).join(','));
+  const saved: string = AppStorage.get<string>(KANON_SHORTCUT_ORDER) ?? DEFAULT_SHORTCUT_ORDER;
+  AppStorage.setOrCreate(KANON_SHORTCUT_ORDER, shortcutOrder(saved).join(','));
 }

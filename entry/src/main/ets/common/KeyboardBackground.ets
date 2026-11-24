@@ -1,3 +1,9 @@
+import {
+  KANON_BACKGROUND_ANIMATE, KANON_BACKGROUND_BRIGHTNESS, KANON_BACKGROUND_IMAGE,
+  KANON_BACKGROUND_KEY_OPACITY, KANON_BACKGROUND_PEER_VERSION, KANON_BACKGROUND_POSTER,
+  KANON_BACKGROUND_PREVIEW_ERROR, KANON_BACKGROUND_VERSION, KANON_BACKGROUND_X, KANON_BACKGROUND_Y,
+  KANON_BACKGROUND_ZOOM
+} from './AppStorageKeys';
 import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
 import image from '@ohos.multimedia.image';
@@ -103,7 +109,7 @@ class KeyboardBackgroundStore {
       this.visiblePreview = config ? normalized(config, false) : undefined;
       this.apply();
     };
-    this.live.onError = () => { AppStorage.setOrCreate('kanonBackgroundPreviewError', true); };
+    this.live.onError = () => { AppStorage.setOrCreate(KANON_BACKGROUND_PREVIEW_ERROR, true); };
     this.subscriber = await commonEventManager.createSubscriber({
       events: [UPDATE, REQUEST, ACK, PREVIEW_EVENT, END_PREVIEW_EVENT], publisherBundleName: BUNDLE
     });
@@ -119,7 +125,7 @@ class KeyboardBackgroundStore {
         debugLog.record('background', `ack version=${version} expected=${this.current.version}`);
         if (Number.isSafeInteger(version) && version > this.peerVersion) {
           this.peerVersion = version;
-          AppStorage.setOrCreate('kanonBackgroundPeerVersion', version);
+          AppStorage.setOrCreate(KANON_BACKGROUND_PEER_VERSION, version);
           settingsReceipt.applied('background', version);
         }
         return;
@@ -145,15 +151,15 @@ class KeyboardBackgroundStore {
     if (this.visiblePreview === undefined) {
       debugLog.record('background', `apply saved version=${config.version} format=${config.format} photoChars=${config.photo.length}`);
     }
-    AppStorage.setOrCreate('kanonBackgroundImage', backgroundImageUri(config));
-    AppStorage.setOrCreate('kanonBackgroundPoster', backgroundPosterUri(config));
-    AppStorage.setOrCreate('kanonBackgroundAnimate', config.animate);
-    AppStorage.setOrCreate('kanonBackgroundZoom', config.zoom);
-    AppStorage.setOrCreate('kanonBackgroundX', config.x);
-    AppStorage.setOrCreate('kanonBackgroundY', config.y);
-    AppStorage.setOrCreate('kanonBackgroundBrightness', config.brightness);
-    AppStorage.setOrCreate('kanonBackgroundKeyOpacity', config.photo.length > 0 ? config.keyOpacity : 100);
-    AppStorage.setOrCreate('kanonBackgroundVersion', this.current.version);
+    AppStorage.setOrCreate(KANON_BACKGROUND_IMAGE, backgroundImageUri(config));
+    AppStorage.setOrCreate(KANON_BACKGROUND_POSTER, backgroundPosterUri(config));
+    AppStorage.setOrCreate(KANON_BACKGROUND_ANIMATE, config.animate);
+    AppStorage.setOrCreate(KANON_BACKGROUND_ZOOM, config.zoom);
+    AppStorage.setOrCreate(KANON_BACKGROUND_X, config.x);
+    AppStorage.setOrCreate(KANON_BACKGROUND_Y, config.y);
+    AppStorage.setOrCreate(KANON_BACKGROUND_BRIGHTNESS, config.brightness);
+    AppStorage.setOrCreate(KANON_BACKGROUND_KEY_OPACITY, config.photo.length > 0 ? config.keyOpacity : 100);
+    AppStorage.setOrCreate(KANON_BACKGROUND_VERSION, this.current.version);
   }
 
   preview(config: BackgroundConfig): void {

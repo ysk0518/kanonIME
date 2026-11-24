@@ -1,3 +1,4 @@
+import { KANON_SETTINGS_FOREGROUND } from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2024 Huawei Device Co., Ltd.
@@ -87,14 +88,14 @@ export default class EntryAbility extends UIAbility {
   onForeground(): void {
     this.updatePreviewKeepAwake(this.previewKeepAwake);
     keyboardSettingsSync.request().catch(() => {});
-    AppStorage.setOrCreate('kanonSettingsForeground', true);
+    AppStorage.setOrCreate(KANON_SETTINGS_FOREGROUND, true);
     // Ability has brought to foreground
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onForeground');
   }
 
   onBackground(): void {
     this.updatePreviewKeepAwake(false);
-    AppStorage.setOrCreate('kanonSettingsForeground', false);
+    AppStorage.setOrCreate(KANON_SETTINGS_FOREGROUND, false);
     // Ability has back to background
     hilog.info(0x0000, 'testTag', '%{public}s', 'Ability onBackground');
   }

@@ -11,6 +11,10 @@ require.extensions['.ets'] = (module, filename) => {
   const actual = realpathSync(filename);
   if (!actual.startsWith(sourceRoot + sep)) { throw new Error('Unexpected .ets source location'); }
   let source = readFileSync(actual, 'utf8');
+  if (process.env.KANON_TEST_MUTATION) {
+    source = require('./source-mutations.cjs').mutate(relative(sourceRoot, actual), source,
+      process.env.KANON_TEST_MUTATION);
+  }
   const parsed = ts.createSourceFile(actual, source, ts.ScriptTarget.ES2020, true, ts.ScriptKind.TS);
   function inspect(node) {
     if (ts.isImportDeclaration(node) && !node.moduleSpecifier.text.startsWith('.')) {
@@ -25,10 +29,6 @@ require.extensions['.ets'] = (module, filename) => {
     ts.forEachChild(node, inspect);
   }
   inspect(parsed);
-  if (process.env.KANON_TEST_MUTATION) {
-    source = require('./source-mutations.cjs').mutate(relative(sourceRoot, actual), source,
-      process.env.KANON_TEST_MUTATION);
-  }
   const result = ts.transpileModule(source, {
     fileName: actual.replace(/\.ets$/, '.ts'), reportDiagnostics: true,
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS,
