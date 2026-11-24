@@ -1,3 +1,9 @@
+import {
+  KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_DISTANCE, KANON_FLICK_ENABLED,
+  KANON_FLICK_PREVIEW_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEY_GAP,
+  KANON_LAYOUT_ORDER, KANON_LONG_PRESS_MS, KANON_SETTINGS_GENERATION, KANON_SETTINGS_PENDING_COUNT,
+  KANON_SETTINGS_REVISION, KANON_SHORTCUT_ORDER
+} from './AppStorageKeys';
 import common from '@ohos.app.ability.common';
 import preferences from '@ohos.data.preferences';
 import { debugLog, debugErrorCode } from './DebugLog';
@@ -54,16 +60,16 @@ function legacyHas(primary: preferences.Preferences, legacy: preferences.Prefere
 function migrateSettings(primary: preferences.Preferences, legacy: preferences.Preferences): KeyboardSettingsRecord {
   const values: LegacyKeyboardSettings = new LegacyKeyboardSettings();
   const order: preferences.ValueType = legacyValue(primary, legacy, 'layout_order',
-    AppStorage.get<string>('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER);
+    AppStorage.get<string>(KANON_LAYOUT_ORDER) ?? DEFAULT_LAYOUT_ORDER);
   const flick: preferences.ValueType = legacyValue(primary, legacy, 'flick_enabled', DEFAULT_FLICK_ENABLED);
   values.flickEnabled = typeof flick === 'boolean' ? flick : DEFAULT_FLICK_ENABLED;
   values.layoutOrder = typeof order === 'string' ? order : DEFAULT_LAYOUT_ORDER;
-  values.flickDistance = AppStorage.get<number>('kanonFlickDistance') ?? DEFAULT_FLICK_DISTANCE;
-  values.longPressMs = AppStorage.get<number>('kanonLongPressMs') ?? DEFAULT_LONG_PRESS_MS;
-  values.keyPreview = AppStorage.get<boolean>('kanonFlickPreviewEnabled') ?? DEFAULT_KEY_PREVIEW_ENABLED;
+  values.flickDistance = AppStorage.get<number>(KANON_FLICK_DISTANCE) ?? DEFAULT_FLICK_DISTANCE;
+  values.longPressMs = AppStorage.get<number>(KANON_LONG_PRESS_MS) ?? DEFAULT_LONG_PRESS_MS;
+  values.keyPreview = AppStorage.get<boolean>(KANON_FLICK_PREVIEW_ENABLED) ?? DEFAULT_KEY_PREVIEW_ENABLED;
   const haptic: preferences.ValueType = legacyValue(primary, legacy, 'haptic_level', DEFAULT_HAPTIC_LEVEL);
   values.hapticLevel = typeof haptic === 'number' ? haptic : DEFAULT_HAPTIC_LEVEL;
-  values.shortcutOrder = AppStorage.get<string>('kanonShortcutOrder') ?? DEFAULT_SHORTCUT_ORDER;
+  values.shortcutOrder = AppStorage.get<string>(KANON_SHORTCUT_ORDER) ?? DEFAULT_SHORTCUT_ORDER;
   const height: preferences.ValueType = legacyValue(primary, legacy, 'height_percent', DEFAULT_KEYBOARD_HEIGHT_PERCENT);
   values.heightPercent = typeof height === 'number' ? height : DEFAULT_KEYBOARD_HEIGHT_PERCENT;
   values.heightPresent = legacyHas(primary, legacy, 'height_percent');
@@ -87,22 +93,22 @@ function setValue(key: string, value: string | number | boolean): void {
 
 function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   const snapshot: KeyboardSettingsSnapshot = readSettings();
-  setValue('kanonFlickEnabled', snapshot.flickEnabled);
-  setValue('kanonFlickDistance', snapshot.flickDistance);
-  setValue('kanonLongPressMs', snapshot.longPressMs);
-  setValue('kanonFlickPreviewEnabled', snapshot.keyPreview);
-  setValue('kanonKeyGap', snapshot.keyGap);
-  setValue('kanonCandidateFontSize', snapshot.candidateFontSize);
-  setValue('kanonCandidateRows', snapshot.candidateRows);
-  setValue('kanonHapticLevel', snapshot.hapticLevel);
-  setValue('kanonShortcutOrder', snapshot.shortcutOrder);
-  if (!previous || previous.heightPercent !== snapshot.heightPercent || AppStorage.get<number>('kanonKeyboardHeightPercent') === undefined) {
-    setValue('kanonKeyboardHeightPercent', snapshot.heightPercent);
+  setValue(KANON_FLICK_ENABLED, snapshot.flickEnabled);
+  setValue(KANON_FLICK_DISTANCE, snapshot.flickDistance);
+  setValue(KANON_LONG_PRESS_MS, snapshot.longPressMs);
+  setValue(KANON_FLICK_PREVIEW_ENABLED, snapshot.keyPreview);
+  setValue(KANON_KEY_GAP, snapshot.keyGap);
+  setValue(KANON_CANDIDATE_FONT_SIZE, snapshot.candidateFontSize);
+  setValue(KANON_CANDIDATE_ROWS, snapshot.candidateRows);
+  setValue(KANON_HAPTIC_LEVEL, snapshot.hapticLevel);
+  setValue(KANON_SHORTCUT_ORDER, snapshot.shortcutOrder);
+  if (!previous || previous.heightPercent !== snapshot.heightPercent || AppStorage.get<number>(KANON_KEYBOARD_HEIGHT_PERCENT) === undefined) {
+    setValue(KANON_KEYBOARD_HEIGHT_PERCENT, snapshot.heightPercent);
   }
-  setValue('kanonLayoutOrder', snapshot.layoutOrder);
-  setValue('kanonSettingsRevision', snapshot.revision);
-  setValue('kanonSettingsPendingCount', record.pending.length);
-  setValue('kanonSettingsGeneration', (AppStorage.get<number>('kanonSettingsGeneration') ?? 0) + 1);
+  setValue(KANON_LAYOUT_ORDER, snapshot.layoutOrder);
+  setValue(KANON_SETTINGS_REVISION, snapshot.revision);
+  setValue(KANON_SETTINGS_PENDING_COUNT, record.pending.length);
+  setValue(KANON_SETTINGS_GENERATION, (AppStorage.get<number>(KANON_SETTINGS_GENERATION) ?? 0) + 1);
 }
 
 function persist(next: KeyboardSettingsRecord): void {

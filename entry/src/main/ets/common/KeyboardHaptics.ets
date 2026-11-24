@@ -1,3 +1,4 @@
+import { KANON_HAPTIC_LEVEL } from './AppStorageKeys';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import vibrator from '@ohos.vibrator';
 
@@ -7,7 +8,7 @@ class KeyboardHaptics {
   private lastPulse: number = 0;
 
   key(): void {
-    const level: number = AppStorage.get<number>('kanonHapticLevel') ?? 1;
+    const level: number = AppStorage.get<number>(KANON_HAPTIC_LEVEL) ?? 1;
     if (level === 0) { return; }
     const now: number = Date.now();
     if (now - this.lastPulse < 45) { return; }

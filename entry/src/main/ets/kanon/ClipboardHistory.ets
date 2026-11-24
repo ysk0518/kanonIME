@@ -1,3 +1,4 @@
+import { KANON_CLIPBOARD_AUTO_STATUS, KANON_CLIPBOARD_CURRENT_TEXT } from '../common/AppStorageKeys';
 import pasteboard from '@ohos.pasteboard';
 import abilityAccessCtrl from '@ohos.abilityAccessCtrl';
 import bundleManager from '@ohos.bundle.bundleManager';
@@ -19,7 +20,7 @@ class ClipboardHistory {
     try { this.board.on('update', this.updated); }
     catch (e) {
       this.active = false;
-      AppStorage.setOrCreate('kanonClipboardAutoStatus', 'error');
+      AppStorage.setOrCreate(KANON_CLIPBOARD_AUTO_STATUS, 'error');
       return;
     }
     this.refresh();
@@ -30,7 +31,7 @@ class ClipboardHistory {
     this.active = false;
     this.generation++;
     this.pending = false;
-    AppStorage.setOrCreate('kanonClipboardCurrentText', '');
+    AppStorage.setOrCreate(KANON_CLIPBOARD_CURRENT_TEXT, '');
     try { this.board.off('update', this.updated); } catch (e) {}
   }
 
@@ -45,7 +46,7 @@ class ClipboardHistory {
     this.generation++;
     this.pending = false;
     try { this.observedCount = this.board.getChangeCount(); } catch (e) {}
-    AppStorage.setOrCreate('kanonClipboardCurrentText', '');
+    AppStorage.setOrCreate(KANON_CLIPBOARD_CURRENT_TEXT, '');
   }
 
   private async drain(): Promise<void> {
@@ -60,15 +61,15 @@ class ClipboardHistory {
           info.appInfo.accessTokenId, 'ohos.permission.READ_PASTEBOARD');
         if (!this.active || generation !== this.generation) { continue; }
         if (granted !== abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-          AppStorage.setOrCreate('kanonClipboardAutoStatus', 'permission');
+          AppStorage.setOrCreate(KANON_CLIPBOARD_AUTO_STATUS, 'permission');
           continue;
         }
-        AppStorage.setOrCreate('kanonClipboardAutoStatus', 'ready');
+        AppStorage.setOrCreate(KANON_CLIPBOARD_AUTO_STATUS, 'ready');
         const count: number = this.board.getChangeCount();
         if (count === this.observedCount) { continue; }
         if (!this.board.hasDataType(pasteboard.MIMETYPE_TEXT_PLAIN)) {
           this.observedCount = count;
-          AppStorage.setOrCreate('kanonClipboardCurrentText', '');
+          AppStorage.setOrCreate(KANON_CLIPBOARD_CURRENT_TEXT, '');
           continue;
         }
         const data: pasteboard.PasteData = await this.board.getData();
@@ -76,11 +77,11 @@ class ClipboardHistory {
         if (count !== this.board.getChangeCount()) { this.pending = true; continue; }
         this.observedCount = count;
         const value: string = data.hasType(pasteboard.MIMETYPE_TEXT_PLAIN) ? data.getPrimaryText() : '';
-        AppStorage.setOrCreate('kanonClipboardCurrentText', value);
+        AppStorage.setOrCreate(KANON_CLIPBOARD_CURRENT_TEXT, value);
         clipboardStore.remember(value);
       }
     } catch (e) {
-      if (this.active) { AppStorage.setOrCreate('kanonClipboardAutoStatus', 'error'); }
+      if (this.active) { AppStorage.setOrCreate(KANON_CLIPBOARD_AUTO_STATUS, 'error'); }
     } finally {
       this.reading = false;
       if (this.active && this.pending) { this.drain(); }

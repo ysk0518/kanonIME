@@ -1,0 +1,35 @@
+import { KeyCode } from '@ohos.multimodalInput.keyCode';
+import { HardKeyCodes } from './HardKeyInput';
+
+export const SDK_HARD_KEY_CODES: HardKeyCodes = {
+  digit0: KeyCode.KEYCODE_0,
+  digit9: KeyCode.KEYCODE_9,
+  star: KeyCode.KEYCODE_STAR,
+  pound: KeyCode.KEYCODE_POUND,
+  dpadUp: KeyCode.KEYCODE_DPAD_UP,
+  dpadDown: KeyCode.KEYCODE_DPAD_DOWN,
+  dpadLeft: KeyCode.KEYCODE_DPAD_LEFT,
+  dpadRight: KeyCode.KEYCODE_DPAD_RIGHT,
+  dpadCenter: KeyCode.KEYCODE_DPAD_CENTER,
+  a: KeyCode.KEYCODE_A,
+  z: KeyCode.KEYCODE_Z,
+  comma: KeyCode.KEYCODE_COMMA,
+  period: KeyCode.KEYCODE_PERIOD,
+  altLeft: KeyCode.KEYCODE_ALT_LEFT,
+  altRight: KeyCode.KEYCODE_ALT_RIGHT,
+  shiftLeft: KeyCode.KEYCODE_SHIFT_LEFT,
+  shiftRight: KeyCode.KEYCODE_SHIFT_RIGHT,
+  space: KeyCode.KEYCODE_SPACE,
+  enter: KeyCode.KEYCODE_ENTER,
+  del: KeyCode.KEYCODE_DEL,
+  equals: KeyCode.KEYCODE_EQUALS,
+  slash: KeyCode.KEYCODE_SLASH,
+  at: KeyCode.KEYCODE_AT,
+  plus: KeyCode.KEYCODE_PLUS,
+  forwardDel: KeyCode.KEYCODE_FORWARD_DEL,
+  numpad0: KeyCode.KEYCODE_NUMPAD_0,
+  numpad9: KeyCode.KEYCODE_NUMPAD_9,
+  numpadEnter: KeyCode.KEYCODE_NUMPAD_ENTER,
+  numpadLeftParen: KeyCode.KEYCODE_NUMPAD_LEFT_PAREN,
+  numpadRightParen: KeyCode.KEYCODE_NUMPAD_RIGHT_PAREN
+};

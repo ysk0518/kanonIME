@@ -1,3 +1,4 @@
+import { KANON_DEBUG_CONSOLE, KANON_DEBUG_ENABLED } from './AppStorageKeys';
 import commonEventManager from '@ohos.commonEventManager';
 import { BusinessError } from '@ohos.base';
 
@@ -72,7 +73,7 @@ class DebugLogStore {
 
   private applyEnabled(value: boolean): void {
     this.enabled = value;
-    AppStorage.setOrCreate('kanonDebugEnabled', value);
+    AppStorage.setOrCreate(KANON_DEBUG_ENABLED, value);
     if (!value) { this.clear(); }
     if (value) { this.onEnabled(); }
     if (this.leaseTimer >= 0) { clearTimeout(this.leaseTimer); this.leaseTimer = -1; }
@@ -113,7 +114,7 @@ class DebugLogStore {
     if (this.flushTimer < 0) {
       this.flushTimer = setTimeout(() => {
         this.flushTimer = -1;
-        AppStorage.setOrCreate('kanonDebugConsole', this.lines.join('\n'));
+        AppStorage.setOrCreate(KANON_DEBUG_CONSOLE, this.lines.join('\n'));
       }, 100);
     }
   }
@@ -121,7 +122,7 @@ class DebugLogStore {
   clear(): void {
     this.lines = [];
     if (this.flushTimer >= 0) { clearTimeout(this.flushTimer); this.flushTimer = -1; }
-    AppStorage.setOrCreate('kanonDebugConsole', '');
+    AppStorage.setOrCreate(KANON_DEBUG_CONSOLE, '');
   }
 }
 

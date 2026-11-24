@@ -1,3 +1,4 @@
+import { KANON_BACKGROUND_THEME_VERSION, WINDOW_HEIGHT, WINDOW_WIDTH } from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -37,13 +38,13 @@ export default class MyAbilityStage extends AbilityStage {
     } catch (error) {
       Log.showInfo(TAG, `setColorMode failed code=${(error as BusinessError).code}`);
     }
-    AppStorage.setOrCreate<number>('windowWidth', -1);
-    AppStorage.setOrCreate<number>('windowHeight', -1);
+    AppStorage.setOrCreate<number>(WINDOW_WIDTH, -1);
+    AppStorage.setOrCreate<number>(WINDOW_HEIGHT, -1);
     Log.showInfo(TAG, '[Demo] MyAbilityStage onCreate');
   }
 
   onConfigurationUpdate(config: AbilityConfiguration): void {
-    if (config.colorMode !== undefined) { AppStorage.setOrCreate('kanonBackgroundThemeVersion', Date.now()); }
+    if (config.colorMode !== undefined) { AppStorage.setOrCreate(KANON_BACKGROUND_THEME_VERSION, Date.now()); }
     if (config.fontSizeScale !== undefined) { keyboardController.updateFontScale(config.fontSizeScale); }
   }
 }

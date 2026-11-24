@@ -1,3 +1,4 @@
+import { INPUT_STYLE, KANON_KEY_GAP } from './AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
  * Copyright (c) 2023 Huawei Device Co., Ltd.
@@ -54,11 +55,11 @@ export interface KeyStyle {
 
 export class StyleConfiguration {
   static getSavedInputStyle(): KeyStyle {
-    return AppStorage.get<KeyStyle>('inputStyle') ?? StyleConfiguration.getInputStyle(360, 247);
+    return AppStorage.get<KeyStyle>(INPUT_STYLE) ?? StyleConfiguration.getInputStyle(360, 247);
   }
 
   static getInputStyle(width: number, height: number,
-    spacing: number = AppStorage.get<number>('kanonKeyGap') ?? DEFAULT_KEY_GAP): KeyStyle {
+    spacing: number = AppStorage.get<number>(KANON_KEY_GAP) ?? DEFAULT_KEY_GAP): KeyStyle {
     const gap: number = effectiveKeyGap(width, height, spacing);
     const key: number = Math.max(1, (width - 12 - 9 * gap) / 10);
     const row: number = Math.max(1, (height - 12 - 3 * gap) / 4);

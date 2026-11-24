@@ -1,3 +1,7 @@
+import {
+  KANON_FLICK_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_LAST_LAYOUT,
+  KANON_LAYOUT, KANON_LAYOUT_ORDER, KANON_MODE
+} from './AppStorageKeys';
 import common from '@ohos.app.ability.common';
 import { initializeShortcutConfig } from './ShortcutConfig';
 import { openSettingsRepository, readSettings, settingsDiagnostics,
@@ -18,24 +22,24 @@ export function readKeyboardHeightPercent(): number { return readSettings().heig
 
 export function refreshSharedFlickEnabled(): void {
   const value: boolean = readSharedFlickEnabled();
-  if (AppStorage.get<boolean>('kanonFlickEnabled') !== value) { AppStorage.setOrCreate('kanonFlickEnabled', value); }
+  if (AppStorage.get<boolean>(KANON_FLICK_ENABLED) !== value) { AppStorage.setOrCreate(KANON_FLICK_ENABLED, value); }
 }
 
 export function refreshSharedLayoutOrder(): string {
   const order: string = readSharedLayoutOrder();
   refreshSharedFlickEnabled();
-  if (AppStorage.get<string>('kanonLayoutOrder') !== order) { AppStorage.setOrCreate('kanonLayoutOrder', order); }
+  if (AppStorage.get<string>(KANON_LAYOUT_ORDER) !== order) { AppStorage.setOrCreate(KANON_LAYOUT_ORDER, order); }
   return order;
 }
 
 export function refreshSharedHapticLevel(): void {
   const value: number = readSharedHapticLevel();
-  if (AppStorage.get<number>('kanonHapticLevel') !== value) { AppStorage.setOrCreate('kanonHapticLevel', value); }
+  if (AppStorage.get<number>(KANON_HAPTIC_LEVEL) !== value) { AppStorage.setOrCreate(KANON_HAPTIC_LEVEL, value); }
 }
 
 export function refreshKeyboardHeightPercent(): void {
   const value: number = readKeyboardHeightPercent();
-  if (AppStorage.get<number>('kanonKeyboardHeightPercent') !== value) { AppStorage.setOrCreate('kanonKeyboardHeightPercent', value); }
+  if (AppStorage.get<number>(KANON_KEYBOARD_HEIGHT_PERCENT) !== value) { AppStorage.setOrCreate(KANON_KEYBOARD_HEIGHT_PERCENT, value); }
 }
 
 export function initializeKeyboardConfig(context: common.Context): void {
@@ -54,9 +58,9 @@ export function initializeKeyboardConfig(context: common.Context): void {
   }
   const selected: string[] = languageLayouts(readSharedLayoutOrder());
   PersistentStorage.persistProp('kanonLastLayout', selected[0]);
-  const last: string = AppStorage.get<string>('kanonLastLayout') ?? selected[0];
+  const last: string = AppStorage.get<string>(KANON_LAST_LAYOUT) ?? selected[0];
   const current: string = selected.find((id: string) => layoutLanguage(id) === layoutLanguage(last)) ?? selected[0];
-  AppStorage.setOrCreate('kanonLastLayout', current);
-  AppStorage.setOrCreate('kanonLayout', current);
-  AppStorage.setOrCreate('kanonMode', layoutLanguage(current));
+  AppStorage.setOrCreate(KANON_LAST_LAYOUT, current);
+  AppStorage.setOrCreate(KANON_LAYOUT, current);
+  AppStorage.setOrCreate(KANON_MODE, layoutLanguage(current));
 }

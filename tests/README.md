@@ -62,6 +62,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | EnglishCompletionLifecycle | 補完情報の捕捉と成功記録、明示／自動Undo、通常／直接の復元、入力先変更と保護解除、既存キューとの結合 |
 | ImeLocalRequests | 配列の準備・言語循環・設定適用、フリック無効時のQWERTY、切替前の確定、貼り付け前確定、失敗・入力先変更・既存キューとの結合 |
 | ImeRuntimeBindings / ImePresentation | 設定の既定値と正確な保存値照合、SDK定数を渡すパスワード予測制御、配列・カーソル表示の接続、候補元とrevision・診断情報の収集、実エンジンとの結合 |
+| ImeSession | KanonImeの操作振り分け（受付前の入力先・処理世代・外部エディター・カーソル同期、ローカル要求・英語Undo・直接英語・通常経路）、例外時の表示反映、入力先変更・明示破棄・外部エディター空のリセット |
 | InputOperationQueue | FIFO、非同期表示までの待機、入力先変更、失敗後の継続、操作の間引き・再送をしないこと |
 | EditorOperationQueue | API待機のFIFO、完了時の入力先照合、3秒期限、成否不明の書き込み待機、古いタイマー／結果の破棄 |
 | EnglishPrediction / EnglishEngine | 製品辞書と補完処理、Space・Enter・Delete、選択変更、Undo通知、Coordinatorへの接続 |
@@ -72,6 +73,9 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
 | CompositionInput / KanaInput | 文字単位とかなの変更 |
 | KeyboardLayout | 間隔、高さ、画面サイズ、フォントサイズによる寸法計算 |
+| KeyboardPanelGeometry | パネルの高さ・回避領域・高さ調整中のキャンバス、縦横、フォント倍率、候補段数による初期寸法 |
+| HardKeyInput | 物理キーの押下状態、Shift同時押し、特殊キー・未知のキー、機能キーの解放、送る操作 |
+| AppStorageKeys | キー定数の一意性、デコレーター引数のキーとの照合、SDKなしの `kanon/` モジュールがAppStorageを参照しないこと |
 | SpaceGesture | 仮想時計と指の座標によるタップ・長押し・取消・古い応答の扱い |
 | CompositionPosition | 部分確定後の起点をUTF-16単位で進める計算 |
 

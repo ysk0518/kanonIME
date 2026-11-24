@@ -1,3 +1,4 @@
+import { KANON_CLIPBOARD_AUTO_STATUS } from '../common/AppStorageKeys';
 import abilityAccessCtrl, { PermissionRequestResult } from '@ohos.abilityAccessCtrl';
 import common from '@ohos.app.ability.common';
 import { clipboardHistory } from '../kanon/ClipboardHistory';
@@ -19,7 +20,7 @@ struct ClipboardPermission {
       this.granted = result.authResults.length > 0 && result.authResults[0] === 0;
       this.message = this.granted ? '有効になりました。元のアプリでキーボードを開いてください。' :
         'クリップボードの読み取りが許可されませんでした。端末の権限設定を確認してください。';
-      AppStorage.setOrCreate('kanonClipboardAutoStatus', this.granted ? 'ready' : 'permission');
+      AppStorage.setOrCreate(KANON_CLIPBOARD_AUTO_STATUS, this.granted ? 'ready' : 'permission');
       if (this.granted) { clipboardHistory.refresh(); }
     } catch (e) { this.message = '権限を有効にできませんでした。'; }
     finally { this.busy = false; }

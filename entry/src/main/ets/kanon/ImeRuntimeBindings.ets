@@ -1,3 +1,7 @@
+import {
+  INPUT_PATTERN, KANON_CANDIDATES_EXPANDED, KANON_CURSOR, KANON_LAST_LAYOUT, KANON_LAYOUT,
+  KANON_LAYOUT_ORDER, KANON_MODE
+} from '../common/AppStorageKeys';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfigValues';
 
 export interface ImeInputPatterns {
@@ -33,26 +37,26 @@ export class ImeRuntimeBindings {
     this.numberPassword = patterns.numberPassword;
     this.newPassword = patterns.newPassword;
   }
-  currentLayout(): string { return this.port.readString('kanonLayout') ?? 'jp_flick'; }
-  configuredOrder(): string { return this.port.readString('kanonLayoutOrder') ?? DEFAULT_LAYOUT_ORDER; }
-  matchesConfiguredOrder(order: string): boolean { return this.port.readString('kanonLayoutOrder') === order; }
-  displayedMode(fallback: string): string { return this.port.readString('kanonMode') ?? fallback; }
+  currentLayout(): string { return this.port.readString(KANON_LAYOUT) ?? 'jp_flick'; }
+  configuredOrder(): string { return this.port.readString(KANON_LAYOUT_ORDER) ?? DEFAULT_LAYOUT_ORDER; }
+  matchesConfiguredOrder(order: string): boolean { return this.port.readString(KANON_LAYOUT_ORDER) === order; }
+  displayedMode(fallback: string): string { return this.port.readString(KANON_MODE) ?? fallback; }
   flickEnabled(): boolean { return this.port.flickEnabled(); }
   predictionAllowed(): boolean {
-    const pattern: number = this.port.readNumber('inputPattern') ?? this.normal;
+    const pattern: number = this.port.readNumber(INPUT_PATTERN) ?? this.normal;
     return pattern !== this.password && pattern !== this.numberPassword && pattern !== this.newPassword;
   }
   applyLayout(layout: string): void {
-    this.port.string('kanonLayout', layout);
-    this.port.string('kanonLastLayout', layout);
-    this.port.boolean('kanonCandidatesExpanded', false);
+    this.port.string(KANON_LAYOUT, layout);
+    this.port.string(KANON_LAST_LAYOUT, layout);
+    this.port.boolean(KANON_CANDIDATES_EXPANDED, false);
   }
   async saveOrder(order: string): Promise<void> { await this.port.saveLayoutOrder(order); }
   async updateCursor(): Promise<void> {
     const epoch: number = this.port.getEpoch();
     try {
       const position: number = await this.port.queryCursor();
-      if (epoch === this.port.getEpoch()) { this.port.number('kanonCursor', position); }
+      if (epoch === this.port.getEpoch()) { this.port.number(KANON_CURSOR, position); }
     } catch (error) { }
   }
 }
