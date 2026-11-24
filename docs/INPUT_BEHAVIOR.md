@@ -151,7 +151,7 @@ PCのエディターモデルとScriptedBridgeを、HarmonyOSや実Mozcの観測
 | EN-03〜EN-09 | `he → Spaceでhello → Enter`と確定前Delete | P09 / `english-input.test.cjs`、実機D21 |
 | DE-02〜DE-06 | 本文`he`へ`llo`だけ追加。最初のEnterは送信しない | P24 / `direct-english-input.test.cjs`、実機D20 |
 | DE-07 | 候補選択中のDeleteで本文`he`を保持し、次のDeleteで`h`にする | P36 / `ime-session.test.cjs`、直接英語の実機確認 |
-| JP-04、EN-10、DE-07、CM-06 | ZWJ連結や結合文字を1回のDeleteで削除する | P37 / `grapheme-delete.test.cjs`、`ime-coordinator.test.cjs`、`english-input.test.cjs`、実機D25 |
+| JP-04、EN-10、DE-07、CM-06 | ZWJ連結や結合文字を1回のDeleteで削除する | P37 / `grapheme-delete.test.cjs`、`ime-coordinator.test.cjs`、`english-input.test.cjs`、`ime-session.test.cjs`、実機D25 |
 | CM-07 | Spaceドラッグの感度と移動上限 | `space-gesture.test.cjs`、実機D10 |
 | Q7 | 部分確定の起点とカーソルが不明なら、未確定表示を保持する | P38 / `composition-position.test.cjs`、`composition-preview.test.cjs` |
 | Q1〜Q8 | 決定表と採用行の記載 | P34 / `input-behavior.test.cjs` |

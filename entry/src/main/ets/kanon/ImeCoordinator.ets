@@ -7,6 +7,7 @@
  */
 
 import { decodeInputEvent } from './InputEventContract';
+import { lastGraphemeLength } from './GraphemeDelete';
 import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
   ModeInputEvent, PartialInputEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
 
@@ -370,7 +371,8 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'backspace') {
-      const result: OpResult = await this.directDelete();
+      const result: OpResult = await this.directDelete(epoch);
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
@@ -379,21 +381,25 @@ export class ImeCoordinator {
   }
 
   /** API の削除結果を採用し、読み取り失敗を空欄と誤認しない。 */
-  private async directDelete(): Promise<OpResult> {
+  private async directDelete(epoch: number): Promise<OpResult> {
+    let length: number = 1;
     if (!this.editor.hasSelection()) {
-      const before: TextReadResult = await this.editor.queryBeforeResult(1);
-      if (before.ok && before.value === '') {
-        return { ok: true, code: 0 };
-      }
+      try {
+        const before: TextReadResult = await this.editor.queryBeforeResult(32);
+        if (before.ok && before.value !== undefined) { length = lastGraphemeLength(before.value); }
+      } catch (error) { }
+      if (epoch !== this.editor.getEpoch()) { return { ok: false, code: -4 }; }
+      if (length === 0) { return { ok: true, code: 0 }; }
     }
-    return await this.editor.deleteForward(1);
+    return await this.editor.deleteForward(length);
   }
 
   private async doEngineEvent(epoch: number, event: InputEvent): Promise<void> {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
     // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
     if (event.kind === 'backspace' && this.preeditLen === 0) {
-      const result: OpResult = await this.directDelete();
+      const result: OpResult = await this.directDelete(epoch);
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;

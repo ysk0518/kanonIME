@@ -1,4 +1,19 @@
 const mutations = {
+  graphemeRegionalPair: {
+    file: 'kanon/GraphemeDelete.ets',
+    before: 'if (isRegionalIndicator(text.codePointAt(previous) ?? 0)) { start = previous; }',
+    after: 'if (false) { start = previous; }'
+  },
+  directDeleteGrapheme: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'return await this.editor.deleteForward(length);',
+    after: 'return await this.editor.deleteForward(1);'
+  },
+  englishDeleteGrapheme: {
+    file: 'kanon/EnglishEngine.ets',
+    before: 'const width: number = lastGraphemeLength(this.buffer);',
+    after: 'const width: number = 1;'
+  },
   directEnglishRevertSelection: {
     file: 'kanon/DirectEnglishInput.ets',
     before: 'if (this.prediction.getSelectedIndex() < 0) { return false; }',

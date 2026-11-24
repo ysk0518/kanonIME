@@ -138,6 +138,13 @@ for (const action of ['Delete', 'candidate cancel']) {
   });
 }
 
+test('P37: direct English Delete uses the same grapheme deletion as Japanese confirmed text', async () => {
+  const r = rig({ supported: false, origin: 'Ae\u0301' });
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, 'A');
+  assert.deepEqual(r.editor.calls, [{ operation: 'deleteForward', length: 2 }]);
+});
+
 test('P29: R-01: requests queued for the old editor return the latest snapshot without dispatch', async () => {
   const r = rig({ mode: 'JP' });
   const started = deferred(), release = deferred();

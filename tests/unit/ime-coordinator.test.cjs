@@ -156,6 +156,57 @@ test('reading failure is not mistaken for a successfully observed empty field', 
   assert.equal(second.editor.count('deleteForward'), 1);
 });
 
+test('P37: confirmed Delete reads up to 32 UTF-16 units and deletes one grapheme in one call', async () => {
+  const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
+  const cluster = '👩🏽‍💻';
+  const prefix = 'a'.repeat(35);
+  editor.text = `${prefix}${cluster}B`;
+  editor.cursor = prefix.length + cluster.length;
+  const reads = [];
+  const query = editor.queryBeforeResult.bind(editor);
+  editor.queryBeforeResult = length => { reads.push(length); return query(length); };
+  await coordinator.postEvent({ kind: 'backspace' });
+  assert.equal(editor.text, `${prefix}B`);
+  assert.deepEqual(reads, [32]);
+  assert.deepEqual(editor.calls, [{ operation: 'deleteForward', length: cluster.length }]);
+});
+
+test('P37: selected text still uses one selection delete without reading behind the cursor', async () => {
+  const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
+  editor.text = 'A😀B';
+  await editor.selectRange(1, 3);
+  let reads = 0;
+  editor.queryBeforeResult = async () => { reads++; throw new Error('Unexpected read'); };
+  await coordinator.postEvent({ kind: 'backspace' });
+  assert.equal(reads, 0);
+  assert.equal(editor.text, 'AB');
+  assert.deepEqual(editor.calls.at(-1), { operation: 'deleteForward', length: 1 });
+});
+
+test('P37: a rejected read falls back to one delete in the same editor', async () => {
+  const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
+  editor.text = 'a'; editor.cursor = 1;
+  editor.queryBeforeResult = async () => { throw new Error('Read failed'); };
+  await coordinator.postEvent({ kind: 'backspace' });
+  assert.equal(editor.text, '');
+  assert.deepEqual(editor.calls, [{ operation: 'deleteForward', length: 1 }]);
+});
+
+test('P37: an editor change during the grapheme read prevents deletion in the new editor', async () => {
+  const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
+  const started = deferred(), reading = deferred();
+  editor.queryBeforeResult = () => { started.resolve(); return reading.promise; };
+  const pending = coordinator.postEvent({ kind: 'backspace' });
+  await started.promise;
+  editor.epoch++;
+  editor.text = 'new'; editor.cursor = 3;
+  reading.resolve({ ok: true, code: 0, value: '😀' });
+  await pending;
+  assert.equal(editor.text, 'new');
+  assert.deepEqual(editor.calls, []);
+  assert.equal(coordinator.getSnapshot().lastError, 'stale-epoch');
+});
+
 test('C05: cancel clears preview cache so equal text in a new composition is resent', async () => {
   const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
   await coordinator.refreshPreview('あ', 0, 0, 1);

@@ -49,6 +49,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 |---|---|
 | `input-behavior.test.cjs` | Gboard基準の決定表と採用行の記載 |
 | `mozc-engine.test.cjs` / `ime-session.test.cjs` | 変換中のDelete、範囲調整後と部分確定後の読みに戻す動作、候補一覧の取消と復旧の違い、直接英語の強調解除と次のDelete |
+| `grapheme-delete.test.cjs` / `ime-coordinator.test.cjs` / `english-input.test.cjs` | 複数コードポイントの書記素幅、国旗の末尾からの組み合わせ、本文と英語未確定の削除、読み取り失敗・入力先変更・選択範囲 |
 | MozcEngine | 呼び出す操作・候補ID、部分確定と後続文字、Delete、濁点、UTF-16のカーソル情報 |
 | ImeCoordinator | 未確定表示の更新、確定回数、古い入力先・候補、失敗時の保持 |
 | CompositionPhase | 候補数から独立した入力中／変換中、日本語・英語のCoordinator状態 |
@@ -153,6 +154,7 @@ Node 24以降のテストには30秒の期限を付け、故意に処理を壊�
 | P34 | 合意済みの変換中Deleteを提案扱いへ戻す |
 | P35 | 読みに戻した後も候補を強調する／入力中の「取消」でもBackspaceを送る |
 | P36 | 直接英語の候補選択中Deleteを本文削除へ流す |
+| P37 | 地域指示記号を1個ずつ削除する／本文や英語未確定の削除幅を1単位に固定する |
 
 ## 別に確認すること
 
