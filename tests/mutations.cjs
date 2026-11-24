@@ -44,7 +44,9 @@ for (const [mutation, testId] of [['suggestion', 'R02'], ['modifier', 'R06'], ['
   ['localPasteFailure', 'P26'], ['localPasteEpoch', 'P26'], ['runtimePasswordPolicy', 'P27'],
   ['runtimeCursorEpoch', 'P27'], ['runtimeStoredConfirmation', 'P27'], ['runtimeLayoutHistory', 'P27'],
   ['presentationCandidateSource', 'P27'], ['presentationCandidateRevision', 'P27'],
-  ['presentationDiagnosticSource', 'P27'], ['presentationTargetEpoch', 'P27'], ['regressionLayoutReset', 'P28']]) {
+  ['presentationDiagnosticSource', 'P27'], ['presentationTargetEpoch', 'P27'], ['regressionLayoutReset', 'P28'],
+  ['panelAdjustmentCanvas', 'P31'], ['panelStyleRows', 'P31'], ['hardKeyShiftChord', 'P31'],
+  ['hardKeyFunctionRelease', 'P31']]) {
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', `${testId}:`], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${testId}:`).test(result.output);
   if (result.status === 0 || !matchingFailure || !result.output.includes('AssertionError')) {
