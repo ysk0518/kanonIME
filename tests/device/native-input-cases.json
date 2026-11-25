@@ -161,6 +161,35 @@
       {"id": "spaceItem", "expect": "hel"},
       {"id": "deleteItem", "expect": "hel"},
       {"id": "deleteItem", "expect": "he"}
+    ] },
+    { "id": "D27", "steps": [
+      {"id": "qwerty_a", "expect": "あ"},
+      {"id": "returnItem", "expect": "あ"},
+      {"id": "qwerty_k"},
+      {"id": "qwerty_y"},
+      {"id": "qwerty_o"},
+      {"id": "qwerty_u"},
+      {"id": "qwerty_h"},
+      {"id": "qwerty_a", "expect": "あきょうは"},
+      {"id": "spaceItem", "expect": "あ今日は"},
+      {"id": "fixtureField", "tapXFraction": 0.05, "expect": "あ今日は"},
+      {"id": "qwerty_k"},
+      {"id": "qwerty_a", "expect": "あ今日はか"},
+      {"id": "returnItem", "expect": "あ今日はか"},
+      {"id": "qwerty_i", "expect": "あ今日はかい"}
+    ] },
+    { "id": "D28", "steps": [
+      {"id": "qwerty_a", "expect": "あ"},
+      {"id": "returnItem", "expect": "あ"},
+      {"id": "qwerty_k"},
+      {"id": "qwerty_y"},
+      {"id": "qwerty_o"},
+      {"id": "qwerty_u", "expect": "あきょう"},
+      {"id": "fixtureField", "tapXFraction": 0.05, "expect": "あきょう"},
+      {"id": "qwerty_k"},
+      {"id": "qwerty_a", "expect": "あきょうか"},
+      {"id": "returnItem", "expect": "あきょうか"},
+      {"id": "qwerty_i", "expect": "あきょうかい"}
     ] }
   ]
 }
