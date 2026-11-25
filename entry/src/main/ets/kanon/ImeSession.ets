@@ -455,7 +455,11 @@ export class ImeSession {
     finally { this.ports.prediction.editing = false; }
     const s: ImeSnapshot = this.coord.getSnapshot();
     if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return s; }
-    if (kind === 'undo' && s.revision === undoRevision) { return s; }
+    if (kind === 'undo' && s.revision === undoRevision) { this.coord.takeUndoOrigin(); return s; }
+    if (kind === 'undo') {
+      const origin: number = this.coord.takeUndoOrigin();
+      if (origin >= 0) { this.preview.restore(origin); }
+    }
     if (!directEnglish && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
       await this.sendEnterAction(epoch);
     }

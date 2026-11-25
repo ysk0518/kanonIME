@@ -19,6 +19,11 @@ const mutations = {
     before: "const cursor: number = await this.editor.queryCursor();\n    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }\n    if (this.lastJapaneseCommit",
     after: "const cursor: number = await this.editor.queryCursor();\n    if (this.lastJapaneseCommit"
   },
+  japaneseUndoOrigin: {
+    file: 'kanon/ImeSession.ets',
+    before: 'if (origin >= 0) { this.preview.restore(origin); }',
+    after: 'if (origin < 0) { this.preview.restore(origin); }'
+  },
   japaneseUndoMove: {
     file: 'kanon/ImeCoordinator.ets',
     before: "if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }",

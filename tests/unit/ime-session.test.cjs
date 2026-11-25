@@ -134,6 +134,39 @@ test('P40: Japanese undo deletes the range before restoring the conversion previ
   r.bridge.assertDone();
 });
 
+test('P40: undo places the restored preview at the commit start even if the cursor read is stale', async () => {
+  // Device 2026-11-26: right after deleteForward the platform can still report
+  // the old cursor. A preview placed there shifted later edits by one character.
+  const r = await japaneseCommit({ converting: true, reading: 'きょう', committed: '今日', steps: [
+    undoStep('今日', 2, -2, { focused_id: 1, focused_reading: 'きょう', candidates: [{ id: 1, value: '今日' }] }),
+    { operation: 'backspace', output: response('きょう') }
+  ] });
+  r.session.selectionChanged(3, 3);
+  const realQuery = r.editor.queryCursor.bind(r.editor);
+  let deleted = false;
+  r.editor.deleteForward = async length => {
+    assert.equal(length, 2);
+    r.editor.text = '前';
+    r.editor.cursor = 1;
+    deleted = true;
+    return { ok: true, code: 0 };
+  };
+  // The platform inserts at the real cursor but the read still reports the old one.
+  r.editor.queryCursor = async () => deleted ? 3 : realQuery();
+  await r.session.keyUndo();
+  assert.deepEqual(r.editor.preview, { start: 1, end: 3 });
+  assert.equal(r.editor.text, '前今日');
+  // Caret and composition-cursor mapping use this origin (device: a stale origin of 3
+  // turned the next Delete into deleting the first reading character).
+  assert.equal(r.session.preview.getStart(), 1);
+  // The next edit replaces the tracked range; an origin of 3 would leave 今日 behind.
+  r.editor.queryCursor = realQuery;
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, '前きょう');
+  assert.deepEqual(r.editor.preview, { start: 1, end: 4 });
+  r.bridge.assertDone();
+});
+
 test('P40: undo restores unconverted reading without using UTF-16 width for deleteForward', async () => {
   const r = await japaneseCommit({ reading: '😀', committed: '😀', steps: [undoStep('😀', 1)] });
   r.editor.deleteForward = async length => {

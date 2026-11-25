@@ -154,8 +154,17 @@ export class ImeCoordinator {
   private dupSuppressed: number = 0;
   private lastCommitLength: number = 0;
   private lastJapaneseCommit: JapaneseCommit | undefined = undefined;
+  // Start of the text removed by the last successful Undo, in UTF-16 units.
+  private undoOrigin: number = -1;
 
   forgetJapaneseCommit(): void { this.lastJapaneseCommit = undefined; }
+
+  /** The restored preedit starts where the undone text started. Read once. */
+  takeUndoOrigin(): number {
+    const origin: number = this.undoOrigin;
+    this.undoOrigin = -1;
+    return origin;
+  }
 
   selectionChanged(begin: number, end: number): void {
     const commit: JapaneseCommit | undefined = this.lastJapaneseCommit;
@@ -570,6 +579,7 @@ export class ImeCoordinator {
       return false;
     }
     this.forgetJapaneseCommit();
+    this.undoOrigin = -1;
     const result: OpResult = await this.editor.deleteForward(length);
     if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }
     if (!result.ok) {
@@ -579,6 +589,9 @@ export class ImeCoordinator {
       this.needsRecovery = this.needsHoldAfterFailure(result.code);
       return false;
     }
+    // The platform can report the pre-deletion cursor for a moment (device,
+    // 2026-11-26), so the preview origin comes from the verified commit.
+    this.undoOrigin = commit.cursor - commit.text.length;
     return true;
   }
 
