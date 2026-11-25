@@ -30,6 +30,8 @@ class ConvOut {
   ncand: number = 0;
   candidates: Cand[] = [];
   result: string = '';
+  deletion_offset: number | undefined = undefined;
+  deletion_length: number | undefined = undefined;
   /** 候補値の長さ列（診断用・REQ-07適合）。 */
   candlens: number[] = [];
   /** 未確定の文節数。旧soは送らないため0=不明（1扱い）。 */
@@ -51,6 +53,8 @@ function parseOut(json: string): ConvOut {
       out.candidates = o.candidates as Cand[];
     }
     out.result = o.result ?? '';
+    out.deletion_offset = o.deletion_offset;
+    out.deletion_length = o.deletion_length;
     const sg = o.segcount as number | undefined;
     out.segcount = (typeof sg === 'number') ? sg : 0;
     const cl = o.candlens as number[] | undefined;
@@ -273,6 +277,26 @@ export class MozcEngine implements EnginePort {
   private async dispatchInner(sessionId: string, epoch: number, seq: number, event: InputEvent): Promise<EngineUpdate> {
     const api: MozcBridgePort = this.bridge;
     const kind: string = event.kind;
+    if (kind === 'undo') {
+      const out: ConvOut = parseOut(await api.undo());
+      if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+      if (out.deletion_offset === undefined && out.deletion_length === undefined) {
+        // Echo-back and REWIND do not undo a commit.
+        const unchanged: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
+        unchanged.consumed = false;
+        return unchanged;
+      }
+      this.buffer = out.preedit;
+      this.inputUnits = [];
+      this.phase = out.preedit_len === 0 ? 'empty' : out.focused_id === undefined ? 'composing' : 'converting';
+      this.editing.afterBackspace(out.preedit_len > 0);
+      this.selIdx = 0;
+      this.revision++;
+      const restored: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, []);
+      restored.deletionOffset = out.deletion_offset;
+      restored.deletionLength = out.deletion_length;
+      return restored;
+    }
     if (kind === 'reset' || kind === 'cancel') {
       try {
         await api.executeAsync('reset', '', 0);
@@ -518,7 +542,7 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {
-        effects.push({ effectId: `s${this.revision}`, text: done.result });
+        effects.push({ effectId: `s${this.revision}`, text: done.result, undoable: true });
       }
       const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
       u.effects = effects;
@@ -573,7 +597,7 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       const effects: CommitEffect[] = [];
       if (part.result.length > 0) {
-        effects.push({ effectId: `p${this.revision}`, text: part.result });
+        effects.push({ effectId: `p${this.revision}`, text: part.result, undoable: true });
       }
       return this.fromOut(sessionId, epoch, seq, remaining, effects);
     }
@@ -582,11 +606,15 @@ export class MozcEngine implements EnginePort {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
       if (this.phase === 'composing' && this.buffer.length > 0) {
-        // 未変換の確定は素のEnterを送らない（実機で落ちる）。表示中の読みを
-        // そのまま1回確定し、エンジンは揃えて空に戻す（AT-03初回は確定のみ）。
+        // Use the session command to keep the undo context. The Enter key
+        // path for unconverted input previously crashed on device.
+        let done: ConvOut = new ConvOut();
+        try { done = parseOut(await api.executeAsync('submitReading', '', 0)); } catch (error) { }
         const effects: CommitEffect[] = [];
         if (this.lastPreedit.length > 0) {
-          effects.push({ effectId: `k${this.revision + 1}`, text: this.lastPreedit });
+          // Keep the exact displayed reading, including pending roman input.
+          effects.push({ effectId: `k${this.revision + 1}`, text: this.lastPreedit,
+            undoable: done.ok && done.result === this.lastPreedit });
         }
         this.buffer = '';
         this.inputUnits = [];
@@ -595,9 +623,8 @@ export class MozcEngine implements EnginePort {
         this.lastPreedit = '';
         this.phase = 'empty';
         this.editing.reset();
-        try {
-          await api.executeAsync('reset', '', 0);
-        } catch (e) {
+        if (!done.ok || effects.length === 0 || !effects[0].undoable) {
+          try { await api.executeAsync('reset', '', 0); } catch (error) { }
         }
         this.revision++;
         const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
@@ -630,7 +657,7 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       const effects: CommitEffect[] = [];
       if (done.ok && done.result.length > 0) {
-        effects.push({ effectId: `c${this.revision}`, text: done.result });
+        effects.push({ effectId: `c${this.revision}`, text: done.result, undoable: true });
       }
       const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
       u.effects = effects;

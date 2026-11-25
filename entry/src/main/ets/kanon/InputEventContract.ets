@@ -51,7 +51,7 @@ export function validInputEvent(event: UiEvent): boolean {
         nonnegativeInteger(event.cursor) && nonnegativeInteger(event.prefixLength) &&
         (event.prefixLength as number) <= event.text.length;
     case 'modifyKana': case 'backspace': case 'convert': case 'submit': case 'enter':
-    case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset':
+    case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset': case 'undo':
       return true;
     default:
       return false;

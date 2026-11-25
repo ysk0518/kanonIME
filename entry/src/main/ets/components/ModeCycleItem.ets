@@ -11,9 +11,11 @@ export struct ModeCycleItem {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | number | undefined = undefined;
   keyRadius: number = 4;
+  flick: boolean = false;
   @Consume menuType: number;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonMode') mode: string = 'JP';
+  @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
 
   private numericOnly(): boolean {
@@ -26,13 +28,17 @@ export struct ModeCycleItem {
       this.mode === 'EN' ? 'A' : 'あ';
   }
 
+  private converts(): boolean { return this.flick && this.japaneseComposing && !this.numericOnly(); }
+
   private async cycle(): Promise<void> {
     if (this.numericOnly()) { return; }
+    if (this.converts()) { await kanonIme.keySpace(); return; }
     keyboardHaptics.key();
     const configured: string[] = languageLayouts(refreshSharedLayoutOrder());
     const japanese: boolean = configured.some((id: string) => layoutLanguage(id) === 'JP');
     const english: boolean = configured.some((id: string) => layoutLanguage(id) === 'EN');
     if (this.menuType === MenuType.NUMBER) {
+      await kanonIme.forgetJapaneseCommit();
       const target: string = japanese ? 'JP' : 'EN';
       if (this.mode !== target) { await kanonIme.switchMode(); }
       if (AppStorage.get<string>('kanonMode') === target) { this.menuType = MenuType.NORMAL; }
@@ -40,19 +46,25 @@ export struct ModeCycleItem {
       await kanonIme.switchMode();
       if (AppStorage.get<string>('kanonMode') === 'EN') { this.menuType = MenuType.NORMAL; }
     } else {
+      await kanonIme.forgetJapaneseCommit();
       this.menuType = MenuType.NUMBER;
     }
   }
 
   build() {
     Stack({ alignContent: Alignment.Center }) {
-      Row({ space: 1 }) {
-        Text('あ').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'あ' ? $r('app.color.candidate_accent') :
-          $r('app.color.key_item_normal_text'))
-        Text('A').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'A' ? $r('app.color.candidate_accent') :
-          $r('app.color.key_item_normal_text'))
-        Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === '1' ? $r('app.color.candidate_accent') :
-          $r('app.color.key_item_normal_text'))
+      if (this.converts()) {
+        Text($r('app.string.keyboard_convert')).fontSize(16).maxFontScale(1).maxLines(1)
+          .fontColor($r('app.color.key_text'))
+      } else {
+        Row({ space: 1 }) {
+          Text('あ').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'あ' ? $r('app.color.candidate_accent') :
+            $r('app.color.key_item_normal_text'))
+          Text('A').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'A' ? $r('app.color.candidate_accent') :
+            $r('app.color.key_item_normal_text'))
+          Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === '1' ? $r('app.color.candidate_accent') :
+            $r('app.color.key_item_normal_text'))
+        }
       }
     }
     .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)
@@ -61,7 +73,8 @@ export struct ModeCycleItem {
     .borderRadius(this.keyRadius)
     .enabled(!this.numericOnly())
     .opacity(this.numericOnly() ? 0.7 : 1)
-    .accessibilityText(this.active() === 'あ' ? '英語または数字に切り替え' :
+    .accessibilityText(this.converts() ? '変換' :
+      this.active() === 'あ' ? '英語または数字に切り替え' :
       this.active() === 'A' ? '数字に切り替え' : '日本語または英語に切り替え')
     .id('modeCycleItem')
     .onClick(() => { this.cycle(); })

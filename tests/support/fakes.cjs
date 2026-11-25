@@ -10,6 +10,7 @@ function response(preedit = '', options = {}) {
 class ScriptedBridge {
   constructor(steps = [], ready = true) { this.steps = [...steps]; this.calls = []; this.ready = ready; }
   async prepare() { return this.ready; }
+  undo() { return this.executeAsync('undo', '', 0); }
   async executeAsync(operation, text, candidateId) {
     const call = { operation, text, candidateId };
     this.calls.push(call);

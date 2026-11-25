@@ -13,7 +13,7 @@ $testHvigor = 'C:/Program Files/Huawei/DevEco Studio/tools/hvigor/bin/hvigorw.js
 $testHap = Join-Path $testRoot 'entry/build/default/outputs/ohosTest/entry-ohosTest-signed.hap'
 $runDirectory = Join-Path $testRoot ('.local/native-device/' + (Get-Date -Format 'yyyyMMdd-HHmmss-ffff'))
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
-$result = [ordered]@{ status='not-run'; expectedTests=10; buildMode='release'; module='entry_test';
+$result = [ordered]@{ status='not-run'; expectedTests=13; buildMode='release'; module='entry_test';
   buildLog=(Join-Path $runDirectory 'build.log'); testLog=(Join-Path $runDirectory 'test.log');
   hapSha256=$null; target=$Target; cleanup='not-installed' }
 $installed = $false

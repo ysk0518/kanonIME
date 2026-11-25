@@ -1,7 +1,8 @@
-import { SubMenuType } from '../model/KeyboardKeyData';
+import { MenuType, SubMenuType } from '../model/KeyboardKeyData';
 import { InputHandler } from '../model/KeyboardController';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { SymbolToggleItem } from './SymbolToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 
 @Component
@@ -11,6 +12,8 @@ export struct KeyboardToolbar {
   @StorageLink('kanonMode') mode: string = 'JP';
   @StorageLink('kanonNeedsRecovery') needsRecovery: boolean = false;
   @StorageLink('kanonEnglishUndo') englishUndo: boolean = false;
+  @StorageLink('kanonLayout') layout: string = 'jp_flick';
+  @Consume menuType: number;
 
   build() {
     Row() {
@@ -29,13 +32,15 @@ export struct KeyboardToolbar {
       })
       .accessibilityText(this.submenuType === SubMenuType.NORMAL ? 'キーボードメニュー' : 'キーボードに戻る')
       .id('keyboardMenu')
+      SymbolToggleItem({ buttonHeight: this.toolbarHeight })
       KeyboardShortcuts().layoutWeight(1)
       if (this.submenuType === SubMenuType.NORMAL && this.needsRecovery) {
         Column() {
         Text('再開').fontSize(13).fontColor($r('app.color.text_error')).width('100%').height(this.toolbarHeight)
           .textAlign(TextAlign.Center).onClick(() => { kanonIme.cancelCompose(); }).id('cand_mode')
         }.layoutWeight(0.7)
-      } else if (this.submenuType === SubMenuType.NORMAL && this.mode === 'EN' && this.englishUndo) {
+      } else if (this.submenuType === SubMenuType.NORMAL && this.menuType === MenuType.NORMAL &&
+        this.layout === 'en_qwerty' && this.mode === 'EN' && this.englishUndo) {
         Column() {
         Text('戻す').fontSize(13).fontColor($r('app.color.candidate_accent')).width('100%').height(this.toolbarHeight)
           .textAlign(TextAlign.Center).onClick(() => { kanonIme.keyUndoEnglish(); })

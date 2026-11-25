@@ -107,7 +107,7 @@ test('P28: direct completion Undo and literal paste never create a preview or re
 test('P28: Japanese symbol composition survives paste precommit and subsequent input gets a new origin',async()=>{
   const r=await rig({mode:'JP',steps:[{operation:'convert',text:'k',output:response('ｋ')},
     {operation:'convert',text:'i',output:response('き')},{operation:'literal',text:'？',output:response('き？')},
-    {operation:'reset',output:response()},{operation:'convert',text:'k',output:response('ｋ')},
+    {operation:'submitReading',output:response('',{result:'き？'})},{operation:'convert',text:'k',output:response('ｋ')},
     {operation:'convert',text:'i',output:response('き')}]});
   for(const text of ['k','i','？']){await r.send({kind:'text',text});}
   assert.equal(r.editor.text,'き？');assert.equal(r.store.get('kanonJapaneseComposing'),true);

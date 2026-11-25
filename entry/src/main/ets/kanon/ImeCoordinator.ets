@@ -9,6 +9,7 @@
 import { decodeInputEvent } from './InputEventContract';
 import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
   ModeInputEvent, PartialInputEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
+import { lastGraphemeLength } from './GraphemeDelete';
 
 export interface OpResult {
   ok: boolean;
@@ -52,6 +53,12 @@ export type ImeUiState = 'JP_EMPTY' | 'JP_COMPOSING' | 'JP_CONVERTING' |
 export interface CommitEffect {
   effectId: string;
   text: string; // メモリ内のみ。ログ・snapshotに出さない。
+  undoable?: boolean;
+}
+
+interface JapaneseCommit {
+  text: string;
+  cursor: number;
 }
 
 /** 候補1件。labelは表示用メモリ保持（ログ・snapshotに出さない）。 */
@@ -78,6 +85,8 @@ export interface EngineUpdate {
   candidateRevision: number;
   candidates: CandidateLabel[];
   effects: CommitEffect[];
+  deletionOffset?: number;
+  deletionLength?: number;
   errorCode: number; // 0=なし。非0はエンジン側失敗。
   errorRecoverable: boolean;
 }
@@ -144,6 +153,16 @@ export class ImeCoordinator {
   private droppedLate: number = 0;
   private dupSuppressed: number = 0;
   private lastCommitLength: number = 0;
+  private lastJapaneseCommit: JapaneseCommit | undefined = undefined;
+
+  forgetJapaneseCommit(): void { this.lastJapaneseCommit = undefined; }
+
+  selectionChanged(begin: number, end: number): void {
+    const commit: JapaneseCommit | undefined = this.lastJapaneseCommit;
+    if (commit !== undefined && (begin !== commit.cursor || end !== commit.cursor)) {
+      this.forgetJapaneseCommit();
+    }
+  }
 
   reportCursorSyncFailure(): void { this.lastError = 'cursor-sync'; }
   isPreviewCaretAligned(): boolean { return this.previewCaretAligned; }
@@ -226,6 +245,7 @@ export class ImeCoordinator {
 
   /** 入力先が変わった通知。旧世代の保留は破棄し、新世代で作り直す（REQ-02/10）。 */
   onEditorChanged(): void {
+    this.forgetJapaneseCommit();
     this.sessionId = newSessionId();
     this.sequence = 0;
     this.revision = 0;
@@ -264,6 +284,7 @@ export class ImeCoordinator {
       this.lastError = 'invalid-event';
       return;
     }
+    if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }
     if (event.kind === 'reset') {
       await this.doReset(epoch);
       return;
@@ -300,6 +321,7 @@ export class ImeCoordinator {
       await this.undoEnglishCompletion(epoch, event as UndoCompletionEvent);
       return;
     }
+    if (event.kind === 'undo' && (this.mode !== 'JP' || this.lastJapaneseCommit === undefined)) { return; }
     if (event.kind === 'paste') {
       if (this.preeditLen > 0) {
         this.lastError = 'paste-needs-submit';
@@ -419,6 +441,17 @@ export class ImeCoordinator {
         return;
       }
     }
+    const undo: JapaneseCommit | undefined = event.kind === 'undo' ? this.lastJapaneseCommit : undefined;
+    if (undo !== undefined) {
+      // A remaining preview can place the platform caret past the committed
+      // text. A deletion is safe only at the original commit boundary.
+      const cursor: number = await this.editor.queryCursor();
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+      if (this.lastJapaneseCommit !== undo || this.previewShown || this.editor.hasSelection() || cursor !== undo.cursor) {
+        this.forgetJapaneseCommit();
+        return;
+      }
+    }
     // 未確定中のBackspaceはエンジンへ回し、確定済み本文に触れない（REQ-03）。
     const eng: EnginePort | undefined = this.activeEngine();
     if (eng === undefined) {
@@ -435,15 +468,16 @@ export class ImeCoordinator {
       this.enterEngineError();
       return;
     }
-    await this.applyUpdate(epoch, seq, update);
+    await this.applyUpdate(epoch, seq, update, true, undo);
   }
 
-  private async applyUpdate(epoch: number, seq: number, update: EngineUpdate): Promise<void> {
+  private async applyUpdate(epoch: number, seq: number, update: EngineUpdate,
+    rememberCommit: boolean = false, undo?: JapaneseCommit): Promise<void> {
     // 確定長の報告は今回の更新分のみ。効果なしなら0のまま（古い値を使わない）。
     this.lastCommitLength = 0;
     // 世代ずれは破棄（REQ-02）。新しい入力先へ持ち越さない。
     const nowEpoch: number = this.editor.getEpoch();
-    if (update.editorEpoch !== nowEpoch) {
+    if (epoch !== nowEpoch || update.editorEpoch !== nowEpoch) {
       this.droppedStale++;
       this.lastError = 'stale-epoch';
       return;
@@ -456,6 +490,7 @@ export class ImeCoordinator {
     }
     this.lastAppliedSequence = update.sequence;
     if (update.errorCode !== 0) {
+      if (undo !== undefined) { this.forgetJapaneseCommit(); }
       this.lastError = `engine-${update.errorCode}`;
       if (!update.errorRecoverable) {
         this.enterEngineError();
@@ -467,6 +502,7 @@ export class ImeCoordinator {
       this.lastError = 'late-rev';
       return;
     }
+    if (undo !== undefined && !await this.applyUndo(epoch, update, undo)) { return; }
     this.revision = update.revision;
     // 効果の適用。成功済みは重複適用しない（REQ-01）。epochと組で扱う。
     for (let i: number = 0; i < update.effects.length; i++) {
@@ -476,7 +512,9 @@ export class ImeCoordinator {
         this.dupSuppressed++;
         continue;
       }
+      const start: number = this.previewStart;
       const ok: boolean = await this.applyCommit(nowEpoch, ef.text);
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       if (!ok) {
         // 再送せず整合性回復へ。失敗を入力済みと表示しない（REQ-06）。
         this.needsRecovery = true;
@@ -484,6 +522,11 @@ export class ImeCoordinator {
         return;
       }
       this.appliedEffects.push(key);
+      if (rememberCommit && this.mode === 'JP' && ef.undoable === true && ef.text.length > 0) {
+        const cursor: number = start >= 0 ? start + ef.text.length : await this.editor.queryCursor();
+        if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+        if (cursor >= ef.text.length) { this.lastJapaneseCommit = { text: ef.text, cursor: cursor }; }
+      }
     }
     // 表示スナップショット更新。
     this.preeditLen = update.hasPreedit ? update.preeditLen : 0;
@@ -503,6 +546,51 @@ export class ImeCoordinator {
       this.state = this.mode === 'EN' ? 'EN_COMPOSING' : 'JP_COMPOSING';
     }
     this.lastError = 'ok';
+  }
+
+  private async applyUndo(epoch: number, update: EngineUpdate, commit: JapaneseCommit): Promise<boolean> {
+    if (!update.consumed) {
+      this.forgetJapaneseCommit();
+      return false;
+    }
+    const length: number | undefined = update.deletionLength;
+    if (length === undefined || !Number.isSafeInteger(length) || length <= 0 || update.deletionOffset !== -length ||
+      length !== Array.from(commit.text).length) {
+      await this.doReset(epoch);
+      return false;
+    }
+    // Include a preceding code point to detect a grapheme crossing the commit boundary.
+    const before: string = await this.editor.queryBefore(commit.text.length + 2);
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }
+    const cursor: number = await this.editor.queryCursor();
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }
+    if (this.lastJapaneseCommit !== commit || this.editor.hasSelection() ||
+      cursor !== commit.cursor || !before.endsWith(commit.text) || !this.matchesDeletionWidth(before, commit.text, length)) {
+      await this.doReset(epoch);
+      return false;
+    }
+    this.forgetJapaneseCommit();
+    const result: OpResult = await this.editor.deleteForward(length);
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }
+    if (!result.ok) {
+      await this.doReset(epoch);
+      if (epoch !== this.editor.getEpoch()) { return false; }
+      this.lastError = `edit-${result.code}`;
+      this.needsRecovery = this.needsHoldAfterFailure(result.code);
+      return false;
+    }
+    return true;
+  }
+
+  private matchesDeletionWidth(before: string, text: string, length: number): boolean {
+    // Mozc counts code points and Harmony deletes whole graphemes. Pass the
+    // original length only if it deletes exactly the committed string.
+    let end: number = before.length;
+    for (let i: number = 0; i < length; i++) {
+      if (end === 0) { return false; }
+      end -= lastGraphemeLength(before.slice(0, end));
+    }
+    return before.length - end === text.length;
   }
 
   /**
@@ -686,6 +774,7 @@ export class ImeCoordinator {
   }
 
   private async doReset(epoch: number): Promise<void> {
+    this.forgetJapaneseCommit();
     const eng: EnginePort | undefined = this.activeEngine();
     if (eng !== undefined) {
       this.sequence++;
@@ -697,6 +786,7 @@ export class ImeCoordinator {
         this.lastError = 'reset-engine-fail';
       }
     }
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
     this.sessionId = newSessionId();
     this.revision = 0;
     this.lastAppliedSequence = this.sequence;
@@ -719,6 +809,7 @@ export class ImeCoordinator {
   }
 
   private enterEngineError(): void {
+    this.forgetJapaneseCommit();
     this.state = 'ENGINE_ERROR';
     this.preeditLen = 0;
     this.candidateCount = 0;
