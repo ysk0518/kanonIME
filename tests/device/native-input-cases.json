@@ -190,6 +190,35 @@
       {"id": "qwerty_a", "expect": "あきょうか"},
       {"id": "returnItem", "expect": "あきょうか"},
       {"id": "qwerty_i", "expect": "あきょうかい"}
+    ] },
+    { "id": "D29", "steps": [
+      {"id": "layoutItem"},
+      {"id": "flick_は", "expect": "は"},
+      {"id": "flick_な", "expect": "はな"},
+      {"id": "flick_convert_space", "expect": "花"},
+      {"id": "flick_control_7", "expect": "花"},
+      {"id": "flick_control_1", "expect": "花"},
+      {"id": "deleteItem", "expect": "はな"},
+      {"id": "deleteItem", "expect": "は"},
+      {"id": "deleteItem", "expect": ""}
+    ] },
+    { "id": "D30", "steps": [
+      {"id": "layoutItem"},
+      {"id": "flick_か", "expect": "か"},
+      {"id": "flick_control_7", "expect": "か"},
+      {"id": "flick_control_1", "expect": "か"},
+      {"id": "flick_な", "expect": "かな"},
+      {"id": "deleteItem", "expect": "か"},
+      {"id": "deleteItem", "expect": ""}
+    ] },
+    { "id": "D31", "steps": [
+      {"id": "layoutItem"},
+      {"id": "flick_か", "expect": "か"},
+      {"id": "flick_control_7", "expect": "か"},
+      {"id": "flick_control_2", "expect": "か"},
+      {"id": "flick_control_1", "expect": "か"},
+      {"id": "flick_control_6", "expect": "か"},
+      {"id": "flick_control_1", "expect": "か"}
     ] }
   ]
 }
