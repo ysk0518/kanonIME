@@ -168,6 +168,10 @@ std::string OutputToJson(bool ok, const mozc::commands::Output& output) {
   if (output.has_result()) {
     json += ",\"result\":\"" + EscapeJson(output.result().value()) + "\"";
   }
+  if (output.has_deletion_range()) {
+    json += ",\"deletion_offset\":" + std::to_string(output.deletion_range().offset());
+    json += ",\"deletion_length\":" + std::to_string(output.deletion_range().length());
+  }
   json += "}";
   return json;
 }
@@ -341,6 +345,21 @@ napi_value BridgeReset(napi_env env, napi_callback_info info) {
   return v;
 }
 
+bool Undo(mozc::commands::Output* output) {
+  mozc::commands::Input input;
+  input.set_type(mozc::commands::Input::SEND_COMMAND);
+  input.mutable_command()->set_type(mozc::commands::SessionCommand::UNDO_OR_REWIND);
+  return Call(input, output);
+}
+
+napi_value BridgeUndo(napi_env env, napi_callback_info info) {
+  std::lock_guard<std::mutex> lock(g_session_mutex);
+  (void)info;
+  mozc::commands::Output output;
+  const bool ok = g_handler && g_session_id != 0 && Undo(&output);
+  return ReturnString(env, OutputToJson(ok, output));
+}
+
 // Normal typing uses this worker API. The synchronous exports remain for the
 // diagnostic probe. Both paths share the same session lock.
 struct AsyncOperation {
@@ -363,6 +382,10 @@ std::string ExecuteOperation(const AsyncOperation& task) {
   mozc::commands::Output output;
   bool ok = false;
   if (!g_handler || g_session_id == 0) return OutputToJson(false, output);
+  if (task.operation == "undo") {
+    const bool undone = Undo(&output);
+    return OutputToJson(undone, output);
+  }
   if (task.operation == "convert") {
     ok = true;
     for (size_t i = 0; i < task.text.size() && ok; ++i) {
@@ -418,6 +441,9 @@ std::string ExecuteOperation(const AsyncOperation& task) {
         input.mutable_command()->set_id(static_cast<uint32_t>(task.candidate_id));
       } else if (task.operation == "reset") {
         input.mutable_command()->set_type(mozc::commands::SessionCommand::RESET_CONTEXT);
+      } else if (task.operation == "submitReading") {
+        // Keep an undo context for raw preedit without using the Enter key path.
+        input.mutable_command()->set_type(mozc::commands::SessionCommand::SUBMIT);
       } else {
         return OutputToJson(false, output);
       }
@@ -480,7 +506,8 @@ napi_value BridgeExecuteAsync(napi_env env, napi_callback_info info) {
   task->text = GetStringArg(env, info, 1);
   const auto& operation = task->operation;
   if (operation != "init" && operation != "convert" && operation != "literal" && operation != "space" &&
-      operation != "submit" && operation != "backspace" && operation != "reset" &&
+      operation != "submit" && operation != "submitReading" && operation != "backspace" &&
+      operation != "reset" && operation != "undo" &&
       operation != "selectCandidate" && operation != "submitCandidate" &&
       operation != "highlightCandidate" && operation != "arrowLeft" &&
       operation != "arrowRight") {
@@ -519,6 +546,7 @@ napi_value InitModule(napi_env env, napi_value exports) {
       DECL_FN("backspace", BridgeBackspace),
       DECL_FN("space", BridgeSpace),
       DECL_FN("reset", BridgeReset),
+      DECL_FN("undo", BridgeUndo),
       DECL_FN("executeAsync", BridgeExecuteAsync),
   };
   napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);

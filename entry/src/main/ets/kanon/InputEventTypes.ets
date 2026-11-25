@@ -1,7 +1,7 @@
 /** SDK-free input protocol. UiEvent is untrusted until the queue validates it. */
 export type UiEventKind = 'text' | 'kana' | 'modifyKana' | 'paste' | 'backspace' | 'convert' |
   'compositionArrow' | 'compositionCursor' | 'submit' | 'enter' | 'cancel' | 'move' | 'selectMove' | 'selectEdge' |
-  'selectAll' | 'forwardDelete' | 'select' | 'partial' | 'reset' | 'mode' | 'undoCompletion';
+  'selectAll' | 'forwardDelete' | 'select' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion';
 export type EditorEdge = 'begin' | 'end';
 export type EditorDirection = 'left' | 'right' | 'up' | 'down';
 
@@ -32,7 +32,7 @@ export interface UndoCompletionEvent extends UiEvent {
 }
 export interface SimpleInputEvent extends UiEvent {
   kind: 'modifyKana' | 'backspace' | 'convert' | 'submit' | 'enter' | 'cancel' |
-    'selectAll' | 'forwardDelete' | 'reset';
+    'selectAll' | 'forwardDelete' | 'reset' | 'undo';
 }
 
 /** Only validated events may reach the engines or internal editing methods. */

@@ -42,6 +42,10 @@
       "value": "変換"
     },
     {
+      "name": "keyboard_candidates",
+      "value": "候補"
+    },
+    {
       "name": "keyboard_space",
       "value": "空白"
     },

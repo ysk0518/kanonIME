@@ -6,7 +6,6 @@ import { ModeCycleItem } from './ModeCycleItem';
 import { ConvertSpaceItem } from './ConvertSpaceItem';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { kanonIme } from '../kanon/KanonIme';
-import { MenuType } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
@@ -17,7 +16,6 @@ export struct FlickMenu {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
-  @Consume menuType: number;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
   @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
   @State private englishUpper: boolean = false;
@@ -46,10 +44,11 @@ export struct FlickMenu {
       .width('100%')
       .height('100%')
       .backgroundColor(backgroundKeyColor(action === 8 && this.englishUpper ? $r('app.color.candidate_selected') : $r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
-      .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') : label)
+      .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') :
+        action === 1 ? '直前の確定を取り消す' : label)
       .borderRadius(6)
       .onClick(() => {
-        if (action === 1) { keyboardHaptics.key(); this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { kanonIme.keyUndo(); }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 4) { kanonIme.keyDelete(); }
         else if (action === 5) {
@@ -68,9 +67,9 @@ export struct FlickMenu {
       ForEach([0, 1, 2, 3], (row: number) => {
         Row({ space: this.inputStyle.keyGap }) {
           Column() {
-            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(row === 0 ? '記号' : '←', row === 0 ? 1 : 2) }
+            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6, globe: true }) }
+            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6, flick: true }) }
+            else { this.control(row === 0 ? '↺' : '←', row === 0 ? 1 : 2) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach((this.layout === 'en_flick' ? this.englishKeys : this.keys).slice(row * 3, row * 3 + 3),
             (values: string[], index: number) => {

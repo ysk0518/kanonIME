@@ -7,13 +7,10 @@ export struct ConvertSpaceItem {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  @StorageLink('kanonState') imeState: string = 'JP_EMPTY';
-  @StorageLink('kanonList') candidates: string[] = [];
-  @StorageLink('kanonMode') imeMode: string = 'JP';
+  @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
 
   build() {
-    Text((this.imeMode === 'JP' && this.imeState !== 'JP_EMPTY') || this.candidates.length > 0 ?
-      $r('app.string.keyboard_convert') : $r('app.string.keyboard_space'))
+    Text(this.japaneseComposing ? $r('app.string.keyboard_candidates') : $r('app.string.keyboard_space'))
       .fontSize(16)
       .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1)

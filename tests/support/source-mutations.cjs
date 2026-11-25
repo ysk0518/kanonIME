@@ -1,4 +1,54 @@
 const mutations = {
+  japaneseUndoMatch: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'cursor !== commit.cursor || !before.endsWith(commit.text) ||',
+    after: 'cursor !== commit.cursor ||'
+  },
+  japaneseUndoOffset: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'length <= 0 || update.deletionOffset !== -length ||',
+    after: 'length <= 0 ||'
+  },
+  japaneseUndoWidth: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: ' || !this.matchesDeletionWidth(before, commit.text, length)',
+    after: ''
+  },
+  japaneseUndoEpoch: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "const cursor: number = await this.editor.queryCursor();\n    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return false; }\n    if (this.lastJapaneseCommit",
+    after: "const cursor: number = await this.editor.queryCursor();\n    if (this.lastJapaneseCommit"
+  },
+  japaneseUndoOrigin: {
+    file: 'kanon/ImeSession.ets',
+    before: 'if (origin >= 0) { this.preview.restore(origin); }',
+    after: 'if (origin < 0) { this.preview.restore(origin); }'
+  },
+  japaneseUndoMove: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }",
+    after: "if (event.kind !== 'undo' && event.kind !== 'move') { this.forgetJapaneseCommit(); }"
+  },
+  japaneseUndoSelection: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'if (commit !== undefined && (begin !== commit.cursor || end !== commit.cursor)) {',
+    after: 'if (false) {'
+  },
+  japaneseUndoAbsent: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "if (event.kind === 'undo' && (this.mode !== 'JP' || this.lastJapaneseCommit === undefined)) { return; }",
+    after: "if (event.kind === 'undo' && this.mode !== 'JP') { return; }"
+  },
+  flickUndoEnglish: {
+    file: 'kanon/ImeSession.ets',
+    before: "if (request.kind === 'undo' && this.mode === 'EN') {",
+    after: "if (false) {"
+  },
+  flickModeConvert: {
+    file: 'components/ModeCycleItem.ets',
+    before: 'if (this.converts()) { await kanonIme.keySpace(); return; }',
+    after: 'if (this.converts()) { return; }'
+  },
   unknownCompositionStart: {
     file: 'kanon/CompositionPosition.ets',
     before: 'return base >= 0 ? base + commitLength : -1;',

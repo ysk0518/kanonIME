@@ -231,6 +231,7 @@ export class ImeSession {
 
   selectionChanged(begin: number, end: number): void {
     const epoch: number = this.ports.editor.getEpoch();
+    this.coord.selectionChanged(begin, end);
     this.cursorSync.notify(epoch);
     this.editorSync.selectionChanged(epoch, begin, end);
     this.scheduleEditorSync();
@@ -337,13 +338,13 @@ export class ImeSession {
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (!await this.synchronizeExternalEditor()) { return this.stopAdmission(); }
     if (generation !== this.compositionGeneration &&
-      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' ||
+      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' || request.kind === 'undo' ||
         request.kind === 'revertConversion')) {
       return this.stopAdmission();
     }
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
-      request.kind !== 'revertConversion' &&
+      request.kind !== 'revertConversion' && request.kind !== 'undo' &&
       !await this.synchronizeCompositionCursor()) { return this.stopAdmission(); }
     const admission: ImeAdmissionContinue = { kind: 'continue' };
     return admission;
@@ -378,6 +379,11 @@ export class ImeSession {
     }
     if (request.kind === 'prepare') {
       return this.localRequests.handle(request, requestEpoch);
+    }
+    if (request.kind === 'undo' && this.mode === 'EN') {
+      const snapshot: ImeSnapshot = await this.undoEnglish(requestEpoch);
+      if (requestEpoch === this.ports.editor.getEpoch()) { await this.updateCursor(); }
+      return snapshot;
     }
     if (request.kind !== 'backspace' && request.kind !== 'select' && request.kind !== 'undoEnglish') {
       this.ports.prediction.dropUndo();
@@ -440,6 +446,7 @@ export class ImeSession {
     // Resolve arrows against the live composition after the epoch check.
     const event: UiEvent = resolveInputMovement(request, this.mode, this.coord.getSnapshot().preeditLen);
     const kind: UiEventKind = event.kind;
+    const undoRevision: number = kind === 'undo' ? this.coord.getSnapshot().revision : -1;
     const completion: EnglishCompletionContext | undefined = english && !directEnglish ?
       this.completion.capture(kind, request.candidateId, this.englishEngine.getTypedText(),
         this.preview.getStart(), epoch) : undefined;
@@ -448,6 +455,11 @@ export class ImeSession {
     finally { this.ports.prediction.editing = false; }
     const s: ImeSnapshot = this.coord.getSnapshot();
     if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return s; }
+    if (kind === 'undo' && s.revision === undoRevision) { this.coord.takeUndoOrigin(); return s; }
+    if (kind === 'undo') {
+      const origin: number = this.coord.takeUndoOrigin();
+      if (origin >= 0) { this.preview.restore(origin); }
+    }
     if (!directEnglish && (kind === 'submit' || kind === 'enter') && s.lastError === 'empty-submit') {
       await this.sendEnterAction(epoch);
     }
@@ -510,6 +522,18 @@ export class ImeSession {
   async keyUndoEnglish(): Promise<void> {
     await this.postRequest({ kind: 'undoEnglish' });
     await this.updateCursor();
+  }
+
+  async keyUndo(): Promise<void> {
+    await this.post('undo');
+  }
+
+  async forgetJapaneseCommit(): Promise<void> {
+    this.coord.forgetJapaneseCommit();
+    await this.inputQueue.enqueue(async (): Promise<ImeSnapshot> => {
+      this.coord.forgetJapaneseCommit();
+      return this.coord.getSnapshot();
+    });
   }
 
   /** カーソル移動（EditViewの矢印・行頭・行末）。単一キュー経由。 */

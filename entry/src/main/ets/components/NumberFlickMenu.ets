@@ -1,10 +1,8 @@
 import inputMethodEngine from '@ohos.inputMethodEngine';
-import { MenuType } from '../model/KeyboardKeyData';
 import { numberFlickKeys } from '../model/NumberFlickData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { kanonIme } from '../kanon/KanonIme';
-import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { FlickKey } from './FlickKey';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { DeleteItem } from './DeleteItem';
@@ -15,7 +13,6 @@ import { ModeCycleItem } from './ModeCycleItem';
 export struct NumberFlickMenu {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
-  @Consume menuType: number;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
   @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
@@ -35,10 +32,11 @@ export struct NumberFlickMenu {
       .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
       .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
-      .enabled(this.kind() === 'general' || (action !== 1 && action !== 5))
-      .opacity(this.kind() !== 'general' && (action === 1 || action === 5) ? 0.4 : 1)
+      .enabled(this.kind() === 'general' || action !== 5)
+      .opacity(this.kind() !== 'general' && action === 5 ? 0.4 : 1)
+      .accessibilityText(action === 1 ? '直前の確定を取り消す' : label)
       .onClick(() => {
-        if (action === 1) { keyboardHaptics.key(); this.menuType = MenuType.SPECIAL; }
+        if (action === 1) { kanonIme.keyUndo(); }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 5) { kanonIme.keyText(' '); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
@@ -51,9 +49,9 @@ export struct NumberFlickMenu {
       ForEach([0, 1, 2, 3], (row: number) => {
         Row({ space: this.inputStyle.keyGap }) {
           Column() {
-            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6 }) }
-            else { this.control(row === 0 ? '記号' : '←', row === 0 ? 1 : 2) }
+            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6, globe: true }) }
+            else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6, flick: true }) }
+            else { this.control(row === 0 ? '↺' : '←', row === 0 ? 1 : 2) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
           ForEach(numberFlickKeys(this.kind()).slice(row * 3, row * 3 + 3), (values: string[], index: number) => {
             Column() {

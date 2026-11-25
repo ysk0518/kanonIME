@@ -108,6 +108,13 @@ class KanonIme {
     await this.session.keyUndoEnglish();
   }
 
+  async keyUndo(): Promise<void> {
+    keyboardHaptics.key();
+    await this.session.keyUndo();
+  }
+
+  forgetJapaneseCommit(): Promise<void> { return this.session.forgetJapaneseCommit(); }
+
   async keyMove(direction: number, feedback: boolean = true): Promise<void> {
     if (feedback) { keyboardHaptics.key(); }
     await this.session.keyMove(fromEditorDirection(direction, SDK_EDITOR_DIRECTIONS));

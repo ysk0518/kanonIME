@@ -70,7 +70,17 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['directEnglishRevertSelection', 'P36', 'direct English Delete'],
   ['graphemeRegionalPair', 'P37', 'regional indicators'], ['directDeleteGrapheme', 'P37', 'an editor change during the grapheme read'],
   ['englishDeleteGrapheme', 'P37', 'English composition Delete'],
-  ['unknownCompositionStart', 'P38', 'unknown origin'], ['unknownCompositionRestoration', 'P38', 'partial commit']]) {
+  ['unknownCompositionStart', 'P38', 'unknown origin'], ['unknownCompositionRestoration', 'P38', 'partial commit'],
+  ['japaneseUndoMatch', 'P40', 'a different committed string'],
+  ['japaneseUndoOffset', 'P40', 'a nonadjacent deletion offset'],
+  ['japaneseUndoWidth', 'P40', 'a Mozc range that spans fewer Harmony graphemes'],
+  ['japaneseUndoEpoch', 'P40', 'an editor change during the final undo cursor check'],
+  ['japaneseUndoOrigin', 'P40', 'undo places the restored preview at the commit start'],
+  ['japaneseUndoMove', 'P40', 'arrow invalidates Japanese undo'],
+  ['japaneseUndoSelection', 'P40', 'selection notification invalidates Japanese undo'],
+  ['japaneseUndoAbsent', 'P40', 'Japanese undo without a commit'],
+  ['flickUndoEnglish', 'P40', '↺ uses English completion undo'],
+  ['flickModeConvert', 'P40', 'the 12-key 変換 and 候補 controls']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

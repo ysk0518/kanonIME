@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { resolve } = require('node:path');
 const { ImeSession } = require('../../entry/src/main/ets/kanon/ImeSession.ets');
 const { EnglishPrediction } = require('../../entry/src/main/ets/kanon/EnglishPrediction.ets');
 const { MozcEngine } = require('../../entry/src/main/ets/kanon/MozcEngine.ets');
@@ -7,6 +9,7 @@ const { ImeRuntimeBindings } = require('../../entry/src/main/ets/kanon/ImeRuntim
 const { ImeViewPublisher } = require('../../entry/src/main/ets/kanon/ImeViewPublisher.ets');
 const { cancelEditorPreview } = require('../../entry/src/main/ets/kanon/PreviewLifecycle.ets');
 const { FakeEditor, ScriptedBridge, response, deferred } = require('../support/fakes.cjs');
+const { mutate } = require('../support/source-mutations.cjs');
 
 function rig({ mode = 'EN', supported = true, origin = '', steps = [] } = {}) {
   const editor = new FakeEditor(origin);
@@ -85,6 +88,265 @@ async function completedWord(r) {
   await r.session.keyReturn();
   assert.equal(r.editor.text, 'hello');
 }
+
+async function japaneseCommit({ converting = false, origin = '前', reading = 'き', committed = 'き',
+  steps = [], supported = true } = {}) {
+  const conversion = { focused_id: 1, focused_reading: reading, candidates: [{ id: 1, value: committed }] };
+  const r = rig({ mode: 'JP', origin, supported, steps: [
+    { operation: 'literal', text: reading, output: response(reading) },
+    ...(converting ? [
+      { operation: 'space', output: response(committed, conversion) },
+      { operation: 'submitCandidate', candidateId: 1, output: response('', { result: committed }) }
+    ] : [{ operation: 'submitReading', output: response('', { result: committed }) }]),
+    ...steps
+  ] });
+  await r.session.keyText(reading);
+  if (converting) { await r.session.keySpace(); }
+  await r.session.keyReturn();
+  assert.equal(r.editor.text, origin + committed);
+  assert.equal(r.editor.preview, null);
+  return { ...r, conversion };
+}
+
+function undoStep(preedit, deletionLength, deletionOffset = -deletionLength, options = {}) {
+  return { operation: 'undo', output: response(preedit, {
+    deletion_offset: deletionOffset, deletion_length: deletionLength, ...options
+  }) };
+}
+
+test('P40: Japanese undo deletes the range before restoring the conversion preview', async () => {
+  const r = await japaneseCommit({ converting: true, reading: 'きょう', committed: '今日', steps: [
+    undoStep('今日', 2, -2, { focused_id: 1, focused_reading: 'きょう', candidates: [{ id: 1, value: '今日' }] })
+  ] });
+  r.session.selectionChanged(3, 3); // The IME's commit notification matches the recorded end.
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.deepEqual(r.editor.calls, [
+    { operation: 'deleteForward', length: 2 },
+    { operation: 'setPreview', text: '今日', start: -1, end: -1 }
+  ]);
+  assert.deepEqual(r.editor.preview, { start: 1, end: 3 });
+  assert.equal(r.editor.text, '前今日');
+  assert.equal(r.store.get('kanonState'), 'JP_CONVERTING');
+  assert.equal(r.store.get('kanonSel'), 0);
+  await r.session.keyUndo();
+  assert.equal(r.editor.count('deleteForward'), 1);
+  r.bridge.assertDone();
+});
+
+test('P40: undo places the restored preview at the commit start even if the cursor read is stale', async () => {
+  // Device 2026-11-26: right after deleteForward the platform can still report
+  // the old cursor. A preview placed there shifted later edits by one character.
+  const r = await japaneseCommit({ converting: true, reading: 'きょう', committed: '今日', steps: [
+    undoStep('今日', 2, -2, { focused_id: 1, focused_reading: 'きょう', candidates: [{ id: 1, value: '今日' }] }),
+    { operation: 'backspace', output: response('きょう') }
+  ] });
+  r.session.selectionChanged(3, 3);
+  const realQuery = r.editor.queryCursor.bind(r.editor);
+  let deleted = false;
+  r.editor.deleteForward = async length => {
+    assert.equal(length, 2);
+    r.editor.text = '前';
+    r.editor.cursor = 1;
+    deleted = true;
+    return { ok: true, code: 0 };
+  };
+  // The platform inserts at the real cursor but the read still reports the old one.
+  r.editor.queryCursor = async () => deleted ? 3 : realQuery();
+  await r.session.keyUndo();
+  assert.deepEqual(r.editor.preview, { start: 1, end: 3 });
+  assert.equal(r.editor.text, '前今日');
+  // Caret and composition-cursor mapping use this origin (device: a stale origin of 3
+  // turned the next Delete into deleting the first reading character).
+  assert.equal(r.session.preview.getStart(), 1);
+  // The next edit replaces the tracked range; an origin of 3 would leave 今日 behind.
+  r.editor.queryCursor = realQuery;
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, '前きょう');
+  assert.deepEqual(r.editor.preview, { start: 1, end: 4 });
+  r.bridge.assertDone();
+});
+
+test('P40: undo restores unconverted reading without using UTF-16 width for deleteForward', async () => {
+  const r = await japaneseCommit({ reading: '😀', committed: '😀', steps: [undoStep('😀', 1)] });
+  r.editor.deleteForward = async length => {
+    assert.equal(length, 1);
+    r.editor.text = '前';
+    r.editor.cursor = 1;
+    return { ok: true, code: 0 };
+  };
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前😀');
+  assert.deepEqual(r.editor.preview, { start: 1, end: 3 });
+  assert.equal(r.store.get('kanonState'), 'JP_COMPOSING');
+  r.bridge.assertDone();
+});
+
+test('P40: a different committed string resets Japanese undo without deleting anything', async () => {
+  const r = await japaneseCommit({ steps: [undoStep('き', 1), { operation: 'reset', output: response() }] });
+  replaceEditorText(r.editor, '前他');
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前他');
+  assert.deepEqual(r.editor.calls, []);
+  assert.equal(r.bridge.calls.at(-1).operation, 'reset');
+  r.bridge.assertDone();
+});
+
+test('P40: a nonadjacent deletion offset resets Japanese undo without writing to the editor', async () => {
+  const r = await japaneseCommit({ steps: [undoStep('き', 1, -2), { operation: 'reset', output: response() }] });
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前き');
+  assert.deepEqual(r.editor.calls, []);
+  assert.equal(r.bridge.calls.at(-1).operation, 'reset');
+  r.bridge.assertDone();
+});
+
+test('P40: a Mozc range that spans fewer Harmony graphemes never deletes preceding text', async () => {
+  const r = await japaneseCommit({ reading: '🇯🇵', committed: '🇯🇵',
+    steps: [undoStep('🇯🇵', 2), { operation: 'reset', output: response() }] });
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前🇯🇵');
+  assert.deepEqual(r.editor.calls, []);
+  assert.equal(r.bridge.calls.at(-1).operation, 'reset');
+  r.bridge.assertDone();
+});
+
+test('P40: an editor change during the undo response leaves the new field untouched', async () => {
+  const started = deferred(), release = deferred();
+  const r = await japaneseCommit({ steps: [
+    { operation: 'undo', output: () => { started.resolve(); return release.promise; } }
+  ] });
+  const pending = r.session.keyUndo();
+  await started.promise;
+  replaceEditorText(r.editor, '新しい入力欄');
+  r.editor.epoch++;
+  r.editor.calls.length = 0;
+  release.resolve(undoStep('き', 1).output);
+  await pending;
+  assert.equal(r.editor.text, '新しい入力欄');
+  assert.deepEqual(r.editor.calls, []);
+  r.bridge.assertDone();
+});
+
+test('P40: an editor change during the final undo cursor check blocks deletion', async () => {
+  const r = await japaneseCommit({ steps: [undoStep('き', 1)] });
+  r.editor.calls.length = 0;
+  let checks = 0;
+  r.editor.queryCursor = async () => {
+    if (++checks === 2) { r.editor.epoch++; }
+    return r.editor.cursor;
+  };
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前き');
+  assert.deepEqual(r.editor.calls, []);
+  r.bridge.assertDone();
+});
+
+for (const action of ['arrow', 'selection notification', 'paste', 'language switch', 'next input']) {
+  test(`P40: ${action} invalidates Japanese undo before dispatch`, async () => {
+    const r = await japaneseCommit({ steps: action === 'next input' ? [
+      { operation: 'literal', text: 'う', output: response('う') }
+    ] : [] });
+    if (action === 'arrow') { await r.session.keyMove('left'); }
+    if (action === 'selection notification') {
+      r.session.selectionChanged(1, 1);
+      r.session.selectionChanged(2, 2);
+    }
+    if (action === 'paste') { await r.session.keyPaste('!'); }
+    if (action === 'language switch') {
+      await r.session.switchMode();
+      await r.session.switchMode();
+    }
+    if (action === 'next input') { await r.session.keyText('う'); }
+    r.editor.calls.length = 0;
+    await r.session.keyUndo();
+    assert.equal(r.bridge.calls.some(call => call.operation === 'undo'), false);
+    assert.deepEqual(r.editor.calls, []);
+    r.bridge.assertDone();
+  });
+}
+
+test('P40: Japanese undo without a commit never rewinds pending input', async () => {
+  const r = rig({ mode: 'JP', steps: [{ operation: 'literal', text: 'き', output: response('き') }] });
+  await r.session.keyText('き');
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, 'き');
+  assert.deepEqual(r.editor.calls, []);
+  assert.deepEqual(r.bridge.calls.map(call => call.operation), ['literal']);
+  r.bridge.assertDone();
+});
+
+test('P40: Japanese undo skips a partial commit when its remaining preview follows the boundary', async () => {
+  const r = rig({ mode: 'JP', origin: '前', steps: [
+    { operation: 'literal', text: 'きょうは', output: response('きょうは') },
+    { operation: 'space', output: response('今日は', { focused_id: 1, candidates: [{ id: 1, value: '今日' }] }) },
+    { operation: 'submitCandidate', candidateId: 1, output: response('は', { result: '今日' }) }
+  ] });
+  await r.session.keyText('きょうは');
+  await r.session.keySpace();
+  await r.session.keyReturn();
+  assert.deepEqual(r.editor.preview, { start: 3, end: 4 });
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前今日は');
+  assert.deepEqual(r.editor.calls, []);
+  assert.equal(r.bridge.calls.some(call => call.operation === 'undo'), false);
+  r.bridge.assertDone();
+});
+
+test('P40: a native undo response without a deletion range leaves the editor alone', async () => {
+  const r = await japaneseCommit({ steps: [{ operation: 'undo', output: response() }] });
+  r.editor.calls.length = 0;
+  await r.session.keyUndo();
+  await r.session.keyUndo();
+  assert.equal(r.editor.text, '前き');
+  assert.deepEqual(r.editor.calls, []);
+  assert.equal(r.bridge.calls.filter(call => call.operation === 'undo').length, 1);
+  r.bridge.assertDone();
+});
+
+for (const supported of [true, false]) {
+  test(`P40: ↺ uses English completion undo with preview support ${supported}`, async () => {
+    const r = rig({ supported });
+    await completedWord(r);
+    const kinds = recordDispatch(r.session);
+    await r.session.keyUndo();
+    assert.equal(r.editor.text, 'hel');
+    assert.equal(r.editor.count('deleteForward'), 1);
+    assert.deepEqual(kinds, ['undoCompletion']);
+    assert.deepEqual(r.bridge.calls, []);
+  });
+}
+
+test('P40: the 12-key 変換 and 候補 controls route through Space', async () => {
+  function component(name) {
+    const path = `components/${name}.ets`;
+    const source = readFileSync(resolve(__dirname, '../../entry/src/main/ets', path), 'utf8');
+    const mutation = process.env.KANON_TEST_MUTATION;
+    return mutation ? mutate(path, source, mutation) : source;
+  }
+  for (const name of ['FlickMenu', 'NumberFlickMenu']) {
+    assert.match(component(name), /ModeCycleItem\(\{[^}]*flick: true/);
+  }
+  const modeKey = component('ModeCycleItem');
+  assert.match(modeKey, /if \(this\.converts\(\)\) \{\s*Text\(\$r\('app\.string\.keyboard_convert'\)\)/);
+  assert.match(modeKey, /if \(this\.converts\(\)\) \{ await kanonIme\.keySpace\(\); return; \}/);
+  const candidateKey = component('ConvertSpaceItem');
+  assert.match(candidateKey, /this\.japaneseComposing \? \$r\('app\.string\.keyboard_candidates'\)/);
+  assert.match(candidateKey, /kanonIme\.keySpace\(\)/);
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'literal', text: 'き', output: response('き') },
+    { operation: 'space', output: response('木', { candidates: [{ id: 1, value: '木' }], focused_id: 1 }) }
+  ] });
+  await r.session.keyText('き');
+  await r.session.keySpace();
+  assert.equal(r.store.get('kanonState'), 'JP_CONVERTING');
+  r.bridge.assertDone();
+});
 
 for (const converting of [false, true]) {
   test(`P35: candidate cancel closes the list while ${converting ? 'reverting conversion' : 'preserving input'}`, async () => {
@@ -236,13 +498,14 @@ async function japaneseCursorRig(steps = []) {
 
 for (const kind of ['cancel', 'cycle', 'config']) {
   test('P29: R-03: ' + kind + ' bypasses pending composition cursor synchronization', async () => {
-    const r = await japaneseCursorRig([{ operation: 'reset', output: response() }]);
+    const operation = kind === 'cancel' ? 'reset' : 'submitReading';
+    const r = await japaneseCursorRig([{ operation, output: response('', { result: kind === 'cancel' ? '' : 'ｋ' }) }]);
     const calls = [];
     observe(r.session.cursorSync, 'reconcile', () => calls.push('reconcile'));
     const snapshot = await r.send({ kind, layoutOrder: 'jp_flick,en_flick' });
     assert.deepEqual(calls, []);
     assert.equal(snapshot.lastError, 'ok');
-    assert.deepEqual(r.bridge.calls.map(call => call.operation), ['convert', 'reset']);
+    assert.deepEqual(r.bridge.calls.map(call => call.operation), ['convert', operation]);
     r.bridge.assertDone();
   });
 }

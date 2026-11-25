@@ -14,6 +14,8 @@ interface NativeOutput {
   ncand: number;
   candidates: NativeCandidate[];
   result?: string;
+  deletion_offset?: number;
+  deletion_length?: number;
 }
 
 const bridge: NativeMozcBridge = new NativeMozcBridge();
@@ -167,6 +169,47 @@ export default function nativeBridgeTest(): void {
       expect(continued.errorCode).assertEqual(0);
       expect(continued.effects.length).assertEqual(0);
       expect(engine.getPreedit()).assertEqual('はが');
+    });
+    it('N11_real_engine_undo_conversion', TestType.FUNCTION, async () => {
+      const engine: MozcEngine = new MozcEngine(bridge);
+      await engine.dispatch('native-test', 1, 1, { kind: 'text', text: 'にほんご' });
+      const converted = await engine.dispatch('native-test', 1, 2, { kind: 'convert' });
+      const before: string = engine.getPreedit();
+      expect(before).assertEqual('日本語');
+      expect(converted.phase).assertEqual('converting');
+      const committed = await engine.dispatch('native-test', 1, 3, { kind: 'enter' });
+      expect(committed.effects.length).assertEqual(1);
+      expect(committed.effects[0].text).assertEqual(before);
+      const restored = await engine.dispatch('native-test', 1, 4, { kind: 'undo' });
+      expect(restored.errorCode).assertEqual(0);
+      expect(restored.deletionOffset).assertEqual(-3);
+      expect(restored.deletionLength).assertEqual(3);
+      expect(restored.phase).assertEqual('converting');
+      expect(restored.effects.length).assertEqual(0);
+      expect(engine.getPreedit()).assertEqual(before);
+    });
+    it('N12_undo_reading_and_unicode_deletion_range', TestType.FUNCTION, async () => {
+      await call('convert', 'ki');
+      await call('literal', '😀');
+      const committed: NativeOutput = await call('submitReading');
+      expect(committed.result).assertEqual('き😀');
+      expect(committed.deletion_length === undefined).assertTrue();
+      const restored: NativeOutput = await call('undo');
+      expect(restored.preedit).assertEqual('き😀');
+      expect(restored.caret_utf16).assertEqual(3);
+      expect(restored.deletion_offset).assertEqual(-2);
+      expect(restored.deletion_length).assertEqual(2);
+      noCommit(restored);
+    });
+    it('N13_no_undo_range_without_a_current_commit', TestType.FUNCTION, async () => {
+      const empty: NativeOutput = await call('undo');
+      expect(empty.deletion_offset === undefined && empty.deletion_length === undefined).assertTrue();
+      await call('convert', 'ki');
+      await call('submitReading');
+      await call('convert', 'sa');
+      const afterInput: NativeOutput = await call('undo');
+      expect(afterInput.deletion_offset === undefined && afterInput.deletion_length === undefined).assertTrue();
+      noCommit(afterInput);
     });
   });
 }

@@ -55,6 +55,10 @@ export class NativeMozcBridge implements MozcBridgePort {
     }
   }
 
+  undo(): Promise<string> {
+    return this.executeAsync('undo', '', 0);
+  }
+
   async executeAsync(operation: string, text: string, candidateId: number): Promise<string> {
     if (this.api === null) { throw new Error('Mozc bridge is not prepared'); }
     return this.api.executeAsync(operation, text, candidateId);

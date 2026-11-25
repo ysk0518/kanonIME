@@ -11,6 +11,7 @@ export struct LayoutItem {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | number | undefined = undefined;
   keyRadius: number = 4;
+  globe: boolean = false;
   @Consume menuType: number;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
@@ -21,6 +22,8 @@ export struct LayoutItem {
       if (!this.flickEnabled) {
         Text(this.menuType === MenuType.SPECIAL ? 'ABC' : '#+=')
           .fontSize(14).maxFontScale(1).maxLines(1).fontColor($r('app.color.key_text'))
+      } else if (this.globe) {
+        Image($r('app.media.ic_globe')).fillColor($r('app.color.key_text')).width(22).height(22)
       } else {
         Image(this.layout.endsWith('flick') ? $r('app.media.ic_layout_qwerty') : $r('app.media.ic_layout_12key'))
         .fillColor($r('app.color.key_text'))
