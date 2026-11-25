@@ -49,6 +49,9 @@ export class ImeRuntimeBindings {
   applyLayout(layout: string): void {
     this.port.string(KANON_LAYOUT, layout);
     this.port.string(KANON_LAST_LAYOUT, layout);
+    this.closeCandidates();
+  }
+  closeCandidates(): void {
     this.port.boolean(KANON_CANDIDATES_EXPANDED, false);
   }
   async saveOrder(order: string): Promise<void> { await this.port.saveLayoutOrder(order); }

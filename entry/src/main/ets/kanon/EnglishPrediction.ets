@@ -101,6 +101,7 @@ export class EnglishPrediction {
   getRevision(): number { return this.revision; }
   getSelectedIndex(): number { return this.selectedIndex; }
   getSelectedItem(): CandidateLabel | undefined { return this.items[this.selectedIndex]; }
+  clearSelection(): void { this.selectedIndex = -1; }
   selectNext(): void {
     if (this.items.length > 0) { this.selectedIndex = (this.selectedIndex + 1) % this.items.length; }
   }

@@ -92,7 +92,12 @@ if ($Install) {
     }
   } finally { $hapArchive.Dispose() }
   $watch = [System.Diagnostics.Stopwatch]::StartNew()
-  Invoke-Device @('install', '-r', $hapPath) | Out-Null
+  # hdc exits 0 even when the bundle manager rejects the HAP (for example,
+  # code 9568332 after the signing certificate changes). Treat it as a failure.
+  $installOutput = (Invoke-Device @('install', '-r', $hapPath)) -join "`n"
+  if ($installOutput -match 'failed to install|error:') {
+    throw "Install failed: $installOutput"
+  }
   $watch.Stop()
   Write-Output ('Install: {0:N1}s' -f $watch.Elapsed.TotalSeconds)
 }

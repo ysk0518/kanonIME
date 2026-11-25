@@ -49,6 +49,57 @@ test('R01: Japanese QWERTY Delete uses native backspace instead of replaying k',
   state.bridge.assertDone();
 });
 
+for (const scenario of ['conversion', 'resized conversion', 'remaining conversion after partial commit']) {
+  test(`P35: Backspace cancels ${scenario} before deleting the next character`, async () => {
+    const candidates = [{ id: 21, value: '今日' }, { id: 22, value: '京' }];
+    const conversion = { focused_reading: 'きょう', focused_id: 22, candidates, segcount: 2 };
+    const steps = [
+      { operation: 'literal', text: 'きょうは', output: response('きょうは') },
+      { operation: 'space', output: response('京は', conversion) }
+    ];
+    if (scenario !== 'conversion') {
+      steps.push({ operation: 'arrowLeft', output: response('木ょうは', {
+        focused_reading: 'き', focused_id: 23, candidates: [{ id: 23, value: '木' }], segcount: 2
+      }) });
+    }
+    const partial = scenario === 'remaining conversion after partial commit';
+    if (partial) {
+      const remaining = { focused_reading: 'ょうは', focused_id: 24, candidates: [{ id: 24, value: 'ょう派' }] };
+      steps.push({ operation: 'submitCandidate', candidateId: 23, output: response('ょう派', { ...remaining, result: '木' }) },
+        { operation: 'highlightCandidate', candidateId: 24, output: response('ょう派', remaining) });
+    }
+    const reading = partial ? 'ょうは' : 'きょうは';
+    // MS-IME keymap: Conversion Backspace Cancel, then Composition Backspace Delete.
+    steps.push({ operation: 'backspace', output: response(reading, {
+      candidates: [{ id: 25, value: reading }]
+    }) }, { operation: 'backspace', output: response(reading.slice(0, -1)) });
+    const state = rig(steps);
+    await state.send({ kind: 'text', text: 'きょうは' });
+    let previous = await state.send({ kind: 'convert' });
+    assert.equal(state.engine.getSelIdx(), 1);
+    if (scenario !== 'conversion') {
+      previous = await state.send({ kind: 'compositionArrow', text: 'left' });
+    }
+    if (partial) {
+      previous = await state.send({ kind: 'enter' });
+      assert.equal(previous.effects[0].text, '木');
+    }
+    assert.equal(previous.phase, 'converting');
+    const reverted = await state.send({ kind: 'backspace' });
+    assert.equal(reverted.phase, 'composing');
+    assert.equal(reverted.revision, previous.revision + 1);
+    assert.equal(reverted.candidateRevision, reverted.revision);
+    assert.equal(state.engine.getPreedit(), reading);
+    assert.equal(state.engine.getConversionReading(), '');
+    assert.equal(state.engine.getSelIdx(), -1);
+    assert.deepEqual(reverted.candidates, [{ id: 25, label: reading }]);
+    assert.deepEqual(reverted.effects, []);
+    await state.send({ kind: 'backspace' });
+    assert.equal(state.engine.getPreedit(), reading.slice(0, -1));
+    state.bridge.assertDone();
+  });
+}
+
 test('R02: tapping a partial suggestion keeps text after the insertion cursor', async () => {
   const state = rig(partialSuggestionSteps());
   const result = await selectEditedPrefix(state);

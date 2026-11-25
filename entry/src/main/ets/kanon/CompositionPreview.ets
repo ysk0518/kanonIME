@@ -37,17 +37,20 @@ export class CompositionPreview {
     return generation === this.generation && epoch === this.port.getEpoch();
   }
 
-  async reconcile(snapshot: ImeSnapshot, kind: UiEventKind, previousMode: string): Promise<void> {
+  /** Return whether this operation can refresh the preview. */
+  async reconcile(snapshot: ImeSnapshot, kind: UiEventKind, previousMode: string): Promise<boolean> {
     const generation: number = this.generation;
     const epoch: number = this.port.getEpoch();
     if (snapshot.mode === 'JP' && snapshot.preeditLen > 0 &&
       snapshot.lastError === 'ok' && snapshot.commitLength > 0) {
       // Prefer tracked origin over a potentially stale cursor after insertText.
       const base: number = this.start >= 0 ? this.start : await this.port.queryCursor();
-      if (!this.current(generation, epoch)) { return; }
-      this.restore(advanceCompositionStart(this.start, base, snapshot.commitLength));
+      if (!this.current(generation, epoch)) { return false; }
+      const start: number = advanceCompositionStart(this.start, base, snapshot.commitLength);
+      if (start < 0) { return false; }
+      this.restore(start);
     }
-    if (snapshot.preeditLen !== 0 || this.start < 0) { return; }
+    if (snapshot.preeditLen !== 0 || this.start < 0) { return true; }
     const alreadyCommitted: boolean = (snapshot.lastError === 'ok' && snapshot.commitLength > 0) ||
       kind === 'submit' || kind === 'enter' || kind === 'select' || kind === 'move' ||
       kind === 'selectMove' || kind === 'selectEdge' || kind === 'selectAll' || kind === 'forwardDelete' ||
@@ -55,7 +58,9 @@ export class CompositionPreview {
     if (!alreadyCommitted) {
       try { await this.port.clearPreview(); } catch (error) { }
     }
-    if (this.current(generation, epoch)) { this.reset(); }
+    if (!this.current(generation, epoch)) { return false; }
+    this.reset();
+    return true;
   }
 
   async refresh(snapshot: ImeSnapshot, text: string, englishComposition: boolean): Promise<void> {

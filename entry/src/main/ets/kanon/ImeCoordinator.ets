@@ -370,7 +370,8 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'backspace') {
-      const result: OpResult = await this.directDelete();
+      const result: OpResult = await this.directDelete(epoch);
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;
@@ -378,13 +379,18 @@ export class ImeCoordinator {
     this.lastError = 'en-ignore';
   }
 
-  /** API の削除結果を採用し、読み取り失敗を空欄と誤認しない。 */
-  private async directDelete(): Promise<OpResult> {
+  /**
+   * API の削除結果を採用し、読み取り失敗を空欄と誤認しない。
+   * HarmonyOS の deleteForward は UTF-16 単位でなく文字（書記素）単位で数える
+   * （実機 D25: `あ🇯🇵` で deleteForward(1) が国旗だけを消す）。常に1を渡す。
+   */
+  private async directDelete(epoch: number): Promise<OpResult> {
     if (!this.editor.hasSelection()) {
-      const before: TextReadResult = await this.editor.queryBeforeResult(1);
-      if (before.ok && before.value === '') {
-        return { ok: true, code: 0 };
-      }
+      let before: TextReadResult | undefined = undefined;
+      // Read two UTF-16 units: one unit before an emoji can read as empty on HarmonyOS (D25).
+      try { before = await this.editor.queryBeforeResult(2); } catch (error) { }
+      if (epoch !== this.editor.getEpoch()) { return { ok: false, code: -4 }; }
+      if (before !== undefined && before.ok && before.value === '') { return { ok: true, code: 0 }; }
     }
     return await this.editor.deleteForward(1);
   }
@@ -393,7 +399,8 @@ export class ImeCoordinator {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
     // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
     if (event.kind === 'backspace' && this.preeditLen === 0) {
-      const result: OpResult = await this.directDelete();
+      const result: OpResult = await this.directDelete(epoch);
+      if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
       if (!result.ok && this.needsHoldAfterFailure(result.code)) { this.needsRecovery = true; }
       return;

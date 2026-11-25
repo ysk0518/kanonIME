@@ -1,6 +1,7 @@
 import { CandidateLabel, CommitEffect, EnginePort, EngineUpdate } from './ImeCoordinator';
 import { InputEvent, TextInputEvent } from './InputEventTypes';
 import { EnglishPrediction } from './EnglishPrediction';
+import { lastGraphemeLength } from './GraphemeDelete';
 
 /** English composition shares the Coordinator's preview and commit effects with Japanese. */
 export class EnglishEngine implements EnginePort {
@@ -38,9 +39,8 @@ export class EnglishEngine implements EnginePort {
       if (this.prediction.getSelectedIndex() >= 0) {
         this.prediction.updateComposition(this.buffer);
       } else {
-        const last: number = this.buffer.charCodeAt(this.buffer.length - 1);
-        const width: number = last >= 0xDC00 && last <= 0xDFFF && this.buffer.length > 1 ? 2 : 1;
-        this.buffer = this.buffer.substring(0, Math.max(0, this.buffer.length - width));
+        const width: number = lastGraphemeLength(this.buffer);
+        this.buffer = this.buffer.substring(0, this.buffer.length - width);
         this.prediction.updateComposition(this.buffer);
       }
     } else if (kind === 'convert' && this.prediction.getItems().length > 0) {

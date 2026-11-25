@@ -10,9 +10,13 @@ test('R05: partial commit advances the tracked origin by committed UTF-16 length
   assert.equal(advanceCompositionStart(0, 100, 1), 1);
 });
 
-test('R05 provisional: missing tracked origin uses the existing cursor fallback', () => {
+test('R05: missing tracked origin uses a known cursor fallback', () => {
   assert.equal(advanceCompositionStart(-1, 7, 2), 9);
-  assert.equal(advanceCompositionStart(-1, -1, 2), 2);
+});
+
+test('P38: unknown origin and cursor stay unknown after a partial commit', () => {
+  assert.equal(advanceCompositionStart(-1, -1, 2), -1);
+  assert.equal(advanceCompositionStart(-1, 0, 2), 2);
 });
 
 test('R05: repeated partial commits keep prefix and suffix at their calculated origins', async () => {

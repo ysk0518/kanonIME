@@ -87,7 +87,7 @@ export class MozcEngine implements EnginePort {
 
   /** 強調中の候補位置（診断表示用）。 */
   getSelIdx(): number {
-    return this.selIdx;
+    return this.phase === 'converting' ? this.selIdx : -1;
   }
 
   /** 予測表示用。メモリ内のみ。 */

@@ -66,6 +66,17 @@ test('P09: deleting an emoji removes a complete surrogate pair', async () => {
   await r.send({ kind: 'backspace' }); assert.equal(r.engine.getPreedit(), 'a');
 });
 
+test('P37: English composition Delete removes one extended grapheme at a time', async () => {
+  const r = rig();
+  await r.send({ kind: 'text', text: 'Ae\u0301👩🏽‍💻' });
+  for (const remaining of ['Ae\u0301', 'A', '']) {
+    const update = await r.send({ kind: 'backspace' });
+    assert.equal(r.engine.getPreedit(), remaining);
+    assert.equal(update.preeditLen, remaining.length);
+    assert.deepEqual(update.effects, []);
+  }
+});
+
 test('P09: new text after selection retains displayed completion', async () => {
   const r = rig(); await r.send({ kind: 'text', text: 'he' }); await r.send({ kind: 'convert' });
   const result = await r.send({ kind: 'text', text: '!' });

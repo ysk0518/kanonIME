@@ -38,7 +38,8 @@ export interface ImeSessionPorts {
 }
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
-type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest;
+interface RevertConversionRequest { kind: 'revertConversion'; }
+type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest | RevertConversionRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
 interface ImeAdmissionContinue { kind: 'continue'; }
 interface ImeAdmissionStopped { kind: 'stop'; snapshot: ImeSnapshot; }
@@ -336,11 +337,13 @@ export class ImeSession {
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (!await this.synchronizeExternalEditor()) { return this.stopAdmission(); }
     if (generation !== this.compositionGeneration &&
-      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish')) {
+      (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' ||
+        request.kind === 'revertConversion')) {
       return this.stopAdmission();
     }
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (request.kind !== 'cancel' && request.kind !== 'cycle' && request.kind !== 'config' &&
+      request.kind !== 'revertConversion' &&
       !await this.synchronizeCompositionCursor()) { return this.stopAdmission(); }
     const admission: ImeAdmissionContinue = { kind: 'continue' };
     return admission;
@@ -356,6 +359,17 @@ export class ImeSession {
   }
 
   private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
+    if (request.kind === 'revertConversion') {
+      this.ports.bindings.closeCandidates();
+      const snapshot: ImeSnapshot = this.coord.getSnapshot();
+      if (snapshot.state === 'JP_CONVERTING' || snapshot.state === 'EN_CONVERTING') {
+        return this.dispatchNormal({ kind: 'backspace' }, requestEpoch);
+      }
+      if (this.isDirectEnglish() && this.directEnglish.revertSelection()) {
+        this.publish(snapshot, requestEpoch);
+      }
+      return snapshot;
+    }
     this.coord.setEnglishCompositionEnabled(this.ports.bindings.predictionAllowed());
     if (this.mode === 'EN' && this.ports.prediction.takeCompositionAbandoned()) {
       this.englishEngine.resetLocal();
@@ -378,6 +392,11 @@ export class ImeSession {
       return this.coord.getSnapshot();
     }
     if (this.mode === 'EN' && kind === 'backspace') {
+      if (this.isDirectEnglish() && this.directEnglish.revertSelection()) {
+        const snapshot: ImeSnapshot = this.coord.getSnapshot();
+        this.publish(snapshot, requestEpoch);
+        return snapshot;
+      }
       const result: EnglishUndoResult = await this.completion.undo('backspace', requestEpoch);
       if (result === 'stale') { return this.coord.getSnapshot(); }
       if (result === 'handled') {
@@ -435,10 +454,11 @@ export class ImeSession {
     if (directEnglish) { this.directEnglish.afterEvent(kind, event.text, cursor, s.lastError === 'ok'); }
     else if (kind === 'mode') { this.ports.prediction.clear(); }
     if (completion !== undefined) { this.completion.remember(completion, s); }
-    await this.preview.reconcile(s, kind, this.mode);
-    this.ports.prediction.editing = english;
-    try { await this.refreshPreview(s); }
-    finally { this.ports.prediction.editing = false; }
+    if (await this.preview.reconcile(s, kind, this.mode)) {
+      this.ports.prediction.editing = english;
+      try { await this.refreshPreview(s); }
+      finally { this.ports.prediction.editing = false; }
+    }
     const updated: ImeSnapshot = this.coord.getSnapshot();
     this.publish(updated, requestEpoch);
     return updated;
@@ -542,6 +562,10 @@ export class ImeSession {
 
   async cancelCompose(): Promise<void> {
     await this.post('cancel');
+  }
+
+  async revertConversion(): Promise<void> {
+    await this.postRequest({ kind: 'revertConversion' });
   }
 
   async switchMode(): Promise<void> {

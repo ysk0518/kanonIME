@@ -86,6 +86,88 @@ async function completedWord(r) {
   assert.equal(r.editor.text, 'hello');
 }
 
+for (const converting of [false, true]) {
+  test(`P35: candidate cancel closes the list while ${converting ? 'reverting conversion' : 'preserving input'}`, async () => {
+    const candidates = [{ id: 1, value: 'きょう' }];
+    const steps = [{ operation: 'literal', text: 'きょ', output: response('きょ', { candidates }) }];
+    if (converting) {
+      steps.push({ operation: 'space', output: response('今日', {
+        focused_reading: 'きょ', focused_id: 2, candidates: [{ id: 2, value: '今日' }]
+      }) }, { operation: 'backspace', output: response('きょ', { candidates }) });
+    }
+    const r = rig({ mode: 'JP', origin: 'A', steps: [...steps, { operation: 'reset', output: response() }] });
+    await r.session.keyText('きょ');
+    if (converting) { await r.session.keySpace(); }
+    r.store.set('kanonCandidatesExpanded', true);
+    const kinds = recordDispatch(r.session);
+    await r.session.revertConversion();
+    assert.equal(r.store.get('kanonCandidatesExpanded'), false);
+    assert.equal(r.editor.text, 'Aきょ');
+    assert.equal(r.store.get('kanonState'), 'JP_COMPOSING');
+    assert.equal(r.store.get('kanonSel'), -1);
+    assert.deepEqual(kinds, converting ? ['backspace'] : []);
+    assert.equal(r.editor.count('insert'), 0);
+    await r.session.cancelCompose();
+    assert.equal(r.editor.text, 'A');
+    assert.equal(kinds.at(-1), 'cancel');
+    r.bridge.assertDone();
+  });
+}
+
+for (const action of ['Delete', 'candidate cancel']) {
+  test(`P36: direct English ${action} clears the highlight before the next Delete edits the field`, async () => {
+    const r = rig({ supported: false });
+    await r.session.keyText('he');
+    await r.session.keySpace();
+    assert.ok(r.prediction.getSelectedIndex() >= 0);
+    const candidates = r.prediction.getItems();
+    const kinds = recordDispatch(r.session);
+    if (action === 'Delete') { await r.session.keyDelete(); }
+    else { await r.session.revertConversion(); }
+    assert.equal(r.editor.text, 'he');
+    assert.equal(r.prediction.getPrefix(), 'he');
+    assert.deepEqual(r.prediction.getItems(), candidates);
+    assert.equal(r.store.get('kanonSel'), -1);
+    assert.deepEqual(kinds, []);
+    assert.equal(r.editor.count('deleteForward'), 0);
+    await r.session.keyDelete();
+    assert.equal(r.editor.text, 'h');
+    assert.equal(r.prediction.getPrefix(), 'h');
+    assert.deepEqual(kinds, ['backspace']);
+    assert.equal(r.editor.count('deleteForward'), 1);
+  });
+}
+
+test('P39: direct English Delete uses the same one-character request as Japanese confirmed text', async () => {
+  // HarmonyOS counts deleteForward in characters (device D25); the fake editor does not.
+  const r = rig({ supported: false, origin: 'Ae\u0301' });
+  await r.session.keyDelete();
+  assert.deepEqual(r.editor.calls, [{ operation: 'deleteForward', length: 1 }]);
+});
+
+test('P38: session does not retry preview placement after an unknown partial-commit origin', async () => {
+  const r = rig({ mode: 'JP', origin: 'A', steps: [
+    { operation: 'literal', text: 'きょうは', output: response('きょうは') },
+    { operation: 'space', output: response('今日は', {
+      focused_id: 1, candidates: [{ id: 1, value: '今日' }]
+    }) },
+    { operation: 'submitCandidate', candidateId: 1, output: response('は', { result: '今日' }) }
+  ] });
+  await r.session.keyText('きょうは');
+  await r.session.keySpace();
+  r.session.preview.reset();
+  let queries = 0;
+  r.editor.queryCursor = async () => ++queries === 1 ? -1 : r.editor.cursor;
+  const previews = r.editor.count('setPreview');
+  await r.session.keyReturn();
+  assert.equal(r.editor.text, 'A今日');
+  assert.equal(r.session.coord.getSnapshot().preeditLen, 1);
+  assert.equal(r.session.preview.getStart(), -1);
+  assert.equal(queries, 1);
+  assert.equal(r.editor.count('setPreview'), previews);
+  r.bridge.assertDone();
+});
+
 test('P29: R-01: requests queued for the old editor return the latest snapshot without dispatch', async () => {
   const r = rig({ mode: 'JP' });
   const started = deferred(), release = deferred();

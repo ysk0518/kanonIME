@@ -103,6 +103,64 @@
       { "id": "qwerty_h", "expect": "h" }, { "id": "qwerty_e", "expect": "he" },
       { "id": "qwerty_l", "expect": "hel" },
       { "id": "spaceItem", "expect": "hello" }, { "id": "returnItem", "expect": "hello" }
+    ] },
+    { "id": "D23", "steps": [
+      {"id": "qwerty_k"},
+      {"id": "qwerty_y"},
+      {"id": "qwerty_o"},
+      {"id": "qwerty_u"},
+      {"id": "qwerty_h"},
+      {"id": "qwerty_a", "expect": "きょうは"},
+      {"id": "spaceItem"},
+      {"id": "deleteItem", "expect": "きょうは"},
+      {"id": "deleteItem", "expect": "きょう"}
+    ] },
+    { "id": "D23R", "steps": [
+      {"id": "qwerty_k"},
+      {"id": "qwerty_y"},
+      {"id": "qwerty_o"},
+      {"id": "qwerty_u"},
+      {"id": "qwerty_h"},
+      {"id": "qwerty_a", "expect": "きょうは"},
+      {"id": "spaceItem"},
+      {"id": "spaceItem", "dragVp": -24},
+      {"id": "deleteItem", "expect": "きょうは"},
+      {"id": "deleteItem", "expect": "きょう"}
+    ] },
+    { "id": "D24", "steps": [
+      {"id": "qwerty_k"},
+      {"id": "qwerty_i", "expect": "き"},
+      {"id": "cand_expand"},
+      {"id": "cand_cancel", "expect": "き"},
+      {"id": "spaceItem"},
+      {"id": "cand_expand"},
+      {"id": "cand_cancel", "expect": "き"},
+      {"id": "deleteItem", "expect": ""}
+    ] },
+    { "id": "D25", "steps": [
+      {"id": "qwerty_a", "expect": "あ"},
+      {"id": "returnItem", "expect": "あ"},
+      {"id": "qwerty_h"},
+      {"id": "qwerty_i"},
+      {"id": "qwerty_n"},
+      {"id": "qwerty_o"},
+      {"id": "qwerty_m"},
+      {"id": "qwerty_a"},
+      {"id": "qwerty_r"},
+      {"id": "qwerty_u", "expect": "あひのまる"},
+      {"id": "spaceItem"},
+      {"id": "cand_expand"},
+      {"candidate": "🇯🇵", "expect": "あ🇯🇵"},
+      {"id": "deleteItem", "expect": "あ"}
+    ] },
+    { "id": "D26", "steps": [
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "qwerty_h", "expect": "h"},
+      {"id": "qwerty_e", "expect": "he"},
+      {"id": "qwerty_l", "expect": "hel"},
+      {"id": "spaceItem", "expect": "hel"},
+      {"id": "deleteItem", "expect": "hel"},
+      {"id": "deleteItem", "expect": "he"}
     ] }
   ]
 }

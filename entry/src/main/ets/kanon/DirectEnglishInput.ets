@@ -30,6 +30,12 @@ export class DirectEnglishInput {
       this.prediction.canSeed() && this.port.predictionAllowed();
   }
 
+  revertSelection(): boolean {
+    if (this.prediction.getSelectedIndex() < 0) { return false; }
+    this.prediction.clearSelection();
+    return true;
+  }
+
   async convert(epoch: number): Promise<DirectEnglishConversion> {
     if (!this.port.predictionAllowed() || this.prediction.getItems().length === 0) { return 'space'; }
     const expected: number = this.prediction.getCursor();
