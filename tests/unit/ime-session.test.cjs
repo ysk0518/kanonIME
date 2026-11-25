@@ -138,11 +138,11 @@ for (const action of ['Delete', 'candidate cancel']) {
   });
 }
 
-test('P37: direct English Delete uses the same grapheme deletion as Japanese confirmed text', async () => {
+test('P39: direct English Delete uses the same one-character request as Japanese confirmed text', async () => {
+  // HarmonyOS counts deleteForward in characters (device D25); the fake editor does not.
   const r = rig({ supported: false, origin: 'Ae\u0301' });
   await r.session.keyDelete();
-  assert.equal(r.editor.text, 'A');
-  assert.deepEqual(r.editor.calls, [{ operation: 'deleteForward', length: 2 }]);
+  assert.deepEqual(r.editor.calls, [{ operation: 'deleteForward', length: 1 }]);
 });
 
 test('P38: session does not retry preview placement after an unknown partial-commit origin', async () => {

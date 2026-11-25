@@ -7,7 +7,6 @@
  */
 
 import { decodeInputEvent } from './InputEventContract';
-import { lastGraphemeLength } from './GraphemeDelete';
 import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
   ModeInputEvent, PartialInputEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
 
@@ -380,18 +379,20 @@ export class ImeCoordinator {
     this.lastError = 'en-ignore';
   }
 
-  /** API の削除結果を採用し、読み取り失敗を空欄と誤認しない。 */
+  /**
+   * API の削除結果を採用し、読み取り失敗を空欄と誤認しない。
+   * HarmonyOS の deleteForward は UTF-16 単位でなく文字（書記素）単位で数える
+   * （実機 D25: `あ🇯🇵` で deleteForward(1) が国旗だけを消す）。常に1を渡す。
+   */
   private async directDelete(epoch: number): Promise<OpResult> {
-    let length: number = 1;
     if (!this.editor.hasSelection()) {
-      try {
-        const before: TextReadResult = await this.editor.queryBeforeResult(32);
-        if (before.ok && before.value !== undefined) { length = lastGraphemeLength(before.value); }
-      } catch (error) { }
+      let before: TextReadResult | undefined = undefined;
+      // Read two UTF-16 units: one unit before an emoji can read as empty on HarmonyOS (D25).
+      try { before = await this.editor.queryBeforeResult(2); } catch (error) { }
       if (epoch !== this.editor.getEpoch()) { return { ok: false, code: -4 }; }
-      if (length === 0) { return { ok: true, code: 0 }; }
+      if (before !== undefined && before.ok && before.value === '') { return { ok: true, code: 0 }; }
     }
-    return await this.editor.deleteForward(length);
+    return await this.editor.deleteForward(1);
   }
 
   private async doEngineEvent(epoch: number, event: InputEvent): Promise<void> {

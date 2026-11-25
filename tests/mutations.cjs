@@ -68,7 +68,7 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['coreAppStorageDependency', 'P32', 'SDK-free kanon modules load without AppStorage'],
   ['inputBehaviorDecision', 'P34'], ['mozcBackspaceHighlight', 'P35'], ['revertConversionGuard', 'P35'],
   ['directEnglishRevertSelection', 'P36', 'direct English Delete'],
-  ['graphemeRegionalPair', 'P37', 'regional indicators'], ['directDeleteGrapheme', 'P37', 'confirmed Delete'],
+  ['graphemeRegionalPair', 'P37', 'regional indicators'], ['directDeleteGrapheme', 'P37', 'an editor change during the grapheme read'],
   ['englishDeleteGrapheme', 'P37', 'English composition Delete'],
   ['unknownCompositionStart', 'P38', 'unknown origin'], ['unknownCompositionRestoration', 'P38', 'partial commit']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;

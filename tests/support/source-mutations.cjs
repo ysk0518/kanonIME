@@ -16,8 +16,8 @@ const mutations = {
   },
   directDeleteGrapheme: {
     file: 'kanon/ImeCoordinator.ets',
-    before: 'return await this.editor.deleteForward(length);',
-    after: 'return await this.editor.deleteForward(1);'
+    before: "if (epoch !== this.editor.getEpoch()) { return { ok: false, code: -4 }; }\n      if (before !== undefined",
+    after: "if (before !== undefined"
   },
   englishDeleteGrapheme: {
     file: 'kanon/EnglishEngine.ets',

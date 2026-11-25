@@ -156,19 +156,18 @@ test('reading failure is not mistaken for a successfully observed empty field', 
   assert.equal(second.editor.count('deleteForward'), 1);
 });
 
-test('P37: confirmed Delete reads up to 32 UTF-16 units and deletes one grapheme in one call', async () => {
+test('P39: confirmed Delete passes one character because HarmonyOS deleteForward counts graphemes', async () => {
+  // The fake editor counts UTF-16 units; the device counts characters (D25).
+  // Only the request is asserted here: one read, one deleteForward(1).
   const { editor, coordinator } = await rig((s, e, n) => update(s, e, n));
-  const cluster = '👩🏽‍💻';
-  const prefix = 'a'.repeat(35);
-  editor.text = `${prefix}${cluster}B`;
-  editor.cursor = prefix.length + cluster.length;
+  editor.text = 'あ🇯🇵';
+  editor.cursor = editor.text.length;
   const reads = [];
   const query = editor.queryBeforeResult.bind(editor);
   editor.queryBeforeResult = length => { reads.push(length); return query(length); };
   await coordinator.postEvent({ kind: 'backspace' });
-  assert.equal(editor.text, `${prefix}B`);
-  assert.deepEqual(reads, [32]);
-  assert.deepEqual(editor.calls, [{ operation: 'deleteForward', length: cluster.length }]);
+  assert.deepEqual(reads, [2]);
+  assert.deepEqual(editor.calls, [{ operation: 'deleteForward', length: 1 }]);
 });
 
 test('P37: selected text still uses one selection delete without reading behind the cursor', async () => {
