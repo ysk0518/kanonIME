@@ -26,12 +26,13 @@ export struct FlickMenu {
     ['小゛゜'], ['わ', 'を', 'ん', 'ー', '〜'], ['、', '。', '？', '！', '…']
   ];
   private englishKeys: string[][] = [
-    ['@', '#', '$', '%', '1'], ['a', 'b', 'c', '', '2'], ['d', 'e', 'f', '', '3'],
+    ['@', '/', ':', '~', '1'], ['a', 'b', 'c', '', '2'], ['d', 'e', 'f', '', '3'],
     ['g', 'h', 'i', '', '4'], ['j', 'k', 'l', '', '5'], ['m', 'n', 'o', '', '6'],
     ['p', 'q', 'r', 's', '7'], ['t', 'u', 'v', '', '8'], ['w', 'x', 'y', 'z', '9'],
-    ['shift'], [' ', '', '', '', '0'], ['.', ',', '?', '!', '']
+    ['shift'], ['-', '#', '0', '', ''], ['.', ',', '?', '!', '']
   ];
-  private englishLabels: string[] = ['@#$%', 'abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz', 'a/A', 'space', '.,?!'];
+  private englishLabels: string[] = ['@/:~', 'abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz', 'a/A', '-#', '.,?!'];
+  private digitHints: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', ''];
 
   @Builder
   control(label: string, action: number) {
@@ -51,10 +52,7 @@ export struct FlickMenu {
         if (action === 1) { kanonIme.keyUndo(); }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 4) { kanonIme.keyDelete(); }
-        else if (action === 5) {
-          if (this.layout === 'en_flick') { kanonIme.keyText('-'); }
-          else { kanonIme.keySpace(); }
-        }
+        else if (action === 5) { kanonIme.keySpace(); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
         else if (action === 8) { keyboardHaptics.key(); this.englishUpper = !this.englishUpper; }
         else { kanonIme.keyReturn(); }
@@ -79,6 +77,7 @@ export struct FlickMenu {
               } else {
                 FlickKey({ values: values, modifier: values[0] === '小゛゜',
                   english: this.layout === 'en_flick', uppercase: this.englishUpper,
+                  digitHint: this.digitHints[row * 3 + index],
                   displayLabel: this.layout === 'en_flick' ? this.englishLabels[row * 3 + index] :
                     row === 3 && index === 2 ? '、。?!' : '',
                   onLetter: () => { this.englishUpper = false; } })
@@ -89,7 +88,7 @@ export struct FlickMenu {
           Column() {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
             else if (row === 2 && this.layout !== 'en_flick') { ConvertSpaceItem() }
-            else { this.control(row === 1 ? '→' : row === 2 ? '-' :
+            else { this.control(row === 1 ? '→' : row === 2 ? 'space' :
               this.layout === 'en_flick' && this.englishComposing ? 'Enter' :
               this.enterKeyType === EnterKeyType.Send ? '送信' :
               this.enterKeyType === EnterKeyType.Search ? '検索' :

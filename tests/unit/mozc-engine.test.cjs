@@ -149,6 +149,56 @@ test('R07: modifying kana before the cursor preserves the following suffix', asy
   state.bridge.assertDone();
 });
 
+test('P41: explicit kana modifiers replace the last kana and unsupported modifiers do not edit', async () => {
+  for (const [kana, input, modifier, expected, replacement] of [
+    ['つ', 'tsu', 'voiced', 'づ', 'du'],
+    ['は', 'ha', 'semiVoiced', 'ぱ', 'pa'],
+    ['ぱ', 'pa', 'voiced', 'ば', 'ba'],
+    ['ば', 'ba', 'semiVoiced', 'ぱ', 'pa'],
+    ['う', 'u', 'size', 'ぅ', 'lu'],
+    ['っ', 'ltsu', 'size', 'つ', 'tsu'],
+    ['な', 'na', 'voiced', 'な'],
+    ['か', 'ka', 'semiVoiced', 'か'],
+    ['ば', 'ba', 'size', 'ば'],
+    ['が', 'ga', 'voiced', 'が']
+  ]) {
+    const steps = [{ operation: 'convert', text: input, output: response(kana) }];
+    if (replacement !== undefined) {
+      steps.push({ operation: 'reset', output: response() },
+        { operation: 'convert', text: replacement, output: response(expected) });
+    }
+    const state = rig(steps);
+    const before = await state.send({ kind: 'kana', text: kana });
+    const after = await state.send({ kind: 'modifyKana', text: modifier });
+    assert.equal(state.engine.getPreedit(), expected);
+    assert.equal(after.revision, before.revision + (replacement === undefined ? 0 : 1));
+    assert.deepEqual(after.effects, []);
+    assert.equal(state.bridge.calls.length, steps.length);
+    state.bridge.assertDone();
+  }
+});
+
+test('P41: an explicit modifier edits at the live cursor after partial commit', async () => {
+  const state = rig([...partialSuggestionSteps(),
+    { operation: 'convert', text: 'ha', output: response('あは', { caret_utf16: 2 }) },
+    { operation: 'convert', text: 'u', output: response('あはう', { caret_utf16: 3 }) },
+    { operation: 'arrowLeft', output: response('あはう', { caret_utf16: 2 }) },
+    { operation: 'backspace', output: response('あう', { caret_utf16: 1 }) },
+    { operation: 'convert', text: 'pa', output: response('あぱう', { caret_utf16: 2 }) }
+  ]);
+  await selectEditedPrefix(state);
+  await state.send({ kind: 'kana', text: 'は' });
+  await state.send({ kind: 'kana', text: 'う' });
+  await state.send({ kind: 'compositionArrow', text: 'left' });
+  const before = await state.send({ kind: 'modifyKana', text: 'size' });
+  assert.equal(state.engine.getPreedit(), 'あはう');
+  assert.equal(state.bridge.calls.at(-1).operation, 'arrowLeft');
+  const after = await state.send({ kind: 'modifyKana', text: 'semiVoiced' });
+  assert.equal(after.revision, before.revision + 1);
+  assert.equal(state.engine.getCursorPreview(), 'あぱ│う');
+  state.bridge.assertDone();
+});
+
 test('R03/R04: resizing and tapping a candidate commits only the selected segment', async () => {
   const state = rig([
     { operation: 'convert', text: 'a', output: response('あ') },

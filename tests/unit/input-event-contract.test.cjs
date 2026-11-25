@@ -75,6 +75,16 @@ test('P07: payload-free operations are accepted and local or unknown requests ar
   }
 });
 
+test('P41: explicit kana modifiers pass validation and invalid modifiers are rejected', () => {
+  for (const text of ['cycle', 'voiced', 'size', 'semiVoiced']) {
+    const event = createInputEvent('modifyKana', text);
+    assert.deepEqual(decodeInputEvent(event), { kind: 'modifyKana', text });
+  }
+  for (const text of ['', 'down', 1, null]) {
+    assert.equal(decodeInputEvent({ kind: 'modifyKana', text }), undefined);
+  }
+});
+
 test('P07: Japanese horizontal movement resolves using current preedit and semantic directions', () => {
   for (const [direction, text] of [['left', 'left'], ['right', 'right']]) {
     const event = { kind: 'move', direction };

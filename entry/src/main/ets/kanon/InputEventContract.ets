@@ -50,7 +50,10 @@ export function validInputEvent(event: UiEvent): boolean {
       return typeof event.text === 'string' && event.text.length > 0 &&
         nonnegativeInteger(event.cursor) && nonnegativeInteger(event.prefixLength) &&
         (event.prefixLength as number) <= event.text.length;
-    case 'modifyKana': case 'backspace': case 'convert': case 'submit': case 'enter':
+    case 'modifyKana':
+      return event.text === undefined || event.text === 'cycle' || event.text === 'voiced' ||
+        event.text === 'size' || event.text === 'semiVoiced';
+    case 'backspace': case 'convert': case 'submit': case 'enter':
     case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset': case 'undo':
       return true;
     default:
