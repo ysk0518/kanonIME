@@ -9,7 +9,7 @@
 
 import { CandidateLabel, CommitEffect, CompositionPhase, EnginePort, EngineUpdate } from './ImeCoordinator';
 import { CandidateInputEvent, CompositionCursorEvent, InputEvent, KanaModifier, ModifyKanaInputEvent,
-  TextInputEvent } from './InputEventTypes';
+  ReplaceToggleEvent, TextInputEvent } from './InputEventTypes';
 import { kanaRoman, modifiedKana } from './KanaInput';
 import { CompositionInput, literalInputs } from './CompositionInput';
 import { MozcBridgePort } from './MozcBridgePort';
@@ -231,6 +231,35 @@ export class MozcEngine implements EnginePort {
     this.buffer = units.map((unit: CompositionInput): string => unit.text).join('');
   }
 
+  private async replaceToggle(event: ReplaceToggleEvent): Promise<ConvOut> {
+    if (this.phase !== 'composing' || this.lastPreedit.length === 0) { return new ConvOut(); }
+    const roman: string = kanaRoman(event.text);
+    const unit: CompositionInput = new CompositionInput(roman || event.text, event.text, roman.length === 0);
+    if (this.editing.canReplay()) {
+      const last: CompositionInput | undefined = this.inputUnits[this.inputUnits.length - 1];
+      if (last === undefined || (last.literal ? last.text : last.kana) !== event.previous) { return new ConvOut(); }
+      const units: CompositionInput[] = this.inputUnits.slice(0, -1);
+      units.push(unit);
+      const out: ConvOut = await this.replay(units);
+      if (out.ok) { this.setInputUnits(units); }
+      else { await this.replay(this.inputUnits); }
+      return out;
+    }
+    // After a caret move or deletion, the live composer owns the history.
+    const caret: number = this.caretPosition(this.lastOut);
+    if (caret === 0 || this.lastPreedit.charAt(caret - 1) !== event.previous) { return new ConvOut(); }
+    const deleted: ConvOut = parseOut(await this.bridge.executeAsync('backspace', '', 0));
+    if (!deleted.ok) { return deleted; }
+    const out: ConvOut = unit.literal ? await this.callLiteral(unit.text) : await this.callConvert(unit.text);
+    if (out.ok && out.result.length === 0) { this.buffer = out.preedit; return out; }
+    if (!out.ok) {
+      const original: string = kanaRoman(event.previous);
+      if (original.length === 0) { await this.callLiteral(event.previous); }
+      else { await this.callConvert(original); }
+    }
+    return new ConvOut();
+  }
+
   /** 純粋Spaceキー（special_key=SPACE）。変換開始に使う。key_codeの空白では変換しない。 */
   private async callSpace(): Promise<ConvOut> {
     const api: MozcBridgePort = this.bridge;
@@ -317,6 +346,12 @@ export class MozcEngine implements EnginePort {
       }
       this.phase = 'empty';
       return this.emptyUpdate(sessionId, epoch, seq);
+    }
+    if (kind === 'replaceToggle') {
+      const out: ConvOut = await this.replaceToggle(event as ReplaceToggleEvent);
+      if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
+      this.revision++;
+      return this.fromOut(sessionId, epoch, seq, out, []);
     }
     if (kind === 'modifyKana') {
       const modifier: KanaModifier | undefined = (event as ModifyKanaInputEvent).text;

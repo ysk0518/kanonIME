@@ -79,6 +79,25 @@ class KanonIme {
     await this.session.keyKana(kana);
   }
 
+  async keyToggleTap(key: string, uppercase: boolean): Promise<void> {
+    keyboardHaptics.key();
+    await this.session.keyToggleTap(key, uppercase);
+  }
+
+  toggleInputEnabled(): boolean { return this.ports.bindings.toggleInputEnabled(); }
+
+  async keyToggleRight(): Promise<void> {
+    keyboardHaptics.key();
+    await this.session.keyToggleRight();
+  }
+
+  async keyToggleBack(): Promise<void> {
+    keyboardHaptics.key();
+    await this.session.keyToggleBack();
+  }
+
+  endToggleInput(): void { this.session.endToggleInput(); }
+
   async modifyKana(modifier?: KanaModifier): Promise<void> {
     keyboardHaptics.key();
     await this.session.modifyKana(modifier);

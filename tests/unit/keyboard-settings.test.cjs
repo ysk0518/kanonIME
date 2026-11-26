@@ -10,6 +10,17 @@ function record() {
   const result = new KeyboardSettingsRecord(); result.actor = '1-2'; return result;
 }
 
+test('P43: schema 1 settings without the toggle field load with multi-tap disabled', () => {
+  const older = record();
+  delete older.snapshot.toggleInputEnabled;
+  const snapshot = decodeSettingsRecord(JSON.stringify(older)).snapshot;
+  assert.equal(snapshot.toggleInputEnabled, false);
+  assert.equal(validSettingsPatch({ toggleInputEnabled: 'false' }), false);
+  assert.equal(applySettingsPatch(snapshot, { toggleInputEnabled: true }).toggleInputEnabled, true);
+  assert.deepEqual(mergeSettingsPatch({ toggleInputEnabled: true }, { toggleInputEnabled: false }),
+    { toggleInputEnabled: false });
+});
+
 test('P10: default settings satisfy the product validation rules', () => {
   const value = new KeyboardSettingsSnapshot();
   assert.equal(validSettingsSnapshot(value), true);

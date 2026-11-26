@@ -2,6 +2,7 @@
     "string":  [
       { "name": "settings_candidate_font", "value": "Candidate text size: %d" },
       { "name": "settings_candidate_rows", "value": "Candidate rows" },
+      { "name": "settings_toggle_input", "value": "Multi-tap input" },
       { "name": "settings_candidate_row_count", "value": "%d row(s)" },
       { "name": "settings_candidate_rows_help", "value": "Key positions stay fixed while typing. Short windows use one row." },
       { "name": "candidate_menu", "value": "Keyboard menu" },

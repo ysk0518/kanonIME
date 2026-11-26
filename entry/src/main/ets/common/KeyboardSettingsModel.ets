@@ -5,11 +5,14 @@ import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
 
+export const DEFAULT_TOGGLE_INPUT_ENABLED: boolean = false;
+
 export class KeyboardSettingsSnapshot {
   schema: number = 1;
   revision: number = 0;
   layoutOrder: string = DEFAULT_LAYOUT_ORDER;
   flickEnabled: boolean = DEFAULT_FLICK_ENABLED;
+  toggleInputEnabled: boolean = DEFAULT_TOGGLE_INPUT_ENABLED;
   flickDistance: number = DEFAULT_FLICK_DISTANCE;
   longPressMs: number = DEFAULT_LONG_PRESS_MS;
   keyPreview: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
@@ -26,6 +29,7 @@ export interface KeyboardSettingsPatch {
   layoutOrder?: string;
   layoutKind?: string;
   flickEnabled?: boolean;
+  toggleInputEnabled?: boolean;
   flickDistance?: number;
   longPressMs?: number;
   keyPreview?: boolean;
@@ -83,6 +87,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
   return (patch.layoutOrder === undefined || validLayouts(patch.layoutOrder)) &&
     (patch.layoutKind === undefined || patch.layoutKind === 'flick' || patch.layoutKind === 'qwerty') &&
     (patch.flickEnabled === undefined || typeof patch.flickEnabled === 'boolean') &&
+    (patch.toggleInputEnabled === undefined || typeof patch.toggleInputEnabled === 'boolean') &&
     (patch.flickDistance === undefined || inRange(patch.flickDistance, 12, 30)) &&
     (patch.longPressMs === undefined || inRange(patch.longPressMs, 250, 650)) &&
     (patch.keyPreview === undefined || typeof patch.keyPreview === 'boolean') &&
@@ -97,6 +102,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
 export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boolean {
   return !!snapshot && snapshot.schema === 1 && Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0 &&
     validLayouts(snapshot.layoutOrder) && typeof snapshot.flickEnabled === 'boolean' &&
+    (snapshot.toggleInputEnabled === undefined || typeof snapshot.toggleInputEnabled === 'boolean') &&
     inRange(snapshot.flickDistance, 12, 30) && inRange(snapshot.longPressMs, 250, 650) &&
     typeof snapshot.keyPreview === 'boolean' &&
     (snapshot.keyGap === undefined || inRange(snapshot.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
@@ -109,7 +115,8 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
 
 export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettingsSnapshot {
   const copy: KeyboardSettingsSnapshot = JSON.parse(JSON.stringify(snapshot)) as KeyboardSettingsSnapshot;
-  // Schema 1 records from older versions omit this newly added setting.
+  // Schema 1 records from older versions may omit newer settings.
+  if (copy.toggleInputEnabled === undefined) { copy.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED; }
   if (copy.keyGap === undefined) { copy.keyGap = DEFAULT_KEY_GAP; }
   if (copy.candidateFontSize === undefined) { copy.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE; }
   if (copy.candidateRows === undefined) { copy.candidateRows = DEFAULT_CANDIDATE_ROWS; }
@@ -121,6 +128,7 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   const next: KeyboardSettingsSnapshot = copySettings(snapshot);
   if (patch.layoutOrder !== undefined) { next.layoutOrder = patch.layoutOrder; }
   if (patch.flickEnabled !== undefined) { next.flickEnabled = patch.flickEnabled; }
+  if (patch.toggleInputEnabled !== undefined) { next.toggleInputEnabled = patch.toggleInputEnabled; }
   if (patch.flickDistance !== undefined) { next.flickDistance = patch.flickDistance; }
   if (patch.longPressMs !== undefined) { next.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { next.keyPreview = patch.keyPreview; }
@@ -141,6 +149,7 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.layoutOrder !== undefined) { merged.layoutOrder = patch.layoutOrder; merged.layoutKind = undefined; }
   if (patch.layoutKind !== undefined) { merged.layoutKind = patch.layoutKind; }
   if (patch.flickEnabled !== undefined) { merged.flickEnabled = patch.flickEnabled; }
+  if (patch.toggleInputEnabled !== undefined) { merged.toggleInputEnabled = patch.toggleInputEnabled; }
   if (patch.flickDistance !== undefined) { merged.flickDistance = patch.flickDistance; }
   if (patch.longPressMs !== undefined) { merged.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { merged.keyPreview = patch.keyPreview; }

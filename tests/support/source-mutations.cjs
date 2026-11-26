@@ -1,4 +1,14 @@
 const mutations = {
+  toggleDoesNotWrap: {
+    file: 'kanon/ToggleInput.ets',
+    before: '(this.index + offset + this.cycle.length) % this.cycle.length',
+    after: 'offset > 0 ? Math.min(this.index + offset, this.cycle.length - 1) : (this.index + offset + this.cycle.length) % this.cycle.length'
+  },
+  toggleRightMovesCursor: {
+    file: 'kanon/ImeSession.ets',
+    before: "return active ? this.coord.getSnapshot() : this.routeRequest({ kind: 'move', direction: 'right' }, epoch);",
+    after: "return this.routeRequest({ kind: 'move', direction: 'right' }, epoch);"
+  },
   swappedSymbolKeys: {
     file: 'model/KeyboardKeyData.ets',
     before: "['+', '×', '÷',",
@@ -186,8 +196,8 @@ const mutations = {
   },
   sessionExceptionPublish: {
     file: 'kanon/ImeSession.ets',
-    before: "} catch (e) {\n      const s: ImeSnapshot = this.coord.getSnapshot();\n      this.publish(s, requestEpoch);",
-    after: "} catch (e) {\n      const s: ImeSnapshot = this.coord.getSnapshot();"
+    before: "} catch (e) {\n      this.toggleRun = undefined;\n      const s: ImeSnapshot = this.coord.getSnapshot();\n      this.publish(s, requestEpoch);",
+    after: "} catch (e) {\n      this.toggleRun = undefined;\n      const s: ImeSnapshot = this.coord.getSnapshot();"
   },
   sessionDiscardExternalHints: {
     file: 'kanon/ImeSession.ets',
@@ -196,8 +206,8 @@ const mutations = {
   },
   sessionAdmissionStop: {
     file: 'kanon/ImeSession.ets',
-    before: "if (admission.kind === 'stop') { return admission.snapshot; }",
-    after: '// Incorrectly route the request after admission stopped it.'
+    before: "if (admission.kind === 'stop') { this.toggleRun = undefined; return admission.snapshot; }",
+    after: "if (admission.kind === 'stop') { this.toggleRun = undefined; }"
   },
   panelAdjustmentCanvas: {
     file: 'common/KeyboardPanelGeometry.ets',

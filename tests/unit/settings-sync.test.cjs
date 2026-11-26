@@ -4,6 +4,17 @@ const { REQUEST, UPDATE, CHANGE, ACK } = require('../../entry/src/main/ets/commo
 const { pair } = require('../support/settings-sync-rig.cjs');
 const { deferred } = require('../support/fakes.cjs');
 
+test('P43: multi-tap setting syncs from the app and back from the IME', async () => {
+  const r = await pair();
+  await r.app.core.save({ toggleInputEnabled: true }, false);
+  await r.pump();
+  assert.equal(r.ime.state.record.snapshot.toggleInputEnabled, true);
+  await r.ime.core.save({ toggleInputEnabled: false }, false);
+  await r.pump();
+  assert.equal(r.app.state.record.snapshot.toggleInputEnabled, false);
+  assert.equal(r.ime.state.record.snapshot.toggleInputEnabled, false);
+});
+
 test('P13: authoritative save confirms only after replica apply and returning ACK', async () => {
   const r = await pair(); const save = r.app.core.save({ keyGap: 8 });
   for (let i = 0; i < 8; i++) { await Promise.resolve(); }

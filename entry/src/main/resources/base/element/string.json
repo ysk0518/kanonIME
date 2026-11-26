@@ -27,6 +27,7 @@
     { "name": "settings_applied", "value": "保存してキーボードに反映しました。" },
     { "name": "settings_saved_pending", "value": "保存しました。設定の同期・反映を待っています。" },
     { "name": "settings_flick_enabled", "value": "フリック入力" },
+    { "name": "settings_toggle_input", "value": "ケータイ入力" },
     { "name": "settings_flick_disabled_help", "value": "オフにするとQWERTYのみを使い、配列切り替えキーが記号キーになります。保存すると反映されます。" },
     { "name": "keyboard_show_symbols", "value": "記号キーボードを表示" },
     { "name": "keyboard_back_letters", "value": "文字キーボードに戻る" },
@@ -55,7 +56,7 @@
     },
     {
       "name": "settings_reset_input_scope",
-      "value": "配列・フリック感度・長押し時間を初期値に戻します。"
+      "value": "配列・フリック入力・ケータイ入力・フリック感度・長押し時間を初期値に戻します。"
     },
     {
       "name": "settings_reset_appearance_scope",

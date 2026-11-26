@@ -6,7 +6,7 @@ import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 import { DebugConsole } from './DebugConsole';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
-import { KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
+import { DEFAULT_TOGGLE_INPUT_ENABLED, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
 import { DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
@@ -21,6 +21,7 @@ export struct KeyboardSettings {
   @State private selectedLayouts: string[] = [];
   @State private selectedFlick: boolean = true;
   @State private flickEnabled: boolean = DEFAULT_FLICK_ENABLED;
+  @State private toggleInputEnabled: boolean = DEFAULT_TOGGLE_INPUT_ENABLED;
   @State private selectedShortcuts: string[] = [];
   @State private saving: boolean = false;
   @State private message: ResourceStr = '';
@@ -65,6 +66,7 @@ export struct KeyboardSettings {
     this.savedSnapshot = snapshot;
     this.selectedShortcuts = shortcutOrder(snapshot.shortcutOrder);
     this.flickEnabled = snapshot.flickEnabled;
+    this.toggleInputEnabled = snapshot.toggleInputEnabled;
     this.selectedFlick = this.flickEnabled && layouts[0].endsWith('_flick');
     this.selectedLayouts = layouts.map((id: string) => this.layoutForLanguage(layoutLanguage(id)));
     this.flickDistance = snapshot.flickDistance;
@@ -79,7 +81,7 @@ export struct KeyboardSettings {
 
   private currentSettingsKey(): string {
     return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
-      this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
+      this.toggleInputEnabled ? '1' : '0', this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
       this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString(),
       this.candidateFontSize.toString(), this.candidateRows.toString()].join('|');
   }
@@ -127,7 +129,8 @@ export struct KeyboardSettings {
   private tabDefaultsChanged(tab: number): boolean {
     if (tab === 0) {
       return this.selectedFlick !== DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick') ||
-        this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
+        this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.toggleInputEnabled !== DEFAULT_TOGGLE_INPUT_ENABLED ||
+        this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
     }
     if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP ||
       this.candidateFontSize !== DEFAULT_CANDIDATE_FONT_SIZE || this.candidateRows !== DEFAULT_CANDIDATE_ROWS; }
@@ -138,6 +141,7 @@ export struct KeyboardSettings {
     if (this.saving || !this.tabDefaultsChanged(tab)) { return; }
     if (tab === 0) {
       this.flickEnabled = DEFAULT_FLICK_ENABLED;
+      this.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED;
       this.chooseLayout(DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick'));
       this.flickDistance = DEFAULT_FLICK_DISTANCE;
       this.longPressMs = DEFAULT_LONG_PRESS_MS;
@@ -174,6 +178,7 @@ export struct KeyboardSettings {
       const saved: KeyboardSettingsSnapshot = this.savedSnapshot;
       if (this.selectedFlick !== saved.layoutOrder.split(',')[0].endsWith('_flick')) { patch.layoutKind = this.selectedFlick ? 'flick' : 'qwerty'; }
       if (this.flickEnabled !== saved.flickEnabled) { patch.flickEnabled = this.flickEnabled; }
+      if (this.toggleInputEnabled !== saved.toggleInputEnabled) { patch.toggleInputEnabled = this.toggleInputEnabled; }
       if (this.flickDistance !== saved.flickDistance) { patch.flickDistance = this.flickDistance; }
       if (this.longPressMs !== saved.longPressMs) { patch.longPressMs = this.longPressMs; }
       if (this.previewEnabled !== saved.keyPreview) { patch.keyPreview = this.previewEnabled; }
@@ -240,6 +245,13 @@ export struct KeyboardSettings {
             if (!value) { this.chooseLayout(false); }
           })
           .accessibilityText($r('app.string.settings_flick_enabled')).id('keyboard_config_flick_enabled')
+      }.width('100%')
+      Row() {
+        Text($r('app.string.settings_toggle_input')).fontSize(15)
+          .fontColor($r('app.color.text_normal')).layoutWeight(1)
+        Toggle({ type: ToggleType.Switch, isOn: this.toggleInputEnabled }).enabled(!this.saving)
+          .onChange((value: boolean) => { this.toggleInputEnabled = value; })
+          .accessibilityText($r('app.string.settings_toggle_input')).id('keyboard_config_toggle_input')
       }.width('100%')
 
           Text($r('app.string.settings_flick_sensitivity'))

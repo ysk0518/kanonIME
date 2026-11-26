@@ -1,5 +1,5 @@
 import { CandidateLabel, CommitEffect, EnginePort, EngineUpdate } from './ImeCoordinator';
-import { InputEvent, TextInputEvent } from './InputEventTypes';
+import { InputEvent, ReplaceToggleEvent, TextInputEvent } from './InputEventTypes';
 import { EnglishPrediction } from './EnglishPrediction';
 import { lastGraphemeLength } from './GraphemeDelete';
 
@@ -35,6 +35,13 @@ export class EnglishEngine implements EnginePort {
     } else if (kind === 'text') {
       this.buffer = this.getPreedit() + (event as TextInputEvent).text;
       this.prediction.updateComposition(this.buffer);
+    } else if (kind === 'replaceToggle') {
+      const replacement: ReplaceToggleEvent = event as ReplaceToggleEvent;
+      if (this.prediction.getSelectedIndex() >= 0 || !this.buffer.endsWith(replacement.previous)) { errorCode = 2; }
+      else {
+        this.buffer = this.buffer.slice(0, -1) + replacement.text;
+        this.prediction.updateComposition(this.buffer);
+      }
     } else if (kind === 'backspace') {
       if (this.prediction.getSelectedIndex() >= 0) {
         this.prediction.updateComposition(this.buffer);

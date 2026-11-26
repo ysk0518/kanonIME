@@ -162,7 +162,9 @@ try {
         $burstKeys=@($step.burst)
         if ($burstKeys.Count -lt 2 -or $burstKeys.Count -gt 16) { throw 'Fixture burst needs 2 to 16 fixed letter keys.' }
         $burstNodes=@($burstKeys | ForEach-Object {
-          if ($_ -cnotmatch '^qwerty_[a-z]$') { throw 'Only fixed QWERTY letter keys are allowed in a burst.' }
+          if ($_ -cnotmatch '^(qwerty_[a-z]|flick_(\u3042|a|control_[168]))$') {
+            throw 'A burst may use only the fixed QWERTY or multi-tap keys.'
+          }
           Find-FixtureNode $snapshot $_
         })
         $burstWatch=[Diagnostics.Stopwatch]::StartNew()
