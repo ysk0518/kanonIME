@@ -47,7 +47,7 @@ export struct LayoutItem {
     .opacity(this.flickEnabled || !this.globe ? 1 : 0.4)
     .accessibilityText(!this.flickEnabled && !this.globe ? (this.menuType === MenuType.SPECIAL ?
       $r('app.string.keyboard_back_letters') : $r('app.string.keyboard_show_symbols')) :
-      this.fromNumberMode ? 'QWERTYの文字入力に切り替え' : $r('app.string.keyboard_switch_layout'))
+      this.fromNumberMode ? $r('app.string.keyboard_switch_qwerty_letters') : $r('app.string.keyboard_switch_layout'))
     .id('layoutItem')
     .onClick(async () => {
       refreshSharedFlickEnabled();
