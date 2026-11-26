@@ -266,3 +266,33 @@ test('P20: sync and product coordinator retain the OS preview and do not commit 
   assert.equal(editor.text, '先さかき'); assert.deepEqual(editor.preview, { start: 1, end: 4 });
   assert.equal(editor.count('insert'), 0); assert.equal(editor.count('finishPreview'), 0); bridge.assertDone();
 });
+
+test('P48: a late editor echo of our own earlier preview caret does not move the engine caret (syu -> すy)', async () => {
+  let clock = 1000;
+  const state = { epoch: 1, position: 1, moves: [] };
+  const sync = new CompositionCursorSync({ getEpoch: () => state.epoch, hasSelection: () => false,
+    queryCursor: async () => state.position,
+    alignCursor: async position => { state.moves.push(position); return true; } }, () => clock);
+  sync.wrote(1); // preview "s"
+  clock += 30;
+  sync.wrote(2); // preview "sy"
+  sync.notify(1); // the editor still reports the caret after "s"
+  assert.equal(await sync.reconcile({ composing: true, cursorAligned: true, start: 0, previewLength: 2,
+    text: 'sy', caret: 2 }), 'ignored');
+  assert.deepEqual(state.moves, []);
+});
+
+test('P48: a tap inside the composition still moves the caret once our writes are old', async () => {
+  let clock = 1000;
+  const state = { epoch: 1, position: 1, moves: [] };
+  const sync = new CompositionCursorSync({ getEpoch: () => state.epoch, hasSelection: () => false,
+    queryCursor: async () => state.position,
+    alignCursor: async position => { state.moves.push(position); return true; } }, () => clock);
+  sync.wrote(1);
+  sync.wrote(2);
+  clock += 2000;
+  sync.notify(1);
+  assert.equal(await sync.reconcile({ composing: true, cursorAligned: true, start: 0, previewLength: 2,
+    text: 'かき', caret: 2 }), 'aligned');
+  assert.deepEqual(state.moves, [1]);
+});

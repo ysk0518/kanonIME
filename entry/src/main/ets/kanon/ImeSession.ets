@@ -105,8 +105,11 @@ export class ImeSession {
       getEpoch: (): number => this.ports.editor.getEpoch(),
       queryCursor: (): Promise<number> => this.ports.editor.queryCursor(),
       clearPreview: async (): Promise<void> => { await this.ports.cancelPreview(); },
-      refreshPreview: (text: string, start: number, end: number, caret: number): Promise<boolean> =>
-        this.coord.refreshPreview(text, start, end, caret),
+      refreshPreview: (text: string, start: number, end: number, caret: number): Promise<boolean> => {
+        // setPreviewText leaves the caret at the end before it is moved to the engine caret.
+        if (start >= 0) { this.cursorSync.wrote(start + text.length); this.cursorSync.wrote(start + caret); }
+        return this.coord.refreshPreview(text, start, end, caret);
+      },
       disableJapanesePreview: (): void => { this.coord.setPreviewUnsupported(); },
       englishCursor: (position: number): void => { this.ports.prediction.setCompositionCursor(position); }
     };
@@ -130,7 +133,7 @@ export class ImeSession {
         return this.coord.getSnapshot().lastError === 'ok';
       }
     };
-    this.cursorSync = new CompositionCursorSync(cursorPort);
+    this.cursorSync = new CompositionCursorSync(cursorPort, this.now);
     const presentationCoordinator: ImeCandidateSource = {
       getEpoch: (): number => this.ports.editor.getEpoch(),
       usesEnglishComposition: (): boolean => this.coord.usesEnglishComposition(),
