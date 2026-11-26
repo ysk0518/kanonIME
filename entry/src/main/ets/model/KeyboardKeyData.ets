@@ -25,7 +25,6 @@ export interface sourceListType {
 }
 
 export enum MenuKey {
-  NUMBER_KEY = '?123',
   SPECIAL_KEY = '=/\<'
 }
 
@@ -268,86 +267,19 @@ export let numberSourceListData: sourceListType[] = [
 
 ]
 
-export let symbolSourceListData: sourceListType[] = [
-  {
-    content: '~'
-  },
-  {
-    content: '`'
-  },
-  {
-    content: '|'
-  },
-  {
-    content: '\u2022'
-  },
-  {
-    content: '\u221A'
-  },
-  {
-    content: '\u03A0'
-  },
-  {
-    content: '\u00F7'
-  },
-  {
-    content: '\u00D7'
-  },
-  {
-    content: String.fromCharCode(182)
-  },
-  {
-    content: '\u2206'
-  },
-  {
-    content: String.fromCharCode(163)
-  },
-  {
-    content: '\u20ac'
-  },
-  {
-    content: String.fromCharCode(165)
-  },
-  {
-    content: String.fromCharCode(162)
-  },
-  {
-    content: String.fromCharCode(94)
-  },
-  {
-    content: '\u00B0'
-  },
-  {
-    content: '='
-  },
-  {
-    content: String.fromCharCode(123)
-  },
-  {
-    content: String.fromCharCode(125)
-  },
-  {
-    content: String.fromCharCode(44)
-  },
-  {
-    content: String.fromCharCode(92)
-  },
-  {
-    content: String.fromCharCode(169)
-  },
-  {
-    content: String.fromCharCode(174)
-  },
-  {
-    content: '\u2122'
-  },
-  {
-    content: '\u2105'
-  },
-  {
-    content: '['
-  },
-  {
-    content: ']'
-  }
-]
+export const qwertyDigits: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+export const symbolPageRows: string[][][] = [
+  [
+    qwertyDigits,
+    ['+', '×', '÷', '=', '/', '_', '<', '>', '[', ']'],
+    ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
+    ['-', "'", '"', ':', ';', ',', '?']
+  ],
+  [
+    qwertyDigits,
+    ['`', '~', '\\', '|', '{', '}', '€', '£', '¥', '₩'],
+    ['°', '•', '○', '●', '□', '■', '♤', '♡', '◇', '♧'],
+    ['☆', '▪', '¤', '《', '》', '¡', '¿']
+  ]
+];

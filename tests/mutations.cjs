@@ -81,7 +81,9 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['japaneseUndoAbsent', 'P40', 'Japanese undo without a commit'],
   ['flickUndoEnglish', 'P40', '↺ uses English completion undo'],
   ['flickModeConvert', 'P40', 'the 12-key 変換 and 候補 controls'],
-  ['swappedNumberFlickDirections', 'P41', 'general number keys follow']]) {
+  ['swappedNumberFlickDirections', 'P41', 'general number keys follow'],
+  ['swappedSymbolKeys', 'P42', 'both symbol pages follow'],
+  ['invertedUrlInputPattern', 'P42', 'only the IME URL input pattern']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

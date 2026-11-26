@@ -1,19 +1,18 @@
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
-import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
+import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
 
 @Component
 export struct ConvertSpaceItem {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
-  @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
 
   build() {
-    Text(this.japaneseComposing ? $r('app.string.keyboard_candidates') : $r('app.string.keyboard_space'))
-      .fontSize(16)
-      .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
-      .maxLines(1)
+    Text(spaceKeyLabel('JP', true, this.japaneseComposing))
+      .minFontSize(8).maxFontSize(14).maxFontScale(1.25)
+      .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST).maxLines(1)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
       .textAlign(TextAlign.Center)
       .fontColor($r('app.color.key_text'))
       .width('100%')

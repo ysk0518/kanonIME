@@ -1,4 +1,14 @@
 const mutations = {
+  swappedSymbolKeys: {
+    file: 'model/KeyboardKeyData.ets',
+    before: "['+', '×', '÷',",
+    after: "['+', '÷', '×',"
+  },
+  invertedUrlInputPattern: {
+    file: 'model/KeyboardKeyLabels.ets',
+    before: 'return inputPattern === TEXT_INPUT_TYPE_URL;',
+    after: 'return inputPattern !== TEXT_INPUT_TYPE_URL;'
+  },
   swappedNumberFlickDirections: {
     file: 'model/NumberFlickData.ets',
     before: "['3', '+', '×', '÷', '-']",

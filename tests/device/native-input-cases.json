@@ -255,6 +255,22 @@
       {"id": "flick_@", "flick": "right", "expect": "-#0/:~"},
       {"id": "modeCycleItem", "expect": "-#0/:~"},
       {"id": "modeCycleItem", "expect": "-#0/:~"}
+    ] },
+    { "id": "D35", "steps": [
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "qwerty_digit_1", "expect": "1"},
+      {"id": "qwerty_digit_0", "expect": "10"},
+      {"id": "qwerty_symbols", "expect": "10"},
+      {"id": "symbol_key_+", "expect": "10+"},
+      {"id": "symbol_page_toggle", "expect": "10+"},
+      {"id": "symbol_key_☆", "expect": "10+☆"},
+      {"id": "symbol_abc", "expect": "10+☆"},
+      {"id": "keyboardSymbols", "expect": "10+☆"},
+      {"id": "symbol_key_×", "expect": "10+☆×"},
+      {"id": "keyboardSymbols", "expect": "10+☆×"},
+      {"id": "qwerty_period", "expect": "10+☆×."},
+      {"id": "modeCycleItem", "expect": "10+☆×."},
+      {"id": "modeCycleItem", "expect": "10+☆×."}
     ] }
   ]
 }

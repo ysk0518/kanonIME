@@ -16,10 +16,12 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { DeleteItem } from './DeleteItem';
-import { KeyState, keySourceListType, keySourceListData } from '../model/KeyboardKeyData';
+import { KeyState, MenuType, keySourceListType, keySourceListData, qwertyDigits } from '../model/KeyboardKeyData';
+import { isUrlInputPattern } from '../model/KeyboardKeyLabels';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { KeyItem } from './KeyItem';
 import { KeyItemNumber } from './KeyItemNumber';
+import { KeyItemGray } from './KeyItemGray';
 import { SpaceItem } from './SpaceItem';
 import { ReturnItem } from './ReturnItem';
 import { LayoutItem } from './LayoutItem';
@@ -41,12 +43,26 @@ export struct KeyMenu {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_qwerty';
+  @StorageLink('inputPattern') inputPattern: number = 0;
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
   private keyList: keySourceListType[] = keySourceListData;
 
+  private comma(): string {
+    return isUrlInputPattern(this.inputPattern) ? '/' : this.layout === 'jp_qwerty' ? '、' : ',';
+  }
+
   build() {
     Column({ space: this.inputStyle.keyGap }) {
+      Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
+        ForEach(qwertyDigits, (digit: string) => {
+          KeyItem({ keyValue: { content: digit, title: digit, upperContent: digit },
+            keyId: `qwerty_digit_${digit}` })
+        }, (digit: string) => digit)
+      }
+      .width('100%')
+      .layoutWeight(1)
+
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
         ForEach(this.keyList.slice(0, 10), (item: keySourceListType) => {
           KeyItemNumber({ keyValue: item })
@@ -108,11 +124,14 @@ export struct KeyMenu {
       .layoutWeight(1)
 
       Row({ space: this.inputStyle.bottomKeyGap }) {
-        Column() { LayoutItem({ keyWidth: '100%' }) }.layoutWeight(1).height('100%')
-        Column() { ModeCycleItem({ keyWidth: '100%' }) }.layoutWeight(1.5).height('100%')
         Column() {
-          KeyItem({ keyValue: { content: this.layout === 'jp_qwerty' ? '、' : ',',
-            title: this.layout === 'jp_qwerty' ? '、' : ',', upperContent: this.layout === 'jp_qwerty' ? '、' : ',' },
+          KeyItemGray({ keyValue: '!#1', keyWidth: '100%', keyId: 'qwerty_symbols',
+            onActivate: () => { this.menuType = MenuType.SPECIAL; } })
+        }.layoutWeight(1.25).height('100%')
+        Column() { ModeCycleItem({ keyWidth: '100%' }) }.layoutWeight(1.5).height('100%')
+        Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%')
+        Column() {
+          KeyItem({ keyValue: { content: this.comma(), title: this.comma(), upperContent: this.comma() },
             keyId: 'qwerty_comma', keyWidth: '100%' })
         }.layoutWeight(1).height('100%')
         Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(4).height('100%')
@@ -121,6 +140,12 @@ export struct KeyMenu {
             title: this.layout === 'jp_qwerty' ? '。' : '.', upperContent: this.layout === 'jp_qwerty' ? '。' : '.' },
             keyId: 'qwerty_period', keyWidth: '100%' })
         }.layoutWeight(1).height('100%')
+        if (isUrlInputPattern(this.inputPattern)) {
+          Column() {
+            KeyItem({ keyValue: { content: 'www.', title: 'www.', upperContent: 'www.' },
+              keyId: 'qwerty_www', keyWidth: '100%', directInput: true })
+          }.layoutWeight(1.75).height('100%')
+        }
         Column() { ReturnItem({ returnWidth: '100%' }) }.layoutWeight(1.5).height('100%')
       }
       .width('100%')

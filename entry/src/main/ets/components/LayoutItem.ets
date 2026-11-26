@@ -19,11 +19,11 @@ export struct LayoutItem {
 
   build() {
     Column({ space: 1 }) {
-      if (!this.flickEnabled) {
+      if (this.globe) {
+        Image($r('app.media.ic_globe')).fillColor($r('app.color.key_text')).width(22).height(22)
+      } else if (!this.flickEnabled) {
         Text(this.menuType === MenuType.SPECIAL ? 'ABC' : '#+=')
           .fontSize(14).maxFontScale(1).maxLines(1).fontColor($r('app.color.key_text'))
-      } else if (this.globe) {
-        Image($r('app.media.ic_globe')).fillColor($r('app.color.key_text')).width(22).height(22)
       } else {
         Image(this.layout.endsWith('flick') ? $r('app.media.ic_layout_qwerty') : $r('app.media.ic_layout_12key'))
         .fillColor($r('app.color.key_text'))
@@ -42,13 +42,16 @@ export struct LayoutItem {
     .height('100%')
     .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(this.keyRadius)
-    .accessibilityText(!this.flickEnabled ? (this.menuType === MenuType.SPECIAL ?
+    .enabled(this.flickEnabled || !this.globe)
+    .opacity(this.flickEnabled || !this.globe ? 1 : 0.4)
+    .accessibilityText(!this.flickEnabled && !this.globe ? (this.menuType === MenuType.SPECIAL ?
       $r('app.string.keyboard_back_letters') : $r('app.string.keyboard_show_symbols')) :
       $r('app.string.keyboard_switch_layout'))
     .id('layoutItem')
     .onClick(async () => {
       refreshSharedFlickEnabled();
       if (!this.flickEnabled) {
+        if (this.globe) { return; }
         keyboardHaptics.key();
         this.menuType = this.menuType === MenuType.SPECIAL ? MenuType.NORMAL : MenuType.SPECIAL;
         return;

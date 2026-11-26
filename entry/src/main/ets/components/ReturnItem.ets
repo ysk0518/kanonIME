@@ -18,11 +18,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
-enum EntryKey {
-  Send = 'Send',
-  Search = 'Search',
-  Go = 'Go'
-}
+import { enterKeyLabel } from '../model/KeyboardKeyLabels';
 
 @Styles function pressedStyles() {
   .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
@@ -37,42 +33,39 @@ enum EntryKey {
 export struct ReturnItem {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
-  @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done
+  @StorageLink('enterKeyType') enterKeyType: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
   @Prop returnWidth: number | string = 72;
+  keyId: string = 'returnItem';
+  flick: boolean = false;
+
+  private label(): string {
+    return enterKeyLabel(this.enterKeyType, this.englishComposing);
+  }
 
   build() {
     if (this.returnWidth) {
       Stack() {
-        if (this.englishComposing) {
-          Image($rawfile('return.svg')).fillColor($r('app.color.key_text'))
-            .width(this.inputStyle.returnPicSize).height(this.inputStyle.returnPicSize)
-        } else if (this.enterKeyType === EnterKeyType.Send) {
-          Text(EntryKey.Send)
-            .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-        } else if (this.enterKeyType === EnterKeyType.Search) {
-          Text(EntryKey.Search)
-            .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-        } else if (this.enterKeyType === EnterKeyType.Go) {
-          Text(EntryKey.Go)
-            .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-        } else {
-          Image($rawfile('return.svg'))
+        if (this.label() === '改行' || this.label() === '検索') {
+          Image($rawfile(this.label() === '検索' ? 'search.svg' : 'return.svg'))
             .fillColor($r('app.color.key_text'))
-            .width(this.inputStyle.returnPicSize)
-            .height(this.inputStyle.returnPicSize)
+            .width(this.inputStyle.returnPicSize).height(this.inputStyle.returnPicSize)
+        } else {
+          Text(this.label())
+            .minFontSize(8).maxFontSize(this.inputStyle.symbol_fontSize).maxFontScale(1.25)
+            .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+            .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+            .fontColor($r('app.color.key_text'))
         }
       }
       .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .width(this.returnWidth)
-      .borderRadius(4)
+      .borderRadius(this.flick ? 6 : 4)
       .height('100%')
-      .id('returnItem')
-      .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
+      .accessibilityText(this.englishComposing ? '確定' : this.label())
+      .id(this.keyId)
+      .shadow({ radius: this.flick ? 0 : 1, color: $r('app.color.shadow'), offsetY: 3 })
       .onClick(() => {
         kanonIme.keyReturn();
       })

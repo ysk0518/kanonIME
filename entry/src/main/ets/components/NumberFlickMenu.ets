@@ -8,6 +8,8 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { DeleteItem } from './DeleteItem';
 import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
+import { ReturnItem } from './ReturnItem';
+import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
 
 @Component
 export struct NumberFlickMenu {
@@ -15,7 +17,6 @@ export struct NumberFlickMenu {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
-  @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
 
   private kind(): string {
     if (this.inputPattern === InputType.NUMBER_PASSWORD) { return 'digits'; }
@@ -40,7 +41,6 @@ export struct NumberFlickMenu {
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 5) { kanonIme.keyText(' '); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
-        else { kanonIme.keyReturn(); }
       }).id(`number_flick_control_${action}`)
   }
 
@@ -64,9 +64,8 @@ export struct NumberFlickMenu {
           }, (_values: string[], index: number) => `${row * 3 + index}:${this.kind()}`)
           Column() {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
-            else { this.control(row === 1 ? '→' : row === 2 ? 'space' :
-              this.enterKeyType === EnterKeyType.Send ? '送信' :
-              this.enterKeyType === EnterKeyType.Search ? '検索' : '↵', row === 1 ? 6 : row === 2 ? 5 : 7) }
+            else if (row === 3) { ReturnItem({ returnWidth: '100%', keyId: 'number_flick_control_7', flick: true }) }
+            else { this.control(row === 1 ? '→' : spaceKeyLabel('NUMBER'), row === 1 ? 6 : 5) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
         }.layoutWeight(1).width('100%')
       })
