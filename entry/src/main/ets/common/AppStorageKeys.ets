@@ -47,6 +47,7 @@ export const KANON_FLICK_PREVIEW_X: string = 'kanonFlickPreviewX';
 export const KANON_FLICK_PREVIEW_Y: string = 'kanonFlickPreviewY';
 export const KANON_FONT_SCALE: string = 'kanonFontScale';
 export const KANON_HAPTIC_LEVEL: string = 'kanonHapticLevel';
+export const KANON_KEY_SOUND_LEVEL: string = 'kanonKeySoundLevel';
 export const KANON_HEIGHT_ADJUSTMENT_BOTTOM_VP: string = 'kanonHeightAdjustmentBottomVp';
 export const KANON_HEIGHT_PREVIEW_VP: string = 'kanonHeightPreviewVp';
 export const KANON_ID_LIST: string = 'kanonIdList';

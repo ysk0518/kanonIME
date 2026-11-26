@@ -1,5 +1,5 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
-  DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_PREVIEW_ENABLED,
+  DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_KEY_SOUND_LEVEL,
   layoutLanguage, languageLayouts, DEFAULT_FLICK_ENABLED } from '../common/KeyboardConfig';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 import { ShortcutEditor } from './ShortcutEditor';
@@ -33,6 +33,7 @@ export struct KeyboardSettings {
   @State private candidateRows: number = DEFAULT_CANDIDATE_ROWS;
   @State private spacingPreviewQwerty: boolean = false;
   @State private hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
+  @State private keySoundLevel: number = DEFAULT_KEY_SOUND_LEVEL;
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
   @StorageLink('kanonSettingsSyncState') @Watch('syncConfirmed') syncState: string = '';
   @StorageLink('kanonSettingsRequestSyncState') @Watch('syncConfirmed') requestState: string = '';
@@ -76,6 +77,7 @@ export struct KeyboardSettings {
     this.candidateFontSize = snapshot.candidateFontSize;
     this.candidateRows = snapshot.candidateRows;
     this.hapticLevel = snapshot.hapticLevel;
+    this.keySoundLevel = snapshot.keySoundLevel;
     this.savedSettingsKey = this.currentSettingsKey();
   }
 
@@ -83,6 +85,7 @@ export struct KeyboardSettings {
     return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
       this.toggleInputEnabled ? '1' : '0', this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
       this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString(),
+      this.keySoundLevel.toString(),
       this.candidateFontSize.toString(), this.candidateRows.toString()].join('|');
   }
 
@@ -134,7 +137,8 @@ export struct KeyboardSettings {
     }
     if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP ||
       this.candidateFontSize !== DEFAULT_CANDIDATE_FONT_SIZE || this.candidateRows !== DEFAULT_CANDIDATE_ROWS; }
-    return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
+    return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.keySoundLevel !== DEFAULT_KEY_SOUND_LEVEL ||
+      this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
   }
 
   private restoreTabDefaults(tab: number): void {
@@ -152,6 +156,7 @@ export struct KeyboardSettings {
       this.candidateRows = DEFAULT_CANDIDATE_ROWS;
     } else {
       this.hapticLevel = DEFAULT_HAPTIC_LEVEL;
+      this.keySoundLevel = DEFAULT_KEY_SOUND_LEVEL;
       this.selectedShortcuts = DEFAULT_SHORTCUT_ORDER.split(',');
     }
     this.message = $r('app.string.settings_defaults_pending');
@@ -186,6 +191,7 @@ export struct KeyboardSettings {
       if (this.candidateFontSize !== saved.candidateFontSize) { patch.candidateFontSize = this.candidateFontSize; }
       if (this.candidateRows !== saved.candidateRows) { patch.candidateRows = this.candidateRows; }
       if (this.hapticLevel !== saved.hapticLevel) { patch.hapticLevel = this.hapticLevel; }
+      if (this.keySoundLevel !== saved.keySoundLevel) { patch.keySoundLevel = this.keySoundLevel; }
       if (this.selectedShortcuts.join(',') !== saved.shortcutOrder) { patch.shortcutOrder = this.selectedShortcuts.join(','); }
       const result = await keyboardSettingsSync.save(patch);
       this.loadSaved();
@@ -342,6 +348,18 @@ export struct KeyboardSettings {
           }.width('100%')
           Text($r('app.string.settings_haptics_help'))
             .fontSize(12).fontColor($r('app.color.text_secondary'))
+          Text($r('app.string.settings_key_sound')).fontSize(15).fontColor($r('app.color.text_normal'))
+          Row({ space: 8 }) {
+            ForEach([0, 1, 2], (level: number) => {
+              Button(level === 0 ? $r('app.string.settings_key_sound_off') :
+                level === 1 ? $r('app.string.settings_key_sound_low') : $r('app.string.settings_key_sound_high'))
+                .layoutWeight(1).enabled(!this.saving)
+                .fontColor(this.keySoundLevel === level ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
+                .backgroundColor(this.keySoundLevel === level ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+                .onClick(() => { this.keySoundLevel = level; })
+                .id(`keyboard_config_key_sound_${level}`)
+            })
+          }.width('100%')
           Divider().color($r('app.color.light_gray'))
           ShortcutEditor({ selectedShortcuts: $selectedShortcuts, disabled: this.saving })
       this.tabResetButton(2)

@@ -5,10 +5,33 @@ const { KeyboardSettingsSnapshot, KeyboardSettingsRecord, validSettingsPatch, va
 } = require('../../entry/src/main/ets/common/KeyboardSettingsModel.ets');
 const { LegacyKeyboardSettings, migrateLegacySettings } = require('../../entry/src/main/ets/common/KeyboardSettingsMigration.ets');
 const { shortcutOrder } = require('../../entry/src/main/ets/common/ShortcutConfigValues.ets');
+const { committedSettingsRecord } = require('../../entry/src/main/ets/common/SettingsRecordPolicy.ets');
+const { saveSettingsRecord } = require('../../entry/src/main/ets/common/SettingsPersistence.ets');
 
 function record() {
   const result = new KeyboardSettingsRecord(); result.actor = '1-2'; return result;
 }
+
+test('P46: missing key sound settings default to off and saved levels round-trip', () => {
+  const older = record();
+  assert.equal(older.snapshot.keySoundLevel, 0);
+  delete older.snapshot.keySoundLevel;
+  const loaded = decodeSettingsRecord(JSON.stringify(older));
+  assert.equal(loaded.snapshot.keySoundLevel, 0);
+  assert.equal(migrateLegacySettings(new LegacyKeyboardSettings()).snapshot.keySoundLevel, 0);
+  for (const keySoundLevel of [0, 1, 2]) {
+    const saved = committedSettingsRecord(loaded, { keySoundLevel }, 100);
+    let payload;
+    saveSettingsRecord(saved, { maximumLength: 10000, write: value => { payload = value; }, flush: () => {} });
+    assert.equal(decodeSettingsRecord(payload).snapshot.keySoundLevel, keySoundLevel);
+  }
+  for (const keySoundLevel of [-1, 1.5, 3, '2', null]) {
+    assert.equal(validSettingsPatch({ keySoundLevel }), false);
+    assert.equal(validSettingsSnapshot({ ...loaded.snapshot, keySoundLevel }), false);
+  }
+  assert.deepEqual(mergeSettingsPatch({ hapticLevel: 2, keySoundLevel: 1 }, { keySoundLevel: 0 }),
+    { hapticLevel: 2, keySoundLevel: 0 });
+});
 
 test('P43: schema 1 settings without the toggle field load with multi-tap disabled', () => {
   const older = record();

@@ -1,5 +1,6 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
-  DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, KEYBOARD_LAYOUTS, languageLayouts } from './KeyboardConfigValues';
+  DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_SOUND_LEVEL, KEYBOARD_LAYOUTS,
+  languageLayouts } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
@@ -20,6 +21,7 @@ export class KeyboardSettingsSnapshot {
   candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
   candidateRows: number = DEFAULT_CANDIDATE_ROWS;
   hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
+  keySoundLevel: number = DEFAULT_KEY_SOUND_LEVEL;
   shortcutOrder: string = DEFAULT_SHORTCUT_ORDER;
   heightPercent: number = DEFAULT_KEYBOARD_HEIGHT_PERCENT;
 }
@@ -37,6 +39,7 @@ export interface KeyboardSettingsPatch {
   candidateFontSize?: number;
   candidateRows?: number;
   hapticLevel?: number;
+  keySoundLevel?: number;
   shortcutOrder?: string;
   heightPercent?: number;
 }
@@ -95,6 +98,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
     (patch.candidateFontSize === undefined || Number.isInteger(patch.candidateFontSize) && inRange(patch.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
     (patch.candidateRows === undefined || patch.candidateRows === 1 || patch.candidateRows === 2) &&
     (patch.hapticLevel === undefined || patch.hapticLevel === 0 || patch.hapticLevel === 1 || patch.hapticLevel === 2) &&
+    (patch.keySoundLevel === undefined || patch.keySoundLevel === 0 || patch.keySoundLevel === 1 || patch.keySoundLevel === 2) &&
     (patch.shortcutOrder === undefined || validShortcuts(patch.shortcutOrder)) &&
     (patch.heightPercent === undefined || inRange(patch.heightPercent, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT));
 }
@@ -109,6 +113,7 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
     (snapshot.candidateFontSize === undefined || Number.isInteger(snapshot.candidateFontSize) && inRange(snapshot.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
     (snapshot.candidateRows === undefined || snapshot.candidateRows === 1 || snapshot.candidateRows === 2) &&
     (snapshot.hapticLevel === 0 || snapshot.hapticLevel === 1 || snapshot.hapticLevel === 2) &&
+    (snapshot.keySoundLevel === undefined || snapshot.keySoundLevel === 0 || snapshot.keySoundLevel === 1 || snapshot.keySoundLevel === 2) &&
     validShortcuts(snapshot.shortcutOrder) && inRange(snapshot.heightPercent, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT) &&
     (snapshot.flickEnabled || snapshot.layoutOrder.split(',').every((id: string) => id.endsWith('_qwerty')));
 }
@@ -120,6 +125,7 @@ export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettin
   if (copy.keyGap === undefined) { copy.keyGap = DEFAULT_KEY_GAP; }
   if (copy.candidateFontSize === undefined) { copy.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE; }
   if (copy.candidateRows === undefined) { copy.candidateRows = DEFAULT_CANDIDATE_ROWS; }
+  if (copy.keySoundLevel === undefined) { copy.keySoundLevel = DEFAULT_KEY_SOUND_LEVEL; }
   return copy;
 }
 
@@ -136,6 +142,7 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.candidateFontSize !== undefined) { next.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { next.candidateRows = patch.candidateRows; }
   if (patch.hapticLevel !== undefined) { next.hapticLevel = patch.hapticLevel; }
+  if (patch.keySoundLevel !== undefined) { next.keySoundLevel = patch.keySoundLevel; }
   if (patch.shortcutOrder !== undefined) { next.shortcutOrder = shortcutOrder(patch.shortcutOrder).join(','); }
   if (patch.heightPercent !== undefined) { next.heightPercent = Math.round(patch.heightPercent); }
   const kind: string = !next.flickEnabled ? 'qwerty' : patch.layoutKind ??
@@ -157,6 +164,7 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.candidateFontSize !== undefined) { merged.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { merged.candidateRows = patch.candidateRows; }
   if (patch.hapticLevel !== undefined) { merged.hapticLevel = patch.hapticLevel; }
+  if (patch.keySoundLevel !== undefined) { merged.keySoundLevel = patch.keySoundLevel; }
   if (patch.shortcutOrder !== undefined) { merged.shortcutOrder = patch.shortcutOrder; }
   if (patch.heightPercent !== undefined) { merged.heightPercent = patch.heightPercent; }
   return merged;

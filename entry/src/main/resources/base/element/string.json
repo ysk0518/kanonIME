@@ -70,7 +70,7 @@
     },
     {
       "name": "settings_reset_feedback_scope",
-      "value": "振動とショートカット配置を初期値に戻します。"
+      "value": "振動、キー音、ショートカット配置を初期値に戻します。"
     },
     {
       "name": "clipboard_history_permission",
@@ -235,6 +235,22 @@
     {
       "name": "settings_haptics_help",
       "value": "振動の強さは端末によって異なります。"
+    },
+    {
+      "name": "settings_key_sound",
+      "value": "キー音"
+    },
+    {
+      "name": "settings_key_sound_off",
+      "value": "オフ"
+    },
+    {
+      "name": "settings_key_sound_low",
+      "value": "小"
+    },
+    {
+      "name": "settings_key_sound_high",
+      "value": "大"
     },
     {
       "name": "background_load_failed",

@@ -1,4 +1,6 @@
-import { KANON_HAPTIC_LEVEL } from './AppStorageKeys';
+import { KANON_HAPTIC_LEVEL, KANON_KEY_SOUND_LEVEL } from './AppStorageKeys';
+import { DEFAULT_KEY_SOUND_LEVEL } from './KeyboardConfigValues';
+import { keyboardSound } from './HarmonyKeyboardSound';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import vibrator from '@ohos.vibrator';
 
@@ -8,6 +10,9 @@ class KeyboardHaptics {
   private lastPulse: number = 0;
 
   key(): void {
+    // BASIC can attempt playback of the same local click. It uses no protected
+    // vibrator API or editor contents, and any playback failure is ignored.
+    keyboardSound.key(AppStorage.get<number>(KANON_KEY_SOUND_LEVEL) ?? DEFAULT_KEY_SOUND_LEVEL);
     const level: number = AppStorage.get<number>(KANON_HAPTIC_LEVEL) ?? 1;
     if (level === 0) { return; }
     const now: number = Date.now();

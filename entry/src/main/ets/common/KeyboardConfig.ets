@@ -9,7 +9,7 @@ import { openSettingsRepository, readSettings, settingsDiagnostics,
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS, DEFAULT_KEY_PREVIEW_ENABLED,
   languageLayouts, layoutLanguage } from './KeyboardConfigValues';
 export { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS, DEFAULT_KEY_PREVIEW_ENABLED,
-  DEFAULT_HAPTIC_LEVEL, DEFAULT_FLICK_ENABLED, KEYBOARD_LAYOUTS,
+  DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_SOUND_LEVEL, DEFAULT_FLICK_ENABLED, KEYBOARD_LAYOUTS,
   layoutOrder, languageLayouts, layoutLanguage, layoutName, nextLanguageLayout } from './KeyboardConfigValues';
 
 // Compatibility reads use the effective snapshot; writes use KeyboardSettingsSync.
