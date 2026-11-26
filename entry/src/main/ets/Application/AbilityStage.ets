@@ -21,6 +21,7 @@ import Log from '../model/Log';
 import { initializeKeyboardConfig } from '../common/KeyboardConfig';
 import { keyboardBackground } from '../common/KeyboardBackground';
 import { clipboardStore } from '../common/ClipboardStore';
+import { emojiHistory } from '../common/EmojiHistoryStorage';
 import { Configuration as AbilityConfiguration } from '@ohos.app.ability.Configuration';
 import { keyboardController } from '../model/KeyboardController';
 import { BusinessError } from '@ohos.base';
@@ -32,6 +33,7 @@ export default class MyAbilityStage extends AbilityStage {
     initializeKeyboardConfig(this.context);
     keyboardBackground.initialize(this.context).catch(() => {});
     clipboardStore.initialize();
+    emojiHistory.initialize();
     keyboardController.updateFontScale(this.context.config.fontSizeScale ?? 1);
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);

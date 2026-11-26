@@ -290,6 +290,15 @@
       {"id": "modeCycleItem", "expect": "a"},
       {"id": "qwerty_a", "expect": "aあ"},
       {"id": "returnItem", "expect": "aあ"}
+    ] },
+    { "id": "D40", "steps": [
+      {"id": "keyboardEmoji", "expect": ""},
+      {"id": "emoji_tab_faces", "expect": ""},
+      {"id": "emoji_key_😀", "expect": "😀"},
+      {"id": "emoji_tab_flags", "expect": "😀"},
+      {"id": "emoji_key_🇯🇵", "expect": "😀🇯🇵"},
+      {"id": "deleteItem", "expect": "😀"},
+      {"id": "emoji_back", "expect": "😀"}
     ] }
   ]
 }

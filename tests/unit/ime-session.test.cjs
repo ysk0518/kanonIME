@@ -8,14 +8,14 @@ const { MozcEngine } = require('../../entry/src/main/ets/kanon/MozcEngine.ets');
 const { ImeRuntimeBindings } = require('../../entry/src/main/ets/kanon/ImeRuntimeBindings.ets');
 const { ImeViewPublisher } = require('../../entry/src/main/ets/kanon/ImeViewPublisher.ets');
 const { cancelEditorPreview } = require('../../entry/src/main/ets/kanon/PreviewLifecycle.ets');
-const { FakeEditor, ScriptedBridge, response, deferred } = require('../support/fakes.cjs');
+const { FakeEditor, GraphemeCountingEditor, ScriptedBridge, response, deferred } = require('../support/fakes.cjs');
 const { mutate } = require('../support/source-mutations.cjs');
 const { ToggleRun, toggleCycle } = require('../../entry/src/main/ets/kanon/ToggleInput.ets');
 const { MenuType } = require('../../entry/src/main/ets/model/KeyboardKeyData.ets');
 const { keyboardMenuType } = require('../../entry/src/main/ets/model/KeyboardModes.ets');
 
-function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInput = false } = {}) {
-  const editor = new FakeEditor(origin);
+function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInput = false,
+  editor = new FakeEditor(origin) } = {}) {
   editor.supported = supported;
   const bridge = new ScriptedBridge(steps);
   const trace = [];
@@ -489,6 +489,51 @@ function recordDispatch(session) {
   observe(session.coord, 'postEvent', event => kinds.push(event.kind));
   return kinds;
 }
+
+test('P47: emoji paste commits Japanese preview before inserting a flag and a variation sequence', async () => {
+  const r = rig({ mode: 'JP', editor: new GraphemeCountingEditor(), steps: [
+    { operation: 'literal', text: 'き', output: response('き') },
+    { operation: 'submitReading', output: response('', { result: 'き' }) }
+  ] });
+  await r.session.keyText('き');
+  assert.notEqual(r.editor.preview, null);
+  const kinds = recordDispatch(r.session);
+  assert.equal(await r.session.keyPaste('❤️'), true);
+  assert.equal(await r.session.keyPaste('🇯🇵'), true);
+  assert.deepEqual(kinds, ['submit', 'paste', 'paste']);
+  assert.equal(r.editor.text, 'き❤️🇯🇵');
+  assert.equal(r.editor.preview, null);
+  r.bridge.assertDone();
+
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, 'き❤️');
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, 'き');
+  assert.deepEqual(r.editor.calls.filter(call => call.operation === 'deleteForward').map(call => call.length), [1, 1]);
+});
+
+test('P47: emoji paste commits the selected English completion before direct insertion', async () => {
+  const r = rig();
+  await r.session.keyText('hel');
+  await r.session.keySpace();
+  assert.notEqual(r.editor.preview, null);
+  assert.equal(r.editor.text, 'hello');
+  const kinds = recordDispatch(r.session);
+  assert.equal(await r.session.keyPaste('😀'), true);
+  assert.deepEqual(kinds, ['submit', 'paste']);
+  assert.equal(r.editor.text, 'hello😀');
+  assert.equal(r.editor.preview, null);
+});
+
+test('P47: emoji paste clears direct English suggestions and preserves already inserted text', async () => {
+  const r = rig({ supported: false });
+  await r.session.keyText('hel');
+  await r.session.keySpace();
+  assert.equal(r.prediction.getSelectedItem().label, 'hello');
+  assert.equal(await r.session.keyPaste('😀'), true);
+  assert.equal(r.editor.text, 'hel😀');
+  assert.equal(r.prediction.getPrefix(), '');
+});
 
 function replaceEditorText(editor, text) {
   editor.text = text;

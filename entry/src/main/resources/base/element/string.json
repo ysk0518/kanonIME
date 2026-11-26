@@ -1,5 +1,18 @@
 {
   "string": [
+    { "name": "keyboard_show_emoji", "value": "絵文字パネルを表示" },
+    { "name": "emoji_recent", "value": "最近使った" },
+    { "name": "emoji_faces", "value": "顔" },
+    { "name": "emoji_people", "value": "人と手" },
+    { "name": "emoji_nature", "value": "動物と自然" },
+    { "name": "emoji_food", "value": "食べ物" },
+    { "name": "emoji_travel", "value": "旅行と場所" },
+    { "name": "emoji_activities", "value": "活動" },
+    { "name": "emoji_objects", "value": "物" },
+    { "name": "emoji_symbols", "value": "記号" },
+    { "name": "emoji_flags", "value": "旗" },
+    { "name": "emoji_recent_empty", "value": "最近使った絵文字はありません" },
+    { "name": "emoji_clear_recent", "value": "絵文字の履歴を消す" },
     { "name": "settings_candidate_font", "value": "候補の文字サイズ：%d" },
     { "name": "settings_candidate_rows", "value": "候補の表示段数" },
     { "name": "settings_candidate_row_count", "value": "%d段" },

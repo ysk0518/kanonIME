@@ -3,6 +3,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { SubMenuType } from '../model/KeyboardKeyData';
 import { KeyboardToolbar } from './KeyboardToolbar';
 import { SymbolToggleItem } from './SymbolToggleItem';
+import { EmojiToggleItem } from './EmojiToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 import { candidateAreaHeight, candidateRowHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfigValues';
@@ -216,6 +217,7 @@ export struct CandidateBar {
             }
           }.width(44).height(this.barHeight())
           SymbolToggleItem({ buttonHeight: this.rowHeight() })
+          EmojiToggleItem({ buttonHeight: this.rowHeight() })
           if (this.rows === 1 && this.compositionCursor.length > 0) {
             Text(this.compositionCursor).fontSize(14).maxLines(1).constraintSize({ maxWidth: 96 })
               .textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.candidate_accent')).id('composition_cursor')

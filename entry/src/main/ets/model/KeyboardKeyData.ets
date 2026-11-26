@@ -26,7 +26,8 @@ export enum SubMenuType {
   EDIT = 2,
   CLIPBOARD = 3,
   SETTINGS = 4,
-  SIZE = 5
+  SIZE = 5,
+  EMOJI = 6
 }
 
 export enum MenuType {
