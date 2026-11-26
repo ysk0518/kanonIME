@@ -35,7 +35,7 @@ export function validInputEvent(event: UiEvent): boolean {
       return nonnegativeInteger(event.cursor);
     case 'mode':
       return event.text === 'JP' || event.text === 'EN';
-    case 'select':
+    case 'select': case 'deleteCandidate':
       return integer(event.candidateId) && nonnegativeInteger(event.expectedRevision);
     case 'partial':
       return nonnegativeInteger(event.expectedRevision);

@@ -19,10 +19,12 @@ import { compositionCaretPath } from './CompositionCursorSync';
 class Cand {
   id: number = -1;
   value: string = '';
+  deletable?: boolean;
 }
 
 class ConvOut {
   ok: boolean = false;
+  candidate_not_learned: boolean = false;
   preedit_len: number = 0;
   preedit: string = '';
   focused_reading: string = '';
@@ -44,6 +46,7 @@ function parseOut(json: string): ConvOut {
   try {
     const o = JSON.parse(json) as ConvOut;
     out.ok = o.ok === true;
+    out.candidate_not_learned = o.candidate_not_learned === true;
     out.preedit_len = o.preedit_len ?? 0;
     out.preedit = o.preedit ?? '';
     out.focused_reading = o.focused_reading ?? '';
@@ -189,6 +192,16 @@ export class MozcEngine implements EnginePort {
     };
   }
 
+  private acceptComposingOutput(sessionId: string, epoch: number, seq: number, out: ConvOut): EngineUpdate {
+    this.inputUnits = [];
+    this.buffer = out.preedit;
+    this.editing.afterBackspace(out.preedit_len > 0);
+    this.selIdx = 0;
+    this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
+    this.revision++;
+    return this.fromOut(sessionId, epoch, seq, out, []);
+  }
+
   private async callConvert(keys: string): Promise<ConvOut> {
     const api: MozcBridgePort = this.bridge;
     try {
@@ -275,7 +288,7 @@ export class MozcEngine implements EnginePort {
   async dispatch(sessionId: string, editorEpoch: number, sequence: number, event: InputEvent): Promise<EngineUpdate> {
     const ready: boolean = await this.ensure();
     if (!ready || this.bridge === null) {
-      return this.errUpdate(sessionId, editorEpoch, sequence, false);
+      return this.errUpdate(sessionId, editorEpoch, sequence, event.kind === 'deleteCandidate');
     }
     try {
       return await this.dispatchInner(sessionId, editorEpoch, sequence, event);
@@ -444,6 +457,30 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       return this.fromOut(sessionId, epoch, seq, out, effects);
     }
+    if (kind === 'deleteCandidate') {
+      const id: number = (event as CandidateInputEvent).candidateId;
+      if (this.phase === 'empty' || !this.lastIds.includes(id)) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      // Mozc clears conversion learning for the segment's top candidate (id 0) whichever id is sent,
+      // so only the top candidate or a learned prediction may be deleted without touching another word.
+      const target: Cand | undefined = this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
+      if (id !== 0 && target?.deletable !== true) {
+        const skipped: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        skipped.candidateNotLearned = true;
+        return skipped;
+      }
+      const out: ConvOut = parseOut(await api.executeAsync('deleteCandidate', '', id));
+      if (out.candidate_not_learned) {
+        const update: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        update.candidateNotLearned = true;
+        return update;
+      }
+      if (!out.ok || out.preedit_len === 0 || out.result.length > 0) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      return this.acceptComposingOutput(sessionId, epoch, seq, out);
+    }
     if (kind === 'backspace') {
       if (this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
@@ -454,13 +491,7 @@ export class MozcEngine implements EnginePort {
       if (!out.ok) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      this.inputUnits = [];
-      this.buffer = out.preedit;
-      this.editing.afterBackspace(out.preedit_len > 0);
-      this.selIdx = 0;
-      this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
-      this.revision++;
-      return this.fromOut(sessionId, epoch, seq, out, []);
+      return this.acceptComposingOutput(sessionId, epoch, seq, out);
     }
     if (kind === 'compositionCursor') {
       const text: string = this.lastPreedit;

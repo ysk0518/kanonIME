@@ -1,4 +1,21 @@
 const mutations = {
+  deleteAnyCandidateId: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'if (id !== 0 && target?.deletable !== true) {',
+    after: 'if (false) {'
+  },
+  refreshAfterNoLearnedEntry: {
+    file: 'kanon/MozcEngine.ets',
+    before: `const update: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        update.candidateNotLearned = true;
+        return update;`,
+    after: 'return this.acceptComposingOutput(sessionId, epoch, seq, this.lastOut);'
+  },
+  omitCandidateDeleteNotice: {
+    file: 'components/CandidateBar.ets',
+    before: 'if (request === this.deleteNoticeRequest) { this.showDeleteNotice(result); }',
+    after: ''
+  },
   toggleDoesNotWrap: {
     file: 'kanon/ToggleInput.ets',
     before: '(this.index + offset + this.cycle.length) % this.cycle.length',
@@ -51,8 +68,8 @@ const mutations = {
   },
   japaneseUndoMove: {
     file: 'kanon/ImeCoordinator.ets',
-    before: "if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }",
-    after: "if (event.kind !== 'undo' && event.kind !== 'move') { this.forgetJapaneseCommit(); }"
+    before: "if (event.kind !== 'undo' && event.kind !== 'deleteCandidate') { this.forgetJapaneseCommit(); }",
+    after: "if (event.kind !== 'undo' && event.kind !== 'deleteCandidate' && event.kind !== 'move') { this.forgetJapaneseCommit(); }"
   },
   japaneseUndoSelection: {
     file: 'kanon/ImeCoordinator.ets',

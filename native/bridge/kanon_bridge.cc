@@ -3,6 +3,7 @@
 // Logs op/status/lengths, never text content.
 #include <node_api.h>
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <memory>
@@ -116,6 +117,12 @@ bool EnsureSession() {
   return true;
 }
 
+bool IsDeletable(const mozc::commands::CandidateWord& candidate) {
+  const auto& attributes = candidate.attributes();
+  return std::find(attributes.begin(), attributes.end(),
+                   mozc::commands::DELETABLE) != attributes.end();
+}
+
 std::string OutputToJson(bool ok, const mozc::commands::Output& output) {
   std::string json = std::string("{\"ok\":") + (ok ? "true" : "false");
   std::string preedit;
@@ -153,11 +160,15 @@ std::string OutputToJson(bool ok, const mozc::commands::Output& output) {
   bool first = true;
   std::string candlens = ",\"candlens\":[";
   bool firstlen = true;
+  const auto& words = all_candidates.candidates();
   for (const auto& cand : output.candidate_window().candidate()) {
     if (!first) json += ",";
     first = false;
+    const bool deletable = std::any_of(words.begin(), words.end(), [&](const auto& word) {
+      return cand.has_id() && word.has_id() && word.id() == cand.id() && IsDeletable(word);
+    });
     json += "{\"id\":" + std::to_string(cand.id()) + ",\"value\":\"" +
-            EscapeJson(cand.value()) + "\"}";
+            EscapeJson(cand.value()) + "\",\"deletable\":" + (deletable ? "true" : "false") + "}";
     // REQ-07: 値ではなく長さ（バイト）のみを診断用に付ける。
     if (!firstlen) candlens += ",";
     firstlen = false;
@@ -386,6 +397,20 @@ std::string ExecuteOperation(const AsyncOperation& task) {
     const bool undone = Undo(&output);
     return OutputToJson(undone, output);
   }
+  if (task.operation == "deleteCandidate") {
+    mozc::commands::Input input;
+    input.set_type(mozc::commands::Input::SEND_COMMAND);
+    input.mutable_command()->set_type(
+        mozc::commands::SessionCommand::DELETE_CANDIDATE_FROM_HISTORY);
+    input.mutable_command()->set_id(task.candidate_id);
+    ok = Call(input, &output) && output.consumed();
+    // DoNothing consumes the command without preedit. ConvertCancel returns
+    // the reading and refreshed candidates, which may still include the word.
+    if (ok && !output.has_preedit()) {
+      return "{\"ok\":false,\"candidate_not_learned\":true}";
+    }
+    return OutputToJson(ok && output.has_preedit(), output);
+  }
   if (task.operation == "convert") {
     ok = true;
     for (size_t i = 0; i < task.text.size() && ok; ++i) {
@@ -509,6 +534,7 @@ napi_value BridgeExecuteAsync(napi_env env, napi_callback_info info) {
       operation != "submit" && operation != "submitReading" && operation != "backspace" &&
       operation != "reset" && operation != "undo" &&
       operation != "selectCandidate" && operation != "submitCandidate" &&
+      operation != "deleteCandidate" &&
       operation != "highlightCandidate" && operation != "arrowLeft" &&
       operation != "arrowRight") {
     napi_throw_range_error(env, nullptr, "Unknown native operation");

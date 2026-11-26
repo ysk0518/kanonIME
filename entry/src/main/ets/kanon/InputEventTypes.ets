@@ -1,7 +1,7 @@
 /** SDK-free input protocol. UiEvent is untrusted until the queue validates it. */
 export type UiEventKind = 'text' | 'kana' | 'modifyKana' | 'replaceToggle' | 'paste' | 'backspace' | 'convert' |
   'compositionArrow' | 'compositionCursor' | 'submit' | 'enter' | 'cancel' | 'move' | 'selectMove' | 'selectEdge' |
-  'selectAll' | 'forwardDelete' | 'select' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion';
+  'selectAll' | 'forwardDelete' | 'select' | 'deleteCandidate' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion';
 export type EditorEdge = 'begin' | 'end';
 export type EditorDirection = 'left' | 'right' | 'up' | 'down';
 export type KanaModifier = 'cycle' | 'voiced' | 'size' | 'semiVoiced';
@@ -25,7 +25,9 @@ export interface ReplaceToggleEvent extends UiEvent { kind: 'replaceToggle'; tex
 export interface CompositionArrowEvent extends UiEvent { kind: 'compositionArrow'; text: 'left' | 'right'; }
 export interface CompositionCursorEvent extends UiEvent { kind: 'compositionCursor'; cursor: number; }
 export interface ModeInputEvent extends UiEvent { kind: 'mode'; text: 'JP' | 'EN'; }
-export interface CandidateInputEvent extends UiEvent { kind: 'select'; candidateId: number; expectedRevision: number; }
+export interface CandidateInputEvent extends UiEvent {
+  kind: 'select' | 'deleteCandidate'; candidateId: number; expectedRevision: number;
+}
 export interface PartialInputEvent extends UiEvent { kind: 'partial'; expectedRevision: number; }
 export interface DirectionInputEvent extends UiEvent {
   kind: 'move' | 'selectMove'; direction: EditorDirection; edge?: undefined;

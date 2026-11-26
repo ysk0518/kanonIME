@@ -16,7 +16,7 @@ import { englishPrediction } from './EnglishRuntime';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import Log from '../model/Log';
 import { EmptyEditorRead } from './ExternalEditorSync';
-import { ImeSession, ImeSessionPorts } from './ImeSession';
+import { CandidateDeletionResult, ImeSession, ImeSessionPorts } from './ImeSession';
 
 /** SDK access stays at the runtime boundary, shared by composing and direct input. */
 async function sendEnterAction(epoch: number): Promise<void> {
@@ -167,6 +167,10 @@ class KanonIme {
   async selectCandidate(id: number): Promise<void> {
     keyboardHaptics.key();
     await this.session.selectCandidate(id);
+  }
+
+  deleteLearnedCandidate(candidate: CandidateLabel): Promise<CandidateDeletionResult> {
+    return this.session.deleteLearnedCandidate(candidate);
   }
 
   async partialCommit(): Promise<void> {
