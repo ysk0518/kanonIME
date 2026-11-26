@@ -10,8 +10,9 @@ const { ImeViewPublisher } = require('../../entry/src/main/ets/kanon/ImeViewPubl
 const { cancelEditorPreview } = require('../../entry/src/main/ets/kanon/PreviewLifecycle.ets');
 const { FakeEditor, ScriptedBridge, response, deferred } = require('../support/fakes.cjs');
 const { mutate } = require('../support/source-mutations.cjs');
+const { ToggleRun, toggleCycle } = require('../../entry/src/main/ets/kanon/ToggleInput.ets');
 
-function rig({ mode = 'EN', supported = true, origin = '', steps = [] } = {}) {
+function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInput = false } = {}) {
   const editor = new FakeEditor(origin);
   editor.supported = supported;
   const bridge = new ScriptedBridge(steps);
@@ -32,7 +33,7 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [] } = {}) {
   };
   const bindings = new ImeRuntimeBindings({
     readString: key => store.get(key), readNumber: key => store.get(key),
-    string: write, number: write, boolean: write, flickEnabled: () => true,
+    string: write, number: write, boolean: write, flickEnabled: () => true, toggleInputEnabled: () => toggleInput,
     saveLayoutOrder: async order => write('kanonLayoutOrder', order),
     getEpoch: () => editor.epoch, queryCursor: () => editor.queryCursor()
   }, { normal: 0, password: 8, numberPassword: 9, newPassword: 11 });
@@ -43,6 +44,7 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [] } = {}) {
   const view = new ImeViewPublisher({
     string: write, number: write, boolean: write, strings: write, numbers: write
   });
+  let time = 0;
   const session = new ImeSession({
     editor, queryEmpty: () => hooks.queryEmpty(),
     cancelPreview: () => cancelEditorPreview(editor),
@@ -52,13 +54,250 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [] } = {}) {
       await hooks.enterKeyAction();
     },
     log: (_tag, message) => trace.push(['log', message])
-  });
+  }, () => time);
   return {
     session, editor, prediction, bridge, hooks, trace, store, view,
+    advance: ms => { time += ms; },
     send: request => session.postRequest(request),
     published: () => writes.filter(([key]) => key === 'kanonTick').length
   };
 }
+
+test('P43: every 12-key cycle advances and wraps in both directions', () => {
+  const jp = { あ: 'あいうえおぁぃぅぇぉ', か: 'かきくけこ', さ: 'さしすせそ', た: 'たちつてとっ',
+    な: 'なにぬねの', は: 'はひふへほ', ま: 'まみむめも', や: 'やゆよゃゅょ',
+    ら: 'らりるれろ', わ: 'わをんゎー', '、': '、。？！…' };
+  const en = { '@': '@/:~', a: 'abc', d: 'def', g: 'ghi', j: 'jkl', m: 'mno',
+    p: 'pqrs', t: 'tuv', w: 'wxyz', '-': '-#', '.': '.,?!' };
+  for (const [english, table] of [[false, jp], [true, en]]) {
+    for (const [key, expected] of Object.entries(table)) {
+      const cycle = toggleCycle(key, english, false);
+      assert.equal(cycle, expected);
+      assert.equal(toggleCycle(key, english, true), expected.toUpperCase());
+      let run = new ToggleRun(key, cycle, 0, 0, -1);
+      assert.equal(run.step(-1, 0).character(), expected.at(-1));
+      for (const character of expected) {
+        assert.equal(run.character(), character);
+        run = run.step(1, 0);
+      }
+      assert.equal(run.character(), key);
+    }
+  }
+  assert.equal(toggleCycle('小゛゜', false, false), '');
+  assert.equal(toggleCycle('shift', true, false), '');
+});
+
+test('P43: Right ends the cycle without moving and Back reverses it', async () => {
+  for (const supported of [true, false]) {
+    const r = rig({ supported, toggleInput: true });
+    const dispatches = recordDispatch(r.session);
+    await r.session.keyToggleTap('a', true);
+    r.advance(1000);
+    await r.session.keyToggleTap('a', false);
+    assert.equal(r.editor.text, 'B');
+    assert.equal(r.prediction.getPrefix(), 'B');
+    await r.session.keyToggleBack();
+    assert.equal(r.editor.text, 'A');
+    await r.session.keyToggleBack();
+    assert.equal(r.editor.text, 'C');
+    const received = dispatches.length;
+    await r.session.keyToggleRight();
+    assert.equal(dispatches.length, received);
+    assert.equal(r.editor.count('moveCursor'), 0);
+    await r.session.keyToggleTap('a', false);
+    assert.equal(r.editor.text, 'Ca');
+    await r.session.keyToggleRight();
+    await r.session.keyToggleRight();
+    assert.equal(r.editor.count('moveCursor'), 1);
+  }
+});
+
+test('P43: queued direct English taps wrap after replacement notifications', async () => {
+  const r = rig({ supported: false, toggleInput: true });
+  await r.session.keyToggleTap('a', true);
+
+  const insertingB = deferred();
+  const finishB = deferred();
+  const insert = r.editor.insert.bind(r.editor);
+  r.editor.insert = async text => {
+    if (text === 'B') {
+      insertingB.resolve();
+      await finishB.promise;
+    }
+    return insert(text);
+  };
+  const replace = r.session.keyToggleTap('a', false);
+  await insertingB.promise;
+  r.session.textChanged(true);
+  r.session.selectionChanged(0, 0);
+  const third = r.session.keyToggleTap('a', false);
+  const fourth = r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, '');
+
+  // The delete notification can arrive after insertion has completed,
+  // while the next queued tap is checking the empty-text hint.
+  r.hooks.queryEmpty = async () => {
+    r.hooks.queryEmpty = async () => ({ ok: true, code: 0, value: r.editor.text === '' });
+    r.session.selectionChanged(0, 0);
+    return r.hooks.queryEmpty();
+  };
+  finishB.resolve();
+  await Promise.all([replace, third, fourth]);
+  assert.deepEqual(r.editor.calls.filter(call => call.operation === 'insert').map(call => call.text),
+    ['A', 'B', 'C', 'A']);
+  assert.equal(r.prediction.getPrefix(), 'A');
+  assert.equal(r.editor.count('selectRange'), 0);
+
+  await r.session.keyToggleRight();
+  await r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, 'Aa');
+  assert.equal(r.editor.count('moveCursor'), 0);
+});
+
+test('P43: time, another key, flick, Delete, confirmation and editor changes start new input', async () => {
+  const r = rig({ toggleInput: true });
+  const tap = key => r.session.keyToggleTap(key, false);
+  await tap('a');
+  r.advance(1001);
+  await tap('a');
+  assert.equal(r.editor.text, 'aa');
+  await tap('d');
+  await tap('a');
+  assert.equal(r.editor.text, 'aada');
+  await r.session.keyText('b'); // A left flick from abc is ordinary text.
+  await tap('a');
+  assert.equal(r.editor.text, 'aadaba');
+  await r.session.keyDelete();
+  await tap('a');
+  await r.session.keyReturn();
+  await tap('a');
+  assert.equal(r.editor.text, 'aadabaa');
+  r.editor.epoch++;
+  replaceEditorText(r.editor, '');
+  await tap('a');
+  assert.equal(r.editor.text, 'a');
+});
+
+test('P43: the disabled setting keeps repeated tap and arrow behavior', async () => {
+  const r = rig({ supported: false });
+  await r.session.keyToggleTap('a', false);
+  await r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, 'aa');
+  await r.session.keyToggleRight();
+  assert.equal(r.editor.count('moveCursor'), 1);
+});
+
+test('P43: Japanese toggle replaces kana and then punctuation within Mozc', async () => {
+  const r = rig({ mode: 'JP', toggleInput: true, steps: [
+    { operation: 'convert', text: 'a', output: response('あ') },
+    { operation: 'reset', output: response('') },
+    { operation: 'convert', text: 'i', output: response('い') },
+    { operation: 'literal', text: '、', output: response('い、') },
+    { operation: 'reset', output: response('') },
+    { operation: 'convert', text: 'i', output: response('い') },
+    { operation: 'literal', text: '。', output: response('い。') },
+    { operation: 'submitReading', output: response('', { result: 'い。' }) }
+  ] });
+  await r.session.keyToggleTap('あ', false);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, 'い');
+  await r.session.keyToggleTap('、', false);
+  await r.session.keyToggleTap('、', false);
+  assert.equal(r.editor.text, 'い。');
+  assert.equal(r.editor.count('insert'), 0);
+  await r.session.keyReturn();
+  assert.equal(r.editor.text, 'い。');
+  assert.equal(r.editor.count('insert'), 1);
+  r.bridge.assertDone();
+});
+
+test('P43: a tap during Japanese conversion does not start a cycle', async () => {
+  const r = rig({ mode: 'JP', toggleInput: true, steps: [
+    { operation: 'convert', text: 'a', output: response('あ') },
+    { operation: 'space', output: response('亜', { focused_id: 1, candidates: [{ id: 1, value: '亜' }] }) },
+    { operation: 'reset', output: response('') },
+    { operation: 'literal', text: '亜', output: response('亜') },
+    { operation: 'convert', text: 'a', output: response('亜あ') },
+    { operation: 'convert', text: 'a', output: response('亜ああ') }
+  ] });
+  await r.session.keyToggleTap('あ', false);
+  await r.session.keySpace();
+  assert.equal(r.store.get('kanonState'), 'JP_CONVERTING');
+  await r.session.keyToggleTap('あ', false);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, '亜ああ');
+  r.bridge.assertDone();
+});
+
+test('P43: a Japanese cycle at an interior caret preserves the suffix', async () => {
+  const r = rig({ mode: 'JP', toggleInput: true, steps: [
+    { operation: 'convert', text: 'a', output: response('あ') },
+    { operation: 'convert', text: 'ka', output: response('あか') },
+    { operation: 'arrowLeft', output: response('あか', { caret_utf16: 1 }) },
+    { operation: 'convert', text: 'a', output: response('ああか', { caret_utf16: 2 }) },
+    { operation: 'backspace', output: response('あか', { caret_utf16: 1 }) },
+    { operation: 'convert', text: 'i', output: response('あいか', { caret_utf16: 2 }) },
+    { operation: 'backspace', output: response('あか', { caret_utf16: 1 }) },
+    { operation: 'convert', text: 'u', output: response('あうか', { caret_utf16: 2 }) },
+    { operation: 'convert', text: 'a', output: response('あうあか', { caret_utf16: 3 }) }
+  ] });
+  await r.session.keyKana('あ');
+  await r.session.keyKana('か');
+  await r.session.keyMove('left');
+  await r.session.keyToggleTap('あ', false);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, 'あいか');
+  assert.equal(r.editor.cursor, 2);
+  // setPreview moves to the end before the IME restores the interior caret.
+  r.session.selectionChanged(3, 3);
+  r.session.textChanged(false);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, 'あうか');
+  await r.session.keyToggleRight();
+  assert.equal(r.editor.cursor, 2);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, 'あうあか');
+  r.bridge.assertDone();
+});
+
+test('P43: selecting an English completion interrupts the cycle', async () => {
+  for (const supported of [true, false]) {
+    const r = rig({ supported, toggleInput: true });
+    await r.session.keyText('he');
+    await r.session.keyToggleTap('j', false);
+    await r.session.keyToggleTap('j', false);
+    await r.session.keyToggleTap('j', false);
+    const hello = r.session.getCandidates().find(item => item.label === 'hello');
+    assert.ok(hello);
+    await r.session.selectCandidate(hello.id);
+    await r.session.keyToggleTap('j', false);
+    assert.equal(r.editor.text, 'helloj');
+  }
+});
+
+test('P43: a direct cursor change cannot replace the same letter at another position', async () => {
+  const r = rig({ supported: false, toggleInput: true, origin: 'aX' });
+  await r.session.keyToggleTap('a', false);
+  r.editor.cursor = 1;
+  await r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, 'aaXa');
+  assert.equal(r.editor.count('deleteForward'), 0);
+});
+
+test('P43: a live direct cursor move or selection ends the cycle', async () => {
+  for (const selected of [false, true]) {
+    const r = rig({ supported: false, toggleInput: true, origin: 'X' });
+    await r.session.keyToggleTap('a', true);
+    await r.session.keyToggleTap('a', false);
+    if (selected) { await r.editor.selectRange(1, 2); }
+    else { r.editor.cursor = 1; }
+    r.session.selectionChanged(1, r.editor.cursor);
+    await r.session.keyToggleRight();
+    assert.equal(r.editor.text, 'XB');
+    assert.equal(r.editor.count('moveCursor'), 1);
+    assert.equal(r.prediction.getPrefix(), '');
+  }
+});
 
 // Observe the real collaborators at dispatch boundaries, including calls that
 // would otherwise be masked by a downstream guard. Every observed call still runs.

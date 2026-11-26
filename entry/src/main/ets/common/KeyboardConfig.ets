@@ -17,6 +17,7 @@ export function openKeyboardPreferences(context: common.Context): void { openSet
 export function keyboardConfigDiagnostics(): string { return settingsDiagnostics(); }
 export function readSharedLayoutOrder(): string { return readSettings().layoutOrder; }
 export function readSharedFlickEnabled(): boolean { return readSettings().flickEnabled; }
+export function readSharedToggleInputEnabled(): boolean { return readSettings().toggleInputEnabled; }
 export function readSharedHapticLevel(): number { return readSettings().hapticLevel; }
 export function readKeyboardHeightPercent(): number { return readSettings().heightPercent; }
 

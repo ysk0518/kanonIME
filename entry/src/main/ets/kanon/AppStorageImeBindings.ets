@@ -1,7 +1,7 @@
 import { ImeRuntimeBindings, ImeRuntimeBindingsPort } from './ImeRuntimeBindings';
 import { appStorageImeView } from './AppStorageImeView';
 import { realEditorPort } from './RealEditorPort';
-import { readSharedFlickEnabled } from '../common/KeyboardConfig';
+import { readSharedFlickEnabled, readSharedToggleInputEnabled } from '../common/KeyboardConfig';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 
 /** Platform wiring for settings reads, saves and display updates. */
@@ -12,6 +12,7 @@ const port: ImeRuntimeBindingsPort = {
   number: (key: string, value: number): void => appStorageImeView.number(key, value),
   boolean: (key: string, value: boolean): void => appStorageImeView.boolean(key, value),
   flickEnabled: (): boolean => readSharedFlickEnabled(),
+  toggleInputEnabled: (): boolean => readSharedToggleInputEnabled(),
   saveLayoutOrder: async (order: string): Promise<void> => {
     await keyboardSettingsSync.save({ layoutOrder: order }, false);
   },

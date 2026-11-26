@@ -18,6 +18,7 @@ export interface ImeRuntimeBindingsPort {
   number: (key: string, value: number) => void;
   boolean: (key: string, value: boolean) => void;
   flickEnabled: () => boolean;
+  toggleInputEnabled: () => boolean;
   saveLayoutOrder: (order: string) => Promise<void>;
   getEpoch: () => number;
   queryCursor: () => Promise<number>;
@@ -42,6 +43,7 @@ export class ImeRuntimeBindings {
   matchesConfiguredOrder(order: string): boolean { return this.port.readString(KANON_LAYOUT_ORDER) === order; }
   displayedMode(fallback: string): string { return this.port.readString(KANON_MODE) ?? fallback; }
   flickEnabled(): boolean { return this.port.flickEnabled(); }
+  toggleInputEnabled(): boolean { return this.port.toggleInputEnabled(); }
   predictionAllowed(): boolean {
     const pattern: number = this.port.readNumber(INPUT_PATTERN) ?? this.normal;
     return pattern !== this.password && pattern !== this.numberPassword && pattern !== this.newPassword;

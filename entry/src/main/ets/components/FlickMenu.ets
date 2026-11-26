@@ -34,6 +34,8 @@ export struct FlickMenu {
   private englishLabels: string[] = ['@/:~', 'abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz', 'a/A', '-#', '.,?!'];
   private digitHints: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', ''];
 
+  aboutToDisappear(): void { kanonIme.endToggleInput(); }
+
   @Builder
   control(label: string, action: number) {
     Text(label)
@@ -51,12 +53,18 @@ export struct FlickMenu {
         action === 1 ? '直前の確定を取り消す' : label)
       .borderRadius(6)
       .onClick(() => {
-        if (action === 1) { kanonIme.keyUndo(); }
+        if (action === 1) {
+          if (kanonIme.toggleInputEnabled()) { kanonIme.keyToggleBack(); }
+          else { kanonIme.keyUndo(); }
+        }
         else if (action === 2) { kanonIme.keyMove(inputMethodEngine.CURSOR_LEFT); }
         else if (action === 4) { kanonIme.keyDelete(); }
         else if (action === 5) { kanonIme.keySpace(); }
-        else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
-        else if (action === 8) { keyboardHaptics.key(); this.englishUpper = !this.englishUpper; }
+        else if (action === 6) {
+          if (kanonIme.toggleInputEnabled()) { kanonIme.keyToggleRight(); }
+          else { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
+        }
+        else if (action === 8) { keyboardHaptics.key(); kanonIme.endToggleInput(); this.englishUpper = !this.englishUpper; }
       })
       .id(`flick_control_${action}`)
   }

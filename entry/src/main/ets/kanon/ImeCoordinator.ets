@@ -8,7 +8,7 @@
 
 import { decodeInputEvent } from './InputEventContract';
 import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
-  ModeInputEvent, PartialInputEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
+  ModeInputEvent, PartialInputEvent, ReplaceToggleEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
 import { lastGraphemeLength } from './GraphemeDelete';
 
 export interface OpResult {
@@ -388,6 +388,10 @@ export class ImeCoordinator {
   private async doDirectEn(epoch: number, event: InputEvent): Promise<void> {
     this.state = 'DIRECT_EN';
     if (event.kind === 'cancel') { this.lastError = 'ok'; return; }
+    if (event.kind === 'replaceToggle') {
+      await this.replaceDirectToggle(epoch, event);
+      return;
+    }
     if (event.kind === 'text') {
       const t: string = (event as TextInputEvent).text;
       if (t.length === 0) {
@@ -408,6 +412,23 @@ export class ImeCoordinator {
       return;
     }
     this.lastError = 'en-ignore';
+  }
+
+  private async replaceDirectToggle(epoch: number, event: ReplaceToggleEvent): Promise<void> {
+    const cursor: number = await this.editor.queryCursor();
+    const before: string = await this.editor.queryBefore(1);
+    const current: number = await this.editor.queryCursor();
+    if (epoch !== this.editor.getEpoch() || cursor !== event.cursor || current !== cursor || cursor < 1 ||
+      before !== event.previous || this.editor.hasSelection()) {
+      this.lastError = 'toggle-stale';
+      return;
+    }
+    // The validated character is immediately to the left of the collapsed caret.
+    const deleted: OpResult = await this.editor.deleteForward(1);
+    if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
+    const result: OpResult = deleted.ok ? await this.editor.insert(event.text) : deleted;
+    this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
+    if (!result.ok) { this.needsRecovery = true; }
   }
 
   /**

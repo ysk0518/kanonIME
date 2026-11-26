@@ -271,6 +271,19 @@
       {"id": "qwerty_period", "expect": "10+☆×."},
       {"id": "modeCycleItem", "expect": "10+☆×."},
       {"id": "modeCycleItem", "expect": "10+☆×."}
+    ] },
+    { "id": "D36", "steps": [
+      {"burst": ["flick_あ", "flick_あ", "flick_あ", "flick_control_1", "flick_control_6", "flick_あ"], "expect": "いあ"},
+      {"id": "flick_や", "flick": "up", "expect": "いあゆ"},
+      {"id": "flick_control_7", "expect": "いあゆ"}
+    ] },
+    { "id": "D37", "steps": [
+      {"burst": ["flick_control_8", "flick_a", "flick_a", "flick_a", "flick_a", "flick_control_6", "flick_a"], "expect": "Aa"},
+      {"id": "flick_control_7", "expect": "Aa"}
+    ] },
+    { "id": "D38", "steps": [
+      {"burst": ["flick_あ", "flick_あ"], "expect": "ああ"},
+      {"id": "flick_control_7", "expect": "ああ"}
     ] }
   ]
 }

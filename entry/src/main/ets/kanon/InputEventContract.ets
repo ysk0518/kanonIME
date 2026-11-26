@@ -53,6 +53,10 @@ export function validInputEvent(event: UiEvent): boolean {
     case 'modifyKana':
       return event.text === undefined || event.text === 'cycle' || event.text === 'voiced' ||
         event.text === 'size' || event.text === 'semiVoiced';
+    case 'replaceToggle':
+      return typeof event.text === 'string' && event.text.length === 1 &&
+        typeof event.previous === 'string' && event.previous.length === 1 &&
+        (event.cursor === undefined || nonnegativeInteger(event.cursor));
     case 'backspace': case 'convert': case 'submit': case 'enter':
     case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset': case 'undo':
       return true;
@@ -67,6 +71,7 @@ export function decodeInputEvent(request: UiEvent): InputEvent | undefined {
   const copy: UiEvent = createInputEvent(request.kind, request.text, request.candidateId,
     request.expectedRevision, request.direction, request.edge);
   if (request.cursor !== undefined) { copy.cursor = request.cursor; }
+  if (request.previous !== undefined) { copy.previous = request.previous; }
   if (request.prefixLength !== undefined) { copy.prefixLength = request.prefixLength; }
   // The only assertion from the untrusted shape to the required-payload protocol.
   return copy as InputEvent;

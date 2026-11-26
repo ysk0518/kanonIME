@@ -85,6 +85,11 @@ export struct FlickKey {
           if (this.modifier) {
             const modifier: KanaModifier | undefined = KANA_MODIFIER_FLICKS[this.flickDirection];
             if (modifier !== undefined) { kanonIme.modifyKana(modifier); }
+            else { kanonIme.endToggleInput(); }
+          }
+          else if (!this.textInput && this.flickDirection === 0 && value.length > 0 && kanonIme.toggleInputEnabled()) {
+            kanonIme.keyToggleTap(value, this.english && this.uppercase);
+            if (this.english && /^[a-z]$/.test(value)) { this.onLetter(); }
           }
           else if (value.length > 0 && (this.english || this.textInput)) {
             const letter: boolean = /^[a-z]$/.test(value);
@@ -92,6 +97,7 @@ export struct FlickKey {
             else { kanonIme.keyText(letter && this.uppercase ? value.toUpperCase() : value); }
             if (letter) { this.onLetter(); }
           } else if (value.length > 0) { kanonIme.keyKana(value); }
+          else { kanonIme.endToggleInput(); }
         } else if (this.flickDirection !== previousDirection) { this.showPreview(); }
       }
     }

@@ -457,7 +457,6 @@ class KeyboardController {
     });
     this.mKeyboardDelegate.on('selectionChange', (oldBegin: number, oldEnd: number, newBegin: number, newEnd: number) => {
       editorAdapter.updateSelection(newBegin, newEnd);
-      englishPrediction.selectionChanged(newBegin, newEnd);
       kanonIme.selectionChanged(newBegin, newEnd);
       if (isDebug) {
         this.inputHandle.setSelectInfo('selectInfo: from(' + oldBegin + ',' + oldEnd + ') to (' + newBegin + ',' + newEnd + ')');
