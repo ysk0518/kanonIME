@@ -1,8 +1,15 @@
 const mutations = {
-  everyCandidateDeletable: {
+  refreshAfterNoLearnedEntry: {
     file: 'kanon/MozcEngine.ets',
-    before: 'if (c.deletable === true) { label.deletable = true; }',
-    after: 'label.deletable = true;'
+    before: `const update: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        update.candidateNotLearned = true;
+        return update;`,
+    after: 'return this.acceptComposingOutput(sessionId, epoch, seq, this.lastOut);'
+  },
+  omitCandidateDeleteNotice: {
+    file: 'components/CandidateBar.ets',
+    before: 'if (request === this.deleteNoticeRequest) { this.showDeleteNotice(result); }',
+    after: ''
   },
   toggleDoesNotWrap: {
     file: 'kanon/ToggleInput.ets',

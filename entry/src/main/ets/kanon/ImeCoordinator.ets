@@ -65,7 +65,6 @@ interface JapaneseCommit {
 export interface CandidateLabel {
   id: number;
   label: string;
-  deletable?: boolean;
 }
 
 /** Candidate visibility is independent of the engine's composition phase. */
@@ -88,6 +87,7 @@ export interface EngineUpdate {
   effects: CommitEffect[];
   deletionOffset?: number;
   deletionLength?: number;
+  candidateNotLearned?: boolean;
   errorCode: number; // 0=なし。非0はエンジン側失敗。
   errorRecoverable: boolean;
 }
@@ -524,6 +524,10 @@ export class ImeCoordinator {
       return;
     }
     this.lastAppliedSequence = update.sequence;
+    if (update.candidateNotLearned === true) {
+      this.lastError = 'candidate-not-learned';
+      return;
+    }
     if (update.errorCode !== 0) {
       if (undo !== undefined) { this.forgetJapaneseCommit(); }
       this.lastError = `engine-${update.errorCode}`;

@@ -40,7 +40,12 @@ export interface ImeSessionPorts {
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
 interface RevertConversionRequest { kind: 'revertConversion'; }
-interface DeleteLearnedCandidateRequest { kind: 'deleteLearnedCandidate'; candidate: CandidateLabel; deleted: boolean; }
+export type CandidateDeletionResult = 'deleted' | 'not-learned' | 'failed';
+interface DeleteLearnedCandidateRequest {
+  kind: 'deleteLearnedCandidate';
+  candidate: CandidateLabel;
+  result: CandidateDeletionResult;
+}
 interface ToggleTapRequest { kind: 'toggleTap'; key: string; uppercase: boolean; time: number; }
 interface ToggleRightRequest { kind: 'toggleRight'; time: number; }
 interface ToggleBackRequest { kind: 'toggleBack'; time: number; }
@@ -419,14 +424,20 @@ export class ImeSession {
   private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
     if (request.kind === 'deleteLearnedCandidate') {
       // Candidate IDs are reused. A menu can only delete the original candidate object.
-      if (this.mode !== 'JP' || request.candidate.deletable !== true ||
-        !this.coord.getCandidateView().includes(request.candidate)) { return this.coord.getSnapshot(); }
+      if (this.mode !== 'JP' || !this.coord.getCandidateView().includes(request.candidate)) {
+        return this.coord.getSnapshot();
+      }
       const revision: number = this.coord.getCandidateRevision();
       const result: ImeSnapshot = await this.dispatchNormal(
         createInputEvent('deleteCandidate', undefined, request.candidate.id, revision), requestEpoch);
-      request.deleted = requestEpoch === this.ports.editor.getEpoch() && result.lastError === 'ok' &&
-        this.coord.getCandidateRevision() !== revision;
-      if (request.deleted) { this.toggleRun = undefined; }
+      if (requestEpoch === this.ports.editor.getEpoch()) {
+        if (result.lastError === 'candidate-not-learned') {
+          request.result = 'not-learned';
+        } else if (result.lastError === 'ok' && this.coord.getCandidateRevision() !== revision) {
+          request.result = 'deleted';
+          this.toggleRun = undefined;
+        }
+      }
       return result;
     }
     if (request.kind === 'revertConversion') {
@@ -733,10 +744,12 @@ export class ImeSession {
     await this.post('select', undefined, id, rev);
   }
 
-  async deleteLearnedCandidate(candidate: CandidateLabel): Promise<boolean> {
-    const request: DeleteLearnedCandidateRequest = { kind: 'deleteLearnedCandidate', candidate: candidate, deleted: false };
+  async deleteLearnedCandidate(candidate: CandidateLabel): Promise<CandidateDeletionResult> {
+    const request: DeleteLearnedCandidateRequest = {
+      kind: 'deleteLearnedCandidate', candidate: candidate, result: 'failed'
+    };
     await this.postRequest(request);
-    return request.deleted;
+    return request.result;
   }
 
   /** 先頭文節のみ確定（残りは未確定継続）。現行revを添える。 */

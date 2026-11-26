@@ -19,11 +19,11 @@ import { compositionCaretPath } from './CompositionCursorSync';
 class Cand {
   id: number = -1;
   value: string = '';
-  deletable?: boolean;
 }
 
 class ConvOut {
   ok: boolean = false;
+  candidate_not_learned: boolean = false;
   preedit_len: number = 0;
   preedit: string = '';
   focused_reading: string = '';
@@ -45,6 +45,7 @@ function parseOut(json: string): ConvOut {
   try {
     const o = JSON.parse(json) as ConvOut;
     out.ok = o.ok === true;
+    out.candidate_not_learned = o.candidate_not_learned === true;
     out.preedit_len = o.preedit_len ?? 0;
     out.preedit = o.preedit ?? '';
     out.focused_reading = o.focused_reading ?? '';
@@ -167,9 +168,7 @@ export class MozcEngine implements EnginePort {
     const labels: CandidateLabel[] = [];
     for (let i: number = 0; i < ordered.length; i++) {
       const c: Cand = ordered[i];
-      const label: CandidateLabel = { id: c.id, label: c.value ?? '' };
-      if (c.deletable === true) { label.deletable = true; }
-      labels.push(label);
+      labels.push({ id: c.id, label: c.value ?? '' });
     }
     this.lastIds = [];
     for (let i: number = 0; i < ordered.length; i++) {
@@ -459,11 +458,15 @@ export class MozcEngine implements EnginePort {
     }
     if (kind === 'deleteCandidate') {
       const id: number = (event as CandidateInputEvent).candidateId;
-      const candidate: Cand | undefined = this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
-      if (this.phase === 'empty' || candidate?.deletable !== true) {
+      if (this.phase === 'empty' || !this.lastIds.includes(id)) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      const out: ConvOut = parseOut(await api.executeAsync('deleteCandidate', candidate.value, id));
+      const out: ConvOut = parseOut(await api.executeAsync('deleteCandidate', '', id));
+      if (out.candidate_not_learned) {
+        const update: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        update.candidateNotLearned = true;
+        return update;
+      }
       if (!out.ok || out.preedit_len === 0 || out.result.length > 0) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }

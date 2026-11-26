@@ -7,6 +7,7 @@ import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 import { candidateAreaHeight, candidateRowHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfigValues';
 import { CandidateLabel } from '../kanon/ImeCoordinator';
+import { CandidateDeletionResult } from '../kanon/ImeSession';
 
 interface ExpandedCandidatePosition { top: number; height: number; }
 interface CandidateColumn {
@@ -25,7 +26,7 @@ export struct CandidateBar {
   @StorageLink('kanonCandidateDisplayRows') @Watch('selectionChanged') rows: number = DEFAULT_CANDIDATE_ROWS;
   @StorageLink('kanonFontScale') fontScale: number = 1;
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
-  @StorageLink('kanonMode') @Watch('closeDeleteMenu') mode: string = 'JP';
+  @StorageLink('kanonMode') @Watch('modeChanged') mode: string = 'JP';
   @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @StorageLink('kanonList') @Watch('candidatesChanged') candList: string[] = [];
   @StorageLink('kanonIdList') candIds: number[] = [];
@@ -35,7 +36,10 @@ export struct CandidateBar {
   @StorageLink('kanonConversionReading') conversionReading: string = '';
   @StorageLink('kanonCompositionCursor') compositionCursor: string = '';
   @State private deleteMenuAnchor: string = '';
+  @State private deleteNotice: Resource | undefined = undefined;
   private deleteTarget: CandidateLabel | undefined = undefined;
+  private deleteNoticeTimer: number = -1;
+  private deleteNoticeRequest: number = 0;
   private stripScroller: Scroller = new Scroller();
   private expandedScroller: Scroller = new Scroller();
   private expandedPositions: Map<number, ExpandedCandidatePosition> = new Map();
@@ -97,10 +101,6 @@ export struct CandidateBar {
     const item: CandidateLabel | undefined = kanonIme.getCandidates()[index];
     if (item === undefined || item.id !== this.candIds[index] || item.label !== label) { return; }
     this.closeDeleteMenu();
-    if (item.deletable !== true) {
-      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.candidate_not_learned') });
-      return;
-    }
     this.deleteTarget = item;
     this.deleteMenuAnchor = this.candidateAnchor(index, full);
   }
@@ -113,9 +113,38 @@ export struct CandidateBar {
   private async confirmDelete(): Promise<void> {
     const item: CandidateLabel | undefined = this.deleteTarget;
     this.closeDeleteMenu();
-    if (item !== undefined && !await kanonIme.deleteLearnedCandidate(item)) {
-      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.candidate_delete_failed') });
+    if (item === undefined) { return; }
+    const request: number = ++this.deleteNoticeRequest;
+    const result: CandidateDeletionResult = await kanonIme.deleteLearnedCandidate(item);
+    if (request === this.deleteNoticeRequest) { this.showDeleteNotice(result); }
+  }
+
+  private showDeleteNotice(result: CandidateDeletionResult): void {
+    this.clearDeleteNotice();
+    this.deleteNotice = result === 'deleted' ? $r('app.string.candidate_delete_success') :
+      result === 'not-learned' ? $r('app.string.candidate_not_learned') : $r('app.string.candidate_delete_failed');
+    this.deleteNoticeTimer = setTimeout(() => {
+      this.deleteNotice = undefined;
+      this.deleteNoticeTimer = -1;
+    }, 2000);
+  }
+
+  private clearDeleteNotice(): void {
+    if (this.deleteNoticeTimer >= 0) {
+      clearTimeout(this.deleteNoticeTimer);
+      this.deleteNoticeTimer = -1;
     }
+    this.deleteNotice = undefined;
+  }
+
+  private modeChanged(): void {
+    this.closeDeleteMenu();
+    this.deleteNoticeRequest++;
+    this.clearDeleteNotice();
+  }
+
+  aboutToDisappear(): void {
+    this.modeChanged();
   }
 
   @Builder
@@ -164,7 +193,8 @@ export struct CandidateBar {
       .id(this.candidateAnchor(index, full))
   }
 
-  build() {
+  @Builder
+  candidateContents() {
     Column() {
       Row() {
         if (this.candList.length === 0 && !(this.mode === 'JP' && this.japaneseComposing)) {
@@ -234,5 +264,22 @@ export struct CandidateBar {
         }.height(Math.max(36, this.toolbarHeight))
       }
     }.width('100%').backgroundColor($r('app.color.candidate_background'))
+  }
+
+  build() {
+    Stack({ alignContent: Alignment.Top }) {
+      this.candidateContents()
+      if (this.deleteNotice !== undefined) {
+        Text(this.deleteNotice)
+          .id('candidate_delete_notice')
+          .fontSize(14)
+          .fontColor($r('app.color.candidate_text'))
+          .backgroundColor($r('app.color.candidate_selected'))
+          .padding({ left: 12, right: 12, top: 3, bottom: 3 })
+          .margin({ top: 2 })
+          .borderRadius(6)
+          .hitTestBehavior(HitTestMode.None)
+      }
+    }.width('100%')
   }
 }

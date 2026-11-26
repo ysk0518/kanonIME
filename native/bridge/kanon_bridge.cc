@@ -404,14 +404,12 @@ std::string ExecuteOperation(const AsyncOperation& task) {
         mozc::commands::SessionCommand::DELETE_CANDIDATE_FROM_HISTORY);
     input.mutable_command()->set_id(task.candidate_id);
     ok = Call(input, &output) && output.consumed();
-    // Mozc's failure path returns DoNothing with the original candidate list.
-    // A dictionary entry with the same value can remain after a successful deletion.
-    const auto& words = output.all_candidate_words().candidates();
-    const bool still_learned = std::any_of(words.begin(), words.end(), [&](const auto& word) {
-      return word.has_id() && word.id() == task.candidate_id &&
-             word.value() == task.text && IsDeletable(word);
-    });
-    return OutputToJson(ok && !still_learned, output);
+    // DoNothing consumes the command without preedit. ConvertCancel returns
+    // the reading and refreshed candidates, which may still include the word.
+    if (ok && !output.has_preedit()) {
+      return "{\"ok\":false,\"candidate_not_learned\":true}";
+    }
+    return OutputToJson(ok && output.has_preedit(), output);
   }
   if (task.operation == "convert") {
     ok = true;

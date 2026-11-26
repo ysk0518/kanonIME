@@ -10,6 +10,7 @@
     { "name": "candidate_cancel", "value": "取消" },
     { "name": "candidate_delete_learning", "value": "学習を削除" },
     { "name": "candidate_delete_cancel", "value": "キャンセル" },
+    { "name": "candidate_delete_success", "value": "学習を削除しました" },
     { "name": "candidate_not_learned", "value": "この候補は学習されていません" },
     { "name": "candidate_delete_failed", "value": "削除できませんでした" },
     { "name": "candidate_partial", "value": "文節確定" },
