@@ -12,6 +12,7 @@ export struct LayoutItem {
   keyWidth: Resource | string | number | undefined = undefined;
   keyRadius: number = 4;
   globe: boolean = false;
+  @Prop fromNumberMode: boolean = false;
   @Consume menuType: number;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
@@ -46,7 +47,7 @@ export struct LayoutItem {
     .opacity(this.flickEnabled || !this.globe ? 1 : 0.4)
     .accessibilityText(!this.flickEnabled && !this.globe ? (this.menuType === MenuType.SPECIAL ?
       $r('app.string.keyboard_back_letters') : $r('app.string.keyboard_show_symbols')) :
-      $r('app.string.keyboard_switch_layout'))
+      this.fromNumberMode ? $r('app.string.keyboard_switch_qwerty_letters') : $r('app.string.keyboard_switch_layout'))
     .id('layoutItem')
     .onClick(async () => {
       refreshSharedFlickEnabled();
@@ -56,7 +57,7 @@ export struct LayoutItem {
         this.menuType = this.menuType === MenuType.SPECIAL ? MenuType.NORMAL : MenuType.SPECIAL;
         return;
       }
-      if (await kanonIme.toggleLayout() && this.menuType === MenuType.SPECIAL) {
+      if (await kanonIme.toggleLayout(this.fromNumberMode) && this.menuType === MenuType.SPECIAL) {
         this.menuType = MenuType.NORMAL;
       }
     })

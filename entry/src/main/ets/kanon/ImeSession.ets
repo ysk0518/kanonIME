@@ -774,13 +774,13 @@ export class ImeSession {
     return this.ports.bindings.flickEnabled();
   }
 
-  async toggleLayout(): Promise<boolean> {
+  async toggleLayout(fromNumberMode: boolean = false): Promise<boolean> {
     const epoch: number = this.ports.editor.getEpoch();
     let normalized: string = '';
     const snapshot: ImeSnapshot = await this.inputQueue.enqueue(async (): Promise<ImeSnapshot> => {
       normalized = this.localRequests.toggleOrder();
       if (normalized.length === 0) { return this.coord.getSnapshot(); }
-      return this.postSerial({ kind: 'config', layoutOrder: normalized });
+      return this.postSerial({ kind: 'config', layoutOrder: normalized, fromNumberMode: fromNumberMode });
     });
     return normalized.length > 0 && epoch === this.ports.editor.getEpoch() && snapshot.lastError === 'ok' &&
       this.ports.bindings.matchesConfiguredOrder(normalized);

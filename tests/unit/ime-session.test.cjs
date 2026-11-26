@@ -11,6 +11,8 @@ const { cancelEditorPreview } = require('../../entry/src/main/ets/kanon/PreviewL
 const { FakeEditor, ScriptedBridge, response, deferred } = require('../support/fakes.cjs');
 const { mutate } = require('../support/source-mutations.cjs');
 const { ToggleRun, toggleCycle } = require('../../entry/src/main/ets/kanon/ToggleInput.ets');
+const { MenuType } = require('../../entry/src/main/ets/model/KeyboardKeyData.ets');
+const { keyboardMenuType } = require('../../entry/src/main/ets/model/KeyboardModes.ets');
 
 function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInput = false } = {}) {
   const editor = new FakeEditor(origin);
@@ -62,6 +64,22 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInp
     published: () => writes.filter(([key]) => key === 'kanonTick').length
   };
 }
+
+test('P45: toggling layout from number mode returns to Japanese QWERTY when enabled, otherwise English', async () => {
+  for (const [order, layout, mode] of [
+    ['en_flick,jp_flick', 'jp_qwerty', 'JP'],
+    ['en_flick', 'en_qwerty', 'EN']
+  ]) {
+    const r = rig();
+    r.store.set('kanonLayout', 'en_flick');
+    r.store.set('kanonLayoutOrder', order);
+    await r.session.prepare();
+    assert.equal(await r.session.toggleLayout(true), true);
+    assert.equal(r.store.get('kanonLayout'), layout);
+    assert.equal(r.store.get('kanonMode'), mode);
+    assert.equal(keyboardMenuType(layout, MenuType.NUMBER, 0), MenuType.NORMAL);
+  }
+});
 
 const learnedPaper = { id: 3, value: '紙', deletable: true };
 const paperReading = 'かみ';

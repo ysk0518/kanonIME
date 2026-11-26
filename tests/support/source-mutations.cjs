@@ -1,4 +1,9 @@
 const mutations = {
+  qwertyEntersNumberMode: {
+    file: 'model/KeyboardModes.ets',
+    before: "if (flick && mode === 'EN') { return 'NUMBER'; }",
+    after: "if (mode === 'EN') { return 'NUMBER'; }"
+  },
   deleteAnyCandidateId: {
     file: 'kanon/MozcEngine.ets',
     before: 'if (id !== 0 && target?.deletable !== true) {',

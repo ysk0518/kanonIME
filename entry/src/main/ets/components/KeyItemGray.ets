@@ -16,7 +16,6 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
-import { MenuType } from '../model/KeyboardKeyData';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
@@ -37,7 +36,6 @@ export struct KeyItemGray {
   keyWidth: string | undefined = undefined;
   onActivate: (() => void) | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  @Consume menuType: number;
 
   build() {
     Stack() {
@@ -50,8 +48,7 @@ export struct KeyItemGray {
     .borderRadius(4)
     .onClick(() => {
       keyboardHaptics.key();
-      if (this.onActivate) { this.onActivate(); }
-      else { this.menuType = MenuType.SPECIAL; }
+      this.onActivate?.();
     })
     .height('100%')
     .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)

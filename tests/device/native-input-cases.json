@@ -1,7 +1,7 @@
 {
   "cases": [
     { "id": "SETUP_EN_TO_JP", "steps": [
-      { "id": "modeCycleItem", "expect": "" }, { "id": "modeCycleItem", "expect": "" }
+      { "id": "modeCycleItem", "expect": "" }
     ] },
     { "id": "D01", "repeat": 5, "repeatPrefix": "き", "steps": [
       { "id": "qwerty_k", "expect": "ｋ" },
@@ -269,7 +269,6 @@
       {"id": "symbol_key_×", "expect": "10+☆×"},
       {"id": "keyboardSymbols", "expect": "10+☆×"},
       {"id": "qwerty_period", "expect": "10+☆×."},
-      {"id": "modeCycleItem", "expect": "10+☆×."},
       {"id": "modeCycleItem", "expect": "10+☆×."}
     ] },
     { "id": "D36", "steps": [
@@ -284,6 +283,13 @@
     { "id": "D38", "steps": [
       {"burst": ["flick_あ", "flick_あ"], "expect": "ああ"},
       {"id": "flick_control_7", "expect": "ああ"}
+    ] },
+    { "id": "D39", "steps": [
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "qwerty_a", "expect": "a"},
+      {"id": "modeCycleItem", "expect": "a"},
+      {"id": "qwerty_a", "expect": "aあ"},
+      {"id": "returnItem", "expect": "aあ"}
     ] }
   ]
 }

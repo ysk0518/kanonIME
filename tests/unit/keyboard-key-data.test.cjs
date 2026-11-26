@@ -1,8 +1,59 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { qwertyDigits, symbolPageRows } = require('../../entry/src/main/ets/model/KeyboardKeyData.ets');
+const { MenuType, qwertyDigits, symbolPageRows } = require('../../entry/src/main/ets/model/KeyboardKeyData.ets');
+const { keyboardMenuType, nextModeCycleTarget, numberFlickKind } =
+  require('../../entry/src/main/ets/model/KeyboardModes.ets');
+const { numberFlickKeys } = require('../../entry/src/main/ets/model/NumberFlickData.ets');
 const { isUrlInputPattern, enterKeyLabel, spaceKeyLabel } =
   require('../../entry/src/main/ets/model/KeyboardKeyLabels.ets');
+
+test('P45: QWERTY cycles between Japanese and English without entering number mode', () => {
+  for (const order of ['jp_qwerty,en_qwerty', 'en_qwerty,jp_qwerty']) {
+    const english = nextModeCycleTarget(false, MenuType.NORMAL, 'JP', order);
+    assert.equal(english, 'EN');
+    assert.equal(nextModeCycleTarget(false, MenuType.NORMAL, english, order), 'JP');
+  }
+});
+
+test('P45: one enabled QWERTY language leaves the mode unchanged', () => {
+  assert.equal(nextModeCycleTarget(false, MenuType.NORMAL, 'JP', 'jp_qwerty'), '');
+  assert.equal(nextModeCycleTarget(false, MenuType.NORMAL, 'EN', 'en_qwerty'), '');
+});
+
+test('P45: the 12-key cycle includes numbers and skips disabled languages', () => {
+  const both = 'en_flick,jp_flick';
+  assert.equal(nextModeCycleTarget(true, MenuType.NORMAL, 'JP', both), 'EN');
+  assert.equal(nextModeCycleTarget(true, MenuType.NORMAL, 'EN', both), 'NUMBER');
+  assert.equal(nextModeCycleTarget(true, MenuType.NUMBER, 'EN', both), 'JP');
+  for (const [mode, order] of [['JP', 'jp_flick'], ['EN', 'en_flick']]) {
+    assert.equal(nextModeCycleTarget(true, MenuType.NORMAL, mode, order), 'NUMBER');
+    assert.equal(nextModeCycleTarget(true, MenuType.NUMBER, mode, order), mode);
+  }
+});
+
+test('P45: numeric editor patterns select the same number keypad on every layout', () => {
+  for (const layout of ['jp_flick', 'en_flick', 'jp_qwerty', 'en_qwerty']) {
+    for (const [pattern, kind, bottom] of [
+      [2, 'number', ['.', '0', '-']], [3, 'phone', ['*', '0', '#']], [8, 'digits', ['', '0', '']]
+    ]) {
+      assert.equal(keyboardMenuType(layout, MenuType.NORMAL, pattern), MenuType.NUMBER);
+      assert.equal(keyboardMenuType(layout, MenuType.SPECIAL, pattern), MenuType.NUMBER);
+      assert.equal(numberFlickKind(pattern), kind);
+      assert.deepEqual(numberFlickKeys(kind).slice(9).map(key => key[0]), bottom);
+    }
+    for (const pattern of [0, 1, 4, 5, 6, 7, 9, 10, 11]) {
+      assert.equal(numberFlickKind(pattern), 'general');
+      assert.equal(keyboardMenuType(layout, MenuType.NORMAL, pattern), MenuType.NORMAL);
+    }
+  }
+});
+
+test('P45: only a 12-key layout can display voluntary number mode', () => {
+  for (const language of ['jp', 'en']) {
+    assert.equal(keyboardMenuType(`${language}_flick`, MenuType.NUMBER, 0), MenuType.NUMBER);
+    assert.equal(keyboardMenuType(`${language}_qwerty`, MenuType.NUMBER, 0), MenuType.NORMAL);
+  }
+});
 
 test('P42: QWERTY has a dedicated digit row in typing order', () => {
   assert.deepEqual(qwertyDigits, Array.from('1234567890'));

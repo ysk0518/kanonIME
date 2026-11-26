@@ -1,5 +1,6 @@
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { MenuType, SubMenuType } from '../model/KeyboardKeyData';
+import { numberFlickKind } from '../model/KeyboardModes';
 
 @Component
 export struct SymbolToggleItem {
@@ -9,8 +10,7 @@ export struct SymbolToggleItem {
   buttonHeight: number = 36;
 
   private enabledForField(): boolean {
-    return this.inputPattern !== InputType.Number && this.inputPattern !== InputType.PhoneNumber &&
-      this.inputPattern !== InputType.NUMBER_PASSWORD;
+    return numberFlickKind(this.inputPattern) === 'general';
   }
 
   build() {

@@ -190,10 +190,10 @@ class KanonIme {
     await this.session.switchMode();
   }
 
-  async toggleLayout(): Promise<boolean> {
+  async toggleLayout(fromNumberMode: boolean = false): Promise<boolean> {
     if (!this.session.flickEnabled()) { return false; }
     keyboardHaptics.key();
-    return this.session.toggleLayout();
+    return this.session.toggleLayout(fromNumberMode);
   }
 
   async prepare(): Promise<void> {

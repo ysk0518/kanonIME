@@ -20,14 +20,6 @@ export interface keySourceListType {
   upperContent: string
 }
 
-export interface sourceListType {
-  content: string
-}
-
-export enum MenuKey {
-  SPECIAL_KEY = '=/\<'
-}
-
 export enum SubMenuType {
   NORMAL = 0,
   MENU = 1,
@@ -180,91 +172,6 @@ export let keySourceListData: keySourceListType[] = [
     content: 'm',
     upperContent: 'M'
   }
-]
-
-export let numberSourceListData: sourceListType[] = [
-  {
-    content: '1'
-  },
-  {
-    content: '2'
-  },
-  {
-    content: '3'
-  },
-  {
-    content: '4'
-  },
-  {
-    content: '5'
-  },
-  {
-    content: '6'
-  },
-  {
-    content: '7'
-  },
-  {
-    content: '8'
-  },
-  {
-    content: '9'
-  },
-  {
-    content: '0'
-  },
-  {
-    content: '@'
-  },
-  {
-    content: '#'
-  },
-  {
-    content: '$'
-  },
-  {
-    content: '%'
-  },
-  {
-    content: '&'
-  },
-  {
-    content: '-'
-  },
-  {
-    content: '+'
-  },
-  {
-    content: '('
-  },
-  {
-    content: ')'
-  },
-  {
-    content: '/'
-  },
-  {
-    content: '*'
-  },
-  {
-    content: '"'
-  },
-  {
-    content: "'"
-  },
-  {
-    content: ':'
-  },
-  {
-    content: ';'
-  },
-  {
-    content: '!'
-  },
-  {
-    content: '?'
-  },
-
 ]
 
 export const qwertyDigits: string[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];

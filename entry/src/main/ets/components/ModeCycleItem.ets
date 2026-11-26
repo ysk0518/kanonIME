@@ -1,7 +1,8 @@
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
-import { languageLayouts, layoutLanguage, refreshSharedLayoutOrder } from '../common/KeyboardConfig';
+import { refreshSharedLayoutOrder } from '../common/KeyboardConfig';
 import { MenuType } from '../model/KeyboardKeyData';
+import { nextModeCycleTarget, numberFlickKind } from '../model/KeyboardModes';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
@@ -17,37 +18,46 @@ export struct ModeCycleItem {
   @StorageLink('kanonMode') mode: string = 'JP';
   @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
+  @StorageLink('kanonLayoutOrder') layoutOrder: string = '';
 
   private numericOnly(): boolean {
-    return this.inputPattern === InputType.Number || this.inputPattern === InputType.PhoneNumber ||
-      this.inputPattern === InputType.NUMBER_PASSWORD;
+    return numberFlickKind(this.inputPattern) !== 'general';
   }
 
   private active(): string {
-    return this.menuType === MenuType.NUMBER || this.numericOnly() ? '1' :
+    return (this.flick && this.menuType === MenuType.NUMBER) || this.numericOnly() ? '1' :
       this.mode === 'EN' ? 'A' : 'あ';
   }
 
   private converts(): boolean { return this.flick && this.japaneseComposing && !this.numericOnly(); }
 
+  private accessibilityLabel(): string {
+    if (this.numericOnly()) { return '数字入力'; }
+    if (this.converts()) { return '変換'; }
+    const target: string = nextModeCycleTarget(this.flick, this.menuType, this.mode, this.layoutOrder);
+    if (target === 'JP') { return '日本語に切り替え'; }
+    if (target === 'EN') { return '英語に切り替え'; }
+    if (target === 'NUMBER') { return '数字に切り替え'; }
+    return this.mode === 'EN' ? '英語入力' : '日本語入力';
+  }
+
   private async cycle(): Promise<void> {
     if (this.numericOnly()) { return; }
     if (this.converts()) { await kanonIme.keySpace(); return; }
+    const target: string = nextModeCycleTarget(this.flick, this.menuType, this.mode, refreshSharedLayoutOrder());
+    if (target.length === 0) { return; }
     keyboardHaptics.key();
-    const configured: string[] = languageLayouts(refreshSharedLayoutOrder());
-    const japanese: boolean = configured.some((id: string) => layoutLanguage(id) === 'JP');
-    const english: boolean = configured.some((id: string) => layoutLanguage(id) === 'EN');
     if (this.menuType === MenuType.NUMBER) {
       await kanonIme.forgetJapaneseCommit();
-      const target: string = japanese ? 'JP' : 'EN';
       if (this.mode !== target) { await kanonIme.switchMode(); }
-      if (AppStorage.get<string>('kanonMode') === target) { this.menuType = MenuType.NORMAL; }
-    } else if (this.mode === 'JP' && english) {
-      await kanonIme.switchMode();
-      if (AppStorage.get<string>('kanonMode') === 'EN') { this.menuType = MenuType.NORMAL; }
-    } else {
+      if (!this.numericOnly() && this.menuType === MenuType.NUMBER &&
+        AppStorage.get<string>('kanonMode') === target) { this.menuType = MenuType.NORMAL; }
+    } else if (target === 'NUMBER') {
       await kanonIme.forgetJapaneseCommit();
-      this.menuType = MenuType.NUMBER;
+      if (!this.numericOnly() && this.menuType === MenuType.NORMAL &&
+        AppStorage.get<string>('kanonLayout')?.endsWith('_flick')) { this.menuType = MenuType.NUMBER; }
+    } else {
+      await kanonIme.switchMode();
     }
   }
 
@@ -62,8 +72,10 @@ export struct ModeCycleItem {
             $r('app.color.key_item_normal_text'))
           Text('A').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'A' ? $r('app.color.candidate_accent') :
             $r('app.color.key_item_normal_text'))
-          Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === '1' ? $r('app.color.candidate_accent') :
-            $r('app.color.key_item_normal_text'))
+          if (this.flick) {
+            Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === '1' ? $r('app.color.candidate_accent') :
+              $r('app.color.key_item_normal_text'))
+          }
         }
       }
     }
@@ -73,9 +85,7 @@ export struct ModeCycleItem {
     .borderRadius(this.keyRadius)
     .enabled(!this.numericOnly())
     .opacity(this.numericOnly() ? 0.7 : 1)
-    .accessibilityText(this.converts() ? '変換' :
-      this.active() === 'あ' ? '英語または数字に切り替え' :
-      this.active() === 'A' ? '数字に切り替え' : '日本語または英語に切り替え')
+    .accessibilityText(this.accessibilityLabel())
     .id('modeCycleItem')
     .onClick(() => { this.cycle(); })
   }
