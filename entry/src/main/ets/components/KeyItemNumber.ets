@@ -23,6 +23,7 @@ import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
 import { keyPreviewSize } from '../common/KeyboardLayout';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { keyRollover } from '../common/KeyRollover';
 
 // 有大小写的按键组件
 @Component
@@ -48,6 +49,7 @@ export struct KeyItemNumber {
   private previewX: number = 0;
   private previewY: number = 0;
   private previewOwner: string = '';
+  private pending: (() => void) | undefined = undefined;
 
   private clearLongPress(): void {
     if (this.longPressTimer >= 0) {
@@ -67,6 +69,8 @@ export struct KeyItemNumber {
   }
 
   private cancelTouch(): void {
+    if (this.pending !== undefined) { keyRollover.release(this.pending); }
+    this.pending = undefined;
     this.clearLongPress();
     hideKeyPreview(this.previewOwner);
     this.finger = -1;
@@ -80,6 +84,8 @@ export struct KeyItemNumber {
 
   private touch(event: TouchEvent): void {
     if (event.type === TouchType.Cancel) { this.cancelTouch(); return; }
+    // A key still held (here or elsewhere) is entered first so fast overlapping presses keep their order.
+    if (event.type === TouchType.Down) { keyRollover.land(); }
     if (event.type === TouchType.Down && this.finger < 0 && event.changedTouches.length > 0 && this.keyValue) {
       const touch: TouchObject = event.changedTouches[0];
       this.finger = touch.id;
@@ -103,20 +109,31 @@ export struct KeyItemNumber {
         this.pendingText = this.alternateText;
         this.showPreview();
       }, this.longPressMs);
+      const enter: () => void = (): void => { this.enterHeld(); };
+      this.pending = enter;
+      keyRollover.hold(enter);
       return;
     }
     for (const touch of event.changedTouches) {
       if (touch.id !== this.finger) { continue; }
       if (event.type !== TouchType.Up) { continue; }
-      const value: string = this.pendingText;
-      const currentEditor: boolean = this.startEpoch === editorAdapter.getEpoch();
-      const consumeShift: boolean = !this.longPressed && this.startKeyState === KeyState.ONCE_UPPER_CASE;
-      this.cancelTouch();
-      if (!currentEditor || value.length === 0) { return; }
-      if (consumeShift && this.keyState === KeyState.ONCE_UPPER_CASE) { this.keyState = KeyState.LOWER_CASE; }
-      kanonIme.keyText(value);
+      const enter: (() => void) | undefined = this.pending;
+      this.pending = undefined;
+      if (enter !== undefined && keyRollover.release(enter)) { enter(); } else { this.cancelTouch(); }
       return;
     }
+  }
+
+  // Enters the held key once, on release or when another key lands first.
+  private enterHeld(): void {
+    this.pending = undefined;
+    const value: string = this.pendingText;
+    const currentEditor: boolean = this.startEpoch === editorAdapter.getEpoch();
+    const consumeShift: boolean = !this.longPressed && this.startKeyState === KeyState.ONCE_UPPER_CASE;
+    this.cancelTouch();
+    if (!currentEditor || value.length === 0) { return; }
+    if (consumeShift && this.keyState === KeyState.ONCE_UPPER_CASE) { this.keyState = KeyState.LOWER_CASE; }
+    kanonIme.keyText(value);
   }
 
   build() {
