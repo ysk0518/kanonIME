@@ -111,7 +111,8 @@ test('P44: no learned entry preserves conversion and selection', async () => {
   const r = rig({ mode: 'JP', steps: [
     { operation: 'literal', text: paperReading, output: response(paperReading) },
     { operation: 'space', output: response('髪', { candidates, focused_id: 0, focused_reading: paperReading }) },
-    ...candidates.map(({ id }) => ({
+    // Only Mozc's top candidate reaches Mozc; another id would clear the top word's learning.
+    ...candidates.filter(({ id, deletable }) => id === 0 || deletable === true).map(({ id }) => ({
       operation: 'deleteCandidate', candidateId: id, output: '{"ok":false,"candidate_not_learned":true}'
     }))
   ] });

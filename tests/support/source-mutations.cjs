@@ -1,4 +1,9 @@
 const mutations = {
+  deleteAnyCandidateId: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'if (id !== 0 && target?.deletable !== true) {',
+    after: 'if (false) {'
+  },
   refreshAfterNoLearnedEntry: {
     file: 'kanon/MozcEngine.ets',
     before: `const update: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);

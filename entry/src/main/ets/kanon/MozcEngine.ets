@@ -19,6 +19,7 @@ import { compositionCaretPath } from './CompositionCursorSync';
 class Cand {
   id: number = -1;
   value: string = '';
+  deletable?: boolean;
 }
 
 class ConvOut {
@@ -460,6 +461,14 @@ export class MozcEngine implements EnginePort {
       const id: number = (event as CandidateInputEvent).candidateId;
       if (this.phase === 'empty' || !this.lastIds.includes(id)) {
         return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      // Mozc clears conversion learning for the segment's top candidate (id 0) whichever id is sent,
+      // so only the top candidate or a learned prediction may be deleted without touching another word.
+      const target: Cand | undefined = this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
+      if (id !== 0 && target?.deletable !== true) {
+        const skipped: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
+        skipped.candidateNotLearned = true;
+        return skipped;
       }
       const out: ConvOut = parseOut(await api.executeAsync('deleteCandidate', '', id));
       if (out.candidate_not_learned) {
