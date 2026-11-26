@@ -14,6 +14,7 @@ import { imeRuntimeBindings } from './AppStorageImeBindings';
 import { editorAdapter } from './EditorAdapter';
 import { englishPrediction } from './EnglishRuntime';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { emojiHistory } from '../common/EmojiHistoryStorage';
 import Log from '../model/Log';
 import { EmptyEditorRead } from './ExternalEditorSync';
 import { CandidateDeletionResult, ImeSession, ImeSessionPorts } from './ImeSession';
@@ -72,6 +73,12 @@ class KanonIme {
 
   async keyPaste(value: string): Promise<boolean> {
     return this.session.keyPaste(value);
+  }
+
+  async keyEmoji(value: string): Promise<void> {
+    keyboardHaptics.key();
+    const remember: boolean = this.ports.bindings.predictionAllowed();
+    if (await this.keyPaste(value) && remember) { emojiHistory.remember(value); }
   }
 
   async keyKana(kana: string): Promise<void> {

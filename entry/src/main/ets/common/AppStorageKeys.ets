@@ -35,6 +35,7 @@ export const KANON_CONVERSION_READING: string = 'kanonConversionReading';
 export const KANON_CURSOR: string = 'kanonCursor';
 export const KANON_DEBUG_CONSOLE: string = 'kanonDebugConsole';
 export const KANON_DEBUG_ENABLED: string = 'kanonDebugEnabled';
+export const KANON_EMOJI_HISTORY: string = 'kanonEmojiHistory';
 export const KANON_ENGLISH_COMPOSING: string = 'kanonEnglishComposing';
 export const KANON_ENGLISH_UNDO: string = 'kanonEnglishUndo';
 export const KANON_ERR: string = 'kanonErr';

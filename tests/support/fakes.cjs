@@ -104,4 +104,18 @@ function deferred() {
   return { promise, resolve };
 }
 
-module.exports = { response, ScriptedBridge, FakeEditor, update, deferred };
+// Harmony's deleteForward counts characters, as observed by device case D25.
+class GraphemeCountingEditor extends FakeEditor {
+  async deleteForward(length) {
+    if (this.hasSelection()) { return super.deleteForward(length); }
+    const before = this.text.slice(0, this.cursor);
+    const graphemes = [...new Intl.Segmenter('ja', { granularity: 'grapheme' }).segment(before)];
+    const start = graphemes[Math.max(0, graphemes.length - length)]?.index ?? this.cursor;
+    this.calls.push({ operation: 'deleteForward', length });
+    this.text = this.text.slice(0, start) + this.text.slice(this.cursor);
+    this.cursor = start;
+    return { ok: true, code: 0 };
+  }
+}
+
+module.exports = { response, ScriptedBridge, FakeEditor, GraphemeCountingEditor, update, deferred };

@@ -3,6 +3,7 @@ import { InputHandler } from '../model/KeyboardController';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { SymbolToggleItem } from './SymbolToggleItem';
+import { EmojiToggleItem } from './EmojiToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 
 @Component
@@ -33,6 +34,7 @@ export struct KeyboardToolbar {
       .accessibilityText(this.submenuType === SubMenuType.NORMAL ? 'キーボードメニュー' : 'キーボードに戻る')
       .id('keyboardMenu')
       SymbolToggleItem({ buttonHeight: this.toolbarHeight })
+      EmojiToggleItem({ buttonHeight: this.toolbarHeight })
       KeyboardShortcuts().layoutWeight(1)
       if (this.submenuType === SubMenuType.NORMAL && this.needsRecovery) {
         Column() {

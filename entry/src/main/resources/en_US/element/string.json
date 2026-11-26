@@ -1,5 +1,18 @@
 {
     "string":  [
+      { "name": "keyboard_show_emoji", "value": "Show emoji panel" },
+      { "name": "emoji_recent", "value": "Recently used" },
+      { "name": "emoji_faces", "value": "Faces" },
+      { "name": "emoji_people", "value": "People and hands" },
+      { "name": "emoji_nature", "value": "Animals and nature" },
+      { "name": "emoji_food", "value": "Food" },
+      { "name": "emoji_travel", "value": "Travel and places" },
+      { "name": "emoji_activities", "value": "Activities" },
+      { "name": "emoji_objects", "value": "Objects" },
+      { "name": "emoji_symbols", "value": "Symbols" },
+      { "name": "emoji_flags", "value": "Flags" },
+      { "name": "emoji_recent_empty", "value": "No recently used emoji" },
+      { "name": "emoji_clear_recent", "value": "Clear emoji history" },
       { "name": "settings_key_sound", "value": "Key sound" },
       { "name": "settings_key_sound_off", "value": "Off" },
       { "name": "settings_key_sound_low", "value": "Low" },

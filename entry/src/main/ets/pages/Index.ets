@@ -28,6 +28,7 @@ import { Submenu } from '../components/Submenu';
 import { CandidateBar } from '../components/CandidateBar';
 import { TopMenu } from '../components/TopMenu';
 import { ClipboardPanel } from '../components/ClipboardPanel';
+import { EmojiPanel } from '../components/EmojiPanel';
 import { KeyboardSettings } from '../components/KeyboardSettings';
 import { KeyboardSizeSettings } from '../components/KeyboardSizeSettings';
 import { FlickPreview } from '../components/FlickPreview';
@@ -54,6 +55,7 @@ struct Index {
   @StorageLink('kanonKeyGap') @Watch('updateMeasuredStyle') keyGap: number = DEFAULT_KEY_GAP;
   @StorageLink('kanonCandidateFontSize') @Watch('updateMeasuredStyle') candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
   @StorageLink('kanonCandidateRows') @Watch('updateMeasuredStyle') candidateRows: number = DEFAULT_CANDIDATE_ROWS;
+  @StorageProp('kanonCandidateDisplayRows') displayRows: number = DEFAULT_CANDIDATE_ROWS;
   @StorageLink('kanonFontScale') @Watch('updateMeasuredStyle') fontScale: number = 1;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
@@ -77,6 +79,9 @@ struct Index {
 
   inputPatternChange(): void {
     this.menuType = keyboardMenuType(this.layout, MenuType.NORMAL, this.inputPattern);
+    if (this.menuType === MenuType.NUMBER && this.submenuType === SubMenuType.EMOJI) {
+      this.submenuType = SubMenuType.NORMAL;
+    }
   }
 
   layoutChanged(): void {
@@ -97,13 +102,17 @@ struct Index {
     // On short windows retain enough height for the keys; typing never changes this choice.
     const rows: number = panelHeight - candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, 2, this.fontScale) >= 160 ? this.candidateRows : 1;
     if (AppStorage.get<number>(KANON_CANDIDATE_DISPLAY_ROWS) !== rows) { AppStorage.setOrCreate(KANON_CANDIDATE_DISPLAY_ROWS, rows); }
-    const barHeight: number = this.submenuType === SubMenuType.NORMAL ?
-      candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, rows, this.fontScale) : this.toolbarHeight;
+    const barHeight: number = this.submenuType === SubMenuType.NORMAL || this.submenuType === SubMenuType.EMOJI ?
+      this.candidateHeight(rows) : this.toolbarHeight;
     const height: number = Math.max(1, panelHeight - barHeight);
     if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5 ||
       this.inputStyle.keyGap !== effectiveKeyGap(width, height, this.keyGap)) {
       AppStorage.setOrCreate(INPUT_STYLE, StyleConfiguration.getInputStyle(width, height, this.keyGap));
     }
+  }
+
+  private candidateHeight(rows: number): number {
+    return candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, rows, this.fontScale);
   }
 
   build() {
@@ -121,6 +130,13 @@ struct Index {
       Column() {
         if (this.submenuType === SubMenuType.NORMAL) {
           CandidateBar()
+        } else if (this.submenuType === SubMenuType.EMOJI) {
+          Column() {
+            TopMenu()
+          }
+          .width('100%')
+          .height(this.candidateHeight(this.displayRows))
+          .backgroundColor($r('app.color.candidate_background'))
         } else {
           TopMenu()
         }
@@ -132,6 +148,8 @@ struct Index {
               EditView();
             } else if (this.submenuType === SubMenuType.CLIPBOARD) {
               ClipboardPanel()
+            } else if (this.submenuType === SubMenuType.EMOJI) {
+              EmojiPanel()
             } else if (this.submenuType === SubMenuType.SETTINGS) {
               KeyboardSettings({ languageOnly: true, onClose: () => { this.submenuType = SubMenuType.NORMAL; } })
             } else {

@@ -1,4 +1,9 @@
 const mutations = {
+  duplicateRecentEmoji: {
+    file: 'common/EmojiHistory.ets',
+    before: 'recent.filter((item: string) => item !== value)',
+    after: 'recent'
+  },
   playKeySoundWhenOff: {
     file: 'common/KeyboardSound.ets',
     before: 'if (level === 0) { return; }',
