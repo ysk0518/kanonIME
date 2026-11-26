@@ -44,6 +44,7 @@ export struct KeyMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_qwerty';
   @StorageLink('inputPattern') inputPattern: number = 0;
+  @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
   private keyList: keySourceListType[] = keySourceListData;
@@ -129,7 +130,8 @@ export struct KeyMenu {
             onActivate: () => { this.menuType = MenuType.SPECIAL; } })
         }.layoutWeight(1.25).height('100%')
         Column() { ModeCycleItem({ keyWidth: '100%' }) }.layoutWeight(1.5).height('100%')
-        Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%')
+        // Without 12-key there is nothing to switch to, so the space takes the room.
+        if (this.flickEnabled) { Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%') }
         Column() {
           KeyItem({ keyValue: { content: this.comma(), title: this.comma(), upperContent: this.comma() },
             keyId: 'qwerty_comma', keyWidth: '100%' })

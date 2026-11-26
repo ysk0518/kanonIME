@@ -39,3 +39,15 @@ test('P42: space labels follow the language, layout and composition state', () =
   assert.equal(spaceKeyLabel('NUMBER', true), '␣');
   assert.equal(spaceKeyLabel('SPECIAL', false, true), '␣');
 });
+
+test('Flick off: QWERTY and symbol pages drop the globe key so the space gets wider', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  for (const name of ['KeyMenu', 'SymbolMenu']) {
+    const source = fs.readFileSync(path.join(__dirname, '../../entry/src/main/ets/components', `${name}.ets`), 'utf8');
+    const globe = source.split('\n').filter((line) => line.includes('globe: true'));
+    assert.equal(globe.length, 1, name);
+    assert.match(globe[0], /^\s*if \(this\.flickEnabled\) \{ Column\(\) \{ LayoutItem\(/, name);
+    assert.match(source, /@StorageLink\('kanonFlickEnabled'\) flickEnabled: boolean = true;/, name);
+  }
+});

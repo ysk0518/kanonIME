@@ -29,6 +29,7 @@ import { LayoutItem } from './LayoutItem';
 export struct SymbolMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: number = 0;
+  @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   @Consume menuType: number;
   @State private page: number = 0;
 
@@ -78,7 +79,8 @@ export struct SymbolMenu {
           KeyItemGray({ keyValue: 'ABC', keyWidth: '100%', keyId: 'symbol_abc',
             onActivate: () => { this.menuType = MenuType.NORMAL; } })
         }.layoutWeight(1.25).height('100%')
-        Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%')
+        // Without 12-key there is nothing to switch to, so the space takes the room.
+        if (this.flickEnabled) { Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%') }
         Column() {
           KeyItem({ keyValue: { content: this.comma(), title: this.comma(), upperContent: this.comma() },
             keyId: 'symbol_comma', keyWidth: '100%' })
