@@ -1,10 +1,11 @@
 import { ImeSnapshot } from './ImeCoordinator';
 import { InputEvent } from './InputEventTypes';
 import { languageLayouts, layoutLanguage, nextLanguageLayout } from '../common/KeyboardConfigValues';
+import { numberModeReturnLanguage } from '../model/KeyboardModes';
 
 export interface PrepareLayoutRequest { kind: 'prepare'; }
 export interface CycleLayoutRequest { kind: 'cycle'; }
-export interface LayoutConfigRequest { kind: 'config'; layoutOrder: string; }
+export interface LayoutConfigRequest { kind: 'config'; layoutOrder: string; fromNumberMode?: boolean; }
 export type ImeLocalRequest = PrepareLayoutRequest | CycleLayoutRequest | LayoutConfigRequest;
 
 export interface ImeLocalRequestPort {
@@ -42,8 +43,10 @@ export class ImeLocalRequests {
     const order: string[] = languageLayouts(request.kind === 'config' ? request.layoutOrder : configured)
       .map((id: string) => this.port.flickEnabled() ? id :
         `${layoutLanguage(id) === 'EN' ? 'en' : 'jp'}_qwerty`);
+    const language: string = request.kind === 'config' && request.fromNumberMode && current.endsWith('_flick') ?
+      numberModeReturnLanguage(order.join(',')) : layoutLanguage(current);
     const target: string = request.kind === 'cycle' ? nextLanguageLayout(order.join(','), current) :
-      (order.find((id: string) => layoutLanguage(id) === layoutLanguage(current)) ?? order[0]);
+      (order.find((id: string) => layoutLanguage(id) === language) ?? order[0]);
     if (target !== current || this.port.snapshot().mode !== layoutLanguage(target)) {
       await this.port.dispatch({ kind: 'mode', text: layoutLanguage(target) === 'EN' ? 'EN' : 'JP' });
       const snapshot: ImeSnapshot = this.port.snapshot();

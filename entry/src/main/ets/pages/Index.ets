@@ -18,9 +18,9 @@ import Log from '../model/Log';
 import { EditView } from '../components/EditView';
 import { InputHandler } from '../model/KeyboardController';
 import { MenuType, SubMenuType } from '../model/KeyboardKeyData';
+import { keyboardMenuType } from '../model/KeyboardModes';
 import { KeyMenu } from '../components/KeyMenu';
 import { FlickMenu } from '../components/FlickMenu';
-import { NumberMenu } from '../components/NumberMenu';
 import { NumberFlickMenu } from '../components/NumberFlickMenu';
 import { StyleConfiguration, KeyStyle } from '../common/StyleConfiguration';
 import { SymbolMenu } from '../components/SymbolMenu';
@@ -57,7 +57,7 @@ struct Index {
   @StorageLink('kanonFontScale') @Watch('updateMeasuredStyle') fontScale: number = 1;
   private measuredWidth: number = 0;
   private measuredHeight: number = 0;
-  @StorageLink('kanonLayout') layout: string = 'jp_flick';
+  @StorageLink('kanonLayout') @Watch('layoutChanged') layout: string = 'jp_flick';
   @StorageLink('kanonLayoutOrder') @Watch('configChanged') layoutOrder: string = DEFAULT_LAYOUT_ORDER;
   @StorageLink('kanonMode') mode: string = 'JP';
   @Provide menuType: number = MenuType.NORMAL;
@@ -76,12 +76,11 @@ struct Index {
   }
 
   inputPatternChange(): void {
-    if (this.inputPattern === InputType.Number || this.inputPattern === InputType.PhoneNumber ||
-      this.inputPattern === InputType.NUMBER_PASSWORD) {
-      this.menuType = MenuType.NUMBER;
-    } else {
-      this.menuType = MenuType.NORMAL;
-    }
+    this.menuType = keyboardMenuType(this.layout, MenuType.NORMAL, this.inputPattern);
+  }
+
+  layoutChanged(): void {
+    this.menuType = keyboardMenuType(this.layout, this.menuType, this.inputPattern);
   }
 
   configChanged(): void { kanonIme.prepare(); }
@@ -139,14 +138,13 @@ struct Index {
               Submenu()
             }
           } else if (!this.candidatesExpanded || this.submenuType === SubMenuType.SIZE) {
-            if (this.menuType === MenuType.NORMAL) {
+            if (keyboardMenuType(this.layout, this.menuType, this.inputPattern) === MenuType.NUMBER) {
+              NumberFlickMenu()
+            } else if (this.menuType === MenuType.SPECIAL) {
+              SymbolMenu()
+            } else {
               if (this.layout === 'jp_flick' || this.layout === 'en_flick') { FlickMenu() }
               else { KeyMenu() }
-            } else if (this.menuType === MenuType.NUMBER) {
-              if (this.layout === 'jp_flick' || this.layout === 'en_flick') { NumberFlickMenu() }
-              else { NumberMenu() }
-            } else {
-              SymbolMenu()
             }
           }
         }

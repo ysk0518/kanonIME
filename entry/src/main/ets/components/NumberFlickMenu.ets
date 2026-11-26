@@ -1,5 +1,6 @@
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { numberFlickKeys } from '../model/NumberFlickData';
+import { numberFlickKind } from '../model/KeyboardModes';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { kanonIme } from '../kanon/KanonIme';
@@ -19,10 +20,7 @@ export struct NumberFlickMenu {
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
 
   private kind(): string {
-    if (this.inputPattern === InputType.NUMBER_PASSWORD) { return 'digits'; }
-    if (this.inputPattern === InputType.PhoneNumber) { return 'phone'; }
-    if (this.inputPattern === InputType.Number) { return 'number'; }
-    return 'general';
+    return numberFlickKind(this.inputPattern);
   }
 
   @Builder
@@ -49,7 +47,8 @@ export struct NumberFlickMenu {
       ForEach([0, 1, 2, 3], (row: number) => {
         Row({ space: this.inputStyle.keyGap }) {
           Column() {
-            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6, globe: true }) }
+            if (row === 3) { LayoutItem({ keyWidth: '100%', keyRadius: 6, globe: true,
+              fromNumberMode: this.kind() === 'general' }) }
             else if (row === 2) { ModeCycleItem({ keyWidth: '100%', keyRadius: 6, flick: true }) }
             else { this.control(row === 0 ? '↺' : '←', row === 0 ? 1 : 2) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
