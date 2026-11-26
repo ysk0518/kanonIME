@@ -22,6 +22,8 @@ import { editorAdapter } from '../kanon/EditorAdapter';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { SpaceGesture, SpaceGesturePort } from '../kanon/SpaceGesture';
+import { MenuType } from '../model/KeyboardKeyData';
+import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
 
 // 空格组件
 @Component
@@ -29,13 +31,14 @@ export struct SpaceItem {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   spaceWith: Resource | string | undefined = undefined;
+  @Consume menuType: number;
   @StorageLink('inputStyle') @Watch('cancelTouch') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonMode') @Watch('cancelTouch') imeMode: string = 'JP';
   @StorageLink('kanonLayout') @Watch('cancelTouch') layout: string = 'jp_qwerty';
   @StorageLink('kanonKeyboardVisible') @Watch('cancelTouch') keyboardVisible: boolean = false;
   @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @StorageLink('kanonConversionReading') conversionReading: string = '';
-  @StorageLink('kanonList') candidates: string[] = [];
+  @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
   @State private pressing: boolean = false;
   @State private dragging: boolean = false;
   private spacePort: SpaceGesturePort = {
@@ -76,9 +79,9 @@ export struct SpaceItem {
       Stack() {
         Text(this.dragging ? (this.imeMode === 'JP' && this.conversionReading.length > 0 ?
           $r('app.string.keyboard_space_drag_range') : $r('app.string.keyboard_space_drag_cursor')) :
-          this.imeMode === 'EN' && this.candidates.length > 0 ? $r('app.string.keyboard_convert') : 'space')
-          .fontSize(this.dragging ? 14 : this.inputStyle.symbol_fontSize)
-          .maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
+          spaceKeyLabel(this.menuType === MenuType.NORMAL ? this.imeMode : '', false, this.japaneseComposing))
+          .minFontSize(8).maxFontSize(14).maxFontScale(1.25)
+          .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST).maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .fontColor($r('app.color.key_text'))
       }
@@ -87,6 +90,7 @@ export struct SpaceItem {
       .width(this.spaceWith)
       .borderRadius(4)
       .height('100%')
+      .clip(true)
       .id('spaceItem')
       .onTouch((event: TouchEvent) => this.touch(event))
       .accessibilityText($r('app.string.keyboard_space_drag_help'))

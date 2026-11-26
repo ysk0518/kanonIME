@@ -119,36 +119,12 @@ export struct KeyItemNumber {
 
   build() {
     Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center, justifyContent: FlexAlign.Center }) {
-      if (this.inputStyle.basicButtonHeight < 44 && this.keyValue) {
-        Stack({ alignContent: Alignment.TopEnd }) {
-          Text(this.keyState === KeyState.LOWER_CASE ? this.keyValue.content : this.keyValue.upperContent)
-            .fontSize(this.inputStyle.en_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-            .fontWeight(FontWeight.Regular)
-            .width('100%')
-            .height('100%')
-            .textAlign(TextAlign.Center)
-          Text(this.keyValue.title)
-            .fontSize(this.inputStyle.litterNumberFontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-            .fontColor($r('app.color.key_text'))
-            .fontWeight(FontWeight.Regular)
-            .width('12vp')
-            .height('12vp')
-            .textAlign(TextAlign.Center)
-            .margin({ top: 1, right: 1 })
-        }
-        .width('100%')
-        .height('100%')
-      } else if (this.keyValue) {
-        Text(this.keyValue.title)
-          .fontSize(this.inputStyle.litterNumberFontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
-          .fontColor($r('app.color.key_item_normal_text'))
-          .fontWeight(FontWeight.Regular)
-          .margin({ top: 4 })
+      if (this.keyValue) {
         Text(this.keyState === KeyState.LOWER_CASE ? this.keyValue.content : this.keyValue.upperContent)
-          .fontSize(this.inputStyle.en_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
+          .minFontSize(8).maxFontSize(this.inputStyle.en_fontSize)
+          .maxFontScale(1.25).maxLines(1)
+          .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
           .fontColor($r('app.color.key_text'))
-          .fontWeight(FontWeight.Regular)
       }
     }
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))

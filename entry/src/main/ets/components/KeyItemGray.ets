@@ -16,7 +16,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
-import { MenuKey, MenuType } from '../model/KeyboardKeyData';
+import { MenuType } from '../model/KeyboardKeyData';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Styles function pressedStyles() {
@@ -32,29 +32,30 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 export struct KeyItemGray {
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
-  keyValue: string | undefined = undefined;
+  @Prop keyValue: string = '';
+  keyId: string = '';
+  keyWidth: string | undefined = undefined;
+  onActivate: (() => void) | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @Consume menuType: number;
 
   build() {
     Stack() {
-      if (this.keyValue) {
-        Text(this.keyValue).fontSize(this.inputStyle.switchNumberFontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1).fontColor($r('app.color.key_text'))
-      }
+      Text(this.keyValue)
+        .minFontSize(8).maxFontSize(this.inputStyle.switchNumberFontSize).maxFontScale(1)
+        .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+        .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.key_text'))
     }
     .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
     .onClick(() => {
-      if (this.keyValue === MenuKey.NUMBER_KEY) {
-        keyboardHaptics.key();
-        this.menuType = MenuType.NUMBER;
-      } else if (this.keyValue === MenuKey.SPECIAL_KEY) {
-        keyboardHaptics.key();
-        this.menuType = MenuType.SPECIAL;
-      }
+      keyboardHaptics.key();
+      if (this.onActivate) { this.onActivate(); }
+      else { this.menuType = MenuType.SPECIAL; }
     })
     .height('100%')
-    .width(this.inputStyle.switchButtonWidth)
+    .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)
+    .id(this.keyId)
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
     .stateStyles({
       normal: normalStyles, pressed: pressedStyles

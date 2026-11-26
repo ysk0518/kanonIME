@@ -4,6 +4,8 @@ import { DeleteItem } from './DeleteItem';
 import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
 import { ConvertSpaceItem } from './ConvertSpaceItem';
+import { ReturnItem } from './ReturnItem';
+import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
@@ -16,8 +18,6 @@ export struct FlickMenu {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
-  @StorageLink('enterKeyType') enterKeyType: EnterKeyType = EnterKeyType.Done;
-  @StorageLink('kanonEnglishComposing') englishComposing: boolean = false;
   @State private englishUpper: boolean = false;
   private keys: string[][] = [
     ['あ', 'い', 'う', 'え', 'お'], ['か', 'き', 'く', 'け', 'こ'], ['さ', 'し', 'す', 'せ', 'そ'],
@@ -37,7 +37,9 @@ export struct FlickMenu {
   @Builder
   control(label: string, action: number) {
     Text(label)
-      .fontSize(16).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
+      .minFontSize(8).maxFontSize(action === 5 ? 14 : 16)
+      .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
+      .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .fontColor(action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text'))
       .fontWeight(action === 8 && this.englishUpper ? FontWeight.Medium : FontWeight.Normal)
@@ -55,7 +57,6 @@ export struct FlickMenu {
         else if (action === 5) { kanonIme.keySpace(); }
         else if (action === 6) { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
         else if (action === 8) { keyboardHaptics.key(); this.englishUpper = !this.englishUpper; }
-        else { kanonIme.keyReturn(); }
       })
       .id(`flick_control_${action}`)
   }
@@ -88,11 +89,8 @@ export struct FlickMenu {
           Column() {
             if (row === 0) { DeleteItem({ keyWidth: '100%' }) }
             else if (row === 2 && this.layout !== 'en_flick') { ConvertSpaceItem() }
-            else { this.control(row === 1 ? '→' : row === 2 ? 'space' :
-              this.layout === 'en_flick' && this.englishComposing ? 'Enter' :
-              this.enterKeyType === EnterKeyType.Send ? '送信' :
-              this.enterKeyType === EnterKeyType.Search ? '検索' :
-              'Enter', row === 1 ? 6 : row === 2 ? 5 : 7) }
+            else if (row === 3) { ReturnItem({ returnWidth: '100%', keyId: 'flick_control_7', flick: true }) }
+            else { this.control(row === 1 ? '→' : spaceKeyLabel('EN'), row === 1 ? 6 : 5) }
           }.width(FLICK_ACTION_COLUMN_WIDTH).height('100%')
         }
         .layoutWeight(1)

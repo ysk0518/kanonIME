@@ -19,54 +19,82 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { KeyItem } from './KeyItem';
 import { KeyItemGray } from './KeyItemGray';
 import { ReturnItem } from './ReturnItem';
-import { MenuKey, symbolSourceListData, sourceListType } from '../model/KeyboardKeyData';
+import { MenuType, symbolPageRows } from '../model/KeyboardKeyData';
+import { isUrlInputPattern } from '../model/KeyboardKeyLabels';
 import { SpaceItem } from './SpaceItem';
 import { LayoutItem } from './LayoutItem';
-import { ModeCycleItem } from './ModeCycleItem';
 
 // 符号键盘
 @Component
 export struct SymbolMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
+  @StorageLink('inputPattern') inputPattern: number = 0;
   @Consume menuType: number;
-  private symbolList: sourceListType[] = symbolSourceListData;
+  @State private page: number = 0;
+
+  private comma(): string {
+    return isUrlInputPattern(this.inputPattern) ? '/' : ',';
+  }
+
+  @Builder
+  symbolKeys(row: number) {
+    ForEach(symbolPageRows[this.page][row], (symbol: string) => {
+      KeyItem({ keyValue: { content: symbol, title: symbol, upperContent: symbol },
+        keyId: `symbol_key_${symbol}` })
+    }, (symbol: string) => symbol)
+  }
 
   build() {
     Column({ space: this.inputStyle.keyGap }) {
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
-        ForEach(this.symbolList.slice(0, 10), (item: sourceListType) => {
-          KeyItem({ keyValue: { content: item.content, title: item.content, upperContent: item.content } })
-        }, (item: sourceListType) => item.content)
+        this.symbolKeys(0)
       }
       .width('100%')
       .layoutWeight(1)
 
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
-        ForEach(this.symbolList.slice(10, 20), (item: sourceListType) => {
-          KeyItem({ keyValue: { content: item.content, title: item.content, upperContent: item.content } })
-        }, (item: sourceListType) => item.content)
+        this.symbolKeys(1)
       }
       .width('100%')
       .layoutWeight(1)
 
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
-        KeyItemGray({ keyValue: MenuKey.NUMBER_KEY })
-        ForEach(this.symbolList.slice(20), (item: sourceListType) => {
-          KeyItem({ keyValue: { content: item.content, title: item.content, upperContent: item.content } })
-        }, (item: sourceListType) => item.content)
+        this.symbolKeys(2)
+      }
+      .width('100%')
+      .layoutWeight(1)
+
+      Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
+        KeyItemGray({ keyValue: this.page === 0 ? '1/2' : '2/2', keyId: 'symbol_page_toggle',
+          onActivate: () => { this.page = 1 - this.page; } })
+        this.symbolKeys(3)
         DeleteItem()
       }
       .width('100%')
       .layoutWeight(1)
 
       Row({ space: this.inputStyle.bottomKeyGap }) {
-        LayoutItem()
-        ModeCycleItem()
-        KeyItem({ keyValue: { content: '<', title: '<', upperContent: '<' } })
-        KeyItem({ keyValue: { content: '>', title: '>', upperContent: '>' } })
-        Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(1).height('100%')
-        KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' } })
-        ReturnItem({ returnWidth: this.inputStyle.returnButtonWidthType_2 })
+        Column() {
+          KeyItemGray({ keyValue: 'ABC', keyWidth: '100%', keyId: 'symbol_abc',
+            onActivate: () => { this.menuType = MenuType.NORMAL; } })
+        }.layoutWeight(1.25).height('100%')
+        Column() { LayoutItem({ keyWidth: '100%', globe: true }) }.layoutWeight(1).height('100%')
+        Column() {
+          KeyItem({ keyValue: { content: this.comma(), title: this.comma(), upperContent: this.comma() },
+            keyId: 'symbol_comma', keyWidth: '100%' })
+        }.layoutWeight(1).height('100%')
+        Column() { SpaceItem({ spaceWith: '100%' }) }.layoutWeight(4).height('100%')
+        Column() {
+          KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' },
+            keyId: 'symbol_key_.', keyWidth: '100%' })
+        }.layoutWeight(1).height('100%')
+        if (isUrlInputPattern(this.inputPattern)) {
+          Column() {
+            KeyItem({ keyValue: { content: 'www.', title: 'www.', upperContent: 'www.' },
+              keyId: 'symbol_www', keyWidth: '100%', directInput: true })
+          }.layoutWeight(1.75).height('100%')
+        }
+        Column() { ReturnItem({ returnWidth: '100%' }) }.layoutWeight(1.5).height('100%')
       }
       .width('100%')
       .layoutWeight(1)

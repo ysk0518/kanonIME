@@ -17,15 +17,7 @@ import { INPUT_STYLE, KANON_CANDIDATE_DISPLAY_ROWS } from '../common/AppStorageK
 import Log from '../model/Log';
 import { EditView } from '../components/EditView';
 import { InputHandler } from '../model/KeyboardController';
-import {
-  MenuType,
-  SubMenuType,
-  keySourceListData,
-  numberSourceListData,
-  symbolSourceListData,
-  keySourceListType,
-  sourceListType
-} from '../model/KeyboardKeyData';
+import { MenuType, SubMenuType } from '../model/KeyboardKeyData';
 import { KeyMenu } from '../components/KeyMenu';
 import { FlickMenu } from '../components/FlickMenu';
 import { NumberMenu } from '../components/NumberMenu';

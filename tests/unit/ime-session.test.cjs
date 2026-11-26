@@ -336,7 +336,7 @@ test('P40: the 12-key 変換 and 候補 controls route through Space', async () 
   assert.match(modeKey, /if \(this\.converts\(\)\) \{\s*Text\(\$r\('app\.string\.keyboard_convert'\)\)/);
   assert.match(modeKey, /if \(this\.converts\(\)\) \{ await kanonIme\.keySpace\(\); return; \}/);
   const candidateKey = component('ConvertSpaceItem');
-  assert.match(candidateKey, /this\.japaneseComposing \? \$r\('app\.string\.keyboard_candidates'\)/);
+  assert.match(candidateKey, /Text\(spaceKeyLabel\('JP', true, this\.japaneseComposing\)\)/);
   assert.match(candidateKey, /kanonIme\.keySpace\(\)/);
   const r = rig({ mode: 'JP', steps: [
     { operation: 'literal', text: 'き', output: response('き') },

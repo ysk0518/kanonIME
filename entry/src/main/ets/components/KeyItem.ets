@@ -19,6 +19,7 @@ import { keySourceListType, } from '../model/KeyboardKeyData';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { kanonIme } from '../kanon/KanonIme';
 import { editorAdapter } from '../kanon/EditorAdapter';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 
 // 无大小写的按键组件
@@ -28,6 +29,7 @@ export struct KeyItem {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @Prop @Watch('cancelTouch') keyValue: keySourceListType | undefined = undefined;
   kanaInput: boolean = false;
+  directInput: boolean = false;
   keyId: string = '';
   keyWidth: number | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
@@ -57,7 +59,10 @@ export struct KeyItem {
       this.finger = -1;
       this.active = false;
       if (this.startEpoch !== editorAdapter.getEpoch() || !this.keyValue) { return; }
-      if (this.kanaInput) { kanonIme.keyKana(this.keyValue.content); }
+      if (this.directInput) {
+        keyboardHaptics.key();
+        kanonIme.keyPaste(this.keyValue.content);
+      } else if (this.kanaInput) { kanonIme.keyKana(this.keyValue.content); }
       else { kanonIme.keyText(this.keyValue.content); }
       return;
     }
@@ -67,7 +72,10 @@ export struct KeyItem {
     Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center, justifyContent: FlexAlign.Center }) {
       if (this.keyValue) {
         Text(this.keyValue.content)
-          .fontSize(this.inputStyle.symbol_fontSize).maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
+          .minFontSize(8).maxFontSize(this.inputStyle.symbol_fontSize)
+          .maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
+          .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
           .fontColor($r('app.color.key_text'))
       }
     }

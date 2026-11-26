@@ -44,7 +44,8 @@ test('P41: English directions, bottom-center -# and third-row Space', () => {
   assert.deepEqual(array('digitHints'), ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '']);
   assert.match(source, /\.slice\(row \* 3, row \* 3 \+ 3\)/);
   assert.match(source, /else if \(row === 2 && this\.layout !== 'en_flick'\) \{ ConvertSpaceItem\(\) \}/);
-  assert.match(source, /else \{ this\.control\(row === 1 \? '→' : row === 2 \? 'space' :[\s\S]*?row === 2 \? 5 : 7\)/);
+  assert.match(source, /else if \(row === 3\) \{ ReturnItem\(\{[^}]*keyId: 'flick_control_7'/);
+  assert.match(source, /else \{ this\.control\(row === 1 \? '→' : spaceKeyLabel\('EN'\), row === 1 \? 6 : 5\)/);
   assert.match(source, /else if \(action === 5\) \{ kanonIme\.keySpace\(\); \}/);
 });
 
