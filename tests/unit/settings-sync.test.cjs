@@ -4,6 +4,20 @@ const { REQUEST, UPDATE, CHANGE, ACK } = require('../../entry/src/main/ets/commo
 const { pair } = require('../support/settings-sync-rig.cjs');
 const { deferred } = require('../support/fakes.cjs');
 
+test('P46: key sound syncs from settings to the IME and back', async () => {
+  const r = await pair();
+  await r.app.core.save({ keySoundLevel: 1 }, false);
+  await r.pump();
+  assert.equal(r.ime.state.applied.at(-1).snapshot.keySoundLevel, 1);
+  await r.ime.core.save({ keySoundLevel: 2 }, false);
+  await r.pump();
+  assert.equal(r.app.state.record.snapshot.keySoundLevel, 2);
+  assert.equal(r.ime.state.record.pending.length, 0);
+  await r.app.core.save({ keySoundLevel: 0 }, false);
+  await r.pump();
+  assert.equal(r.ime.state.applied.at(-1).snapshot.keySoundLevel, 0);
+});
+
 test('P43: multi-tap setting syncs from the app and back from the IME', async () => {
   const r = await pair();
   await r.app.core.save({ toggleInputEnabled: true }, false);

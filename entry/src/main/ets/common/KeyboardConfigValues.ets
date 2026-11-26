@@ -2,6 +2,7 @@ export const DEFAULT_LAYOUT_ORDER: string = 'jp_flick,en_flick';
 export const KEYBOARD_LAYOUTS: string[] = ['jp_flick', 'jp_qwerty', 'en_flick', 'en_qwerty'];
 export const DEFAULT_FLICK_ENABLED: boolean = true;
 export const DEFAULT_HAPTIC_LEVEL: number = 1;
+export const DEFAULT_KEY_SOUND_LEVEL: number = 0;
 export const DEFAULT_FLICK_DISTANCE: number = 18;
 export const DEFAULT_LONG_PRESS_MS: number = 400;
 export const DEFAULT_KEY_PREVIEW_ENABLED: boolean = true;

@@ -2,7 +2,7 @@ import {
   ENTER_KEY_TYPE, INPUT_HANDLER, INPUT_PATTERN, INPUT_STYLE, IS_LANDSCAPE, KANON_CANDIDATES_EXPANDED,
   KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_PREVIEW, KANON_FLICK_PREVIEW_OWNER,
   KANON_FONT_SCALE, KANON_HEIGHT_ADJUSTMENT_BOTTOM_VP, KANON_HEIGHT_PREVIEW_VP, KANON_ID_LIST,
-  KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEYBOARD_VISIBLE, KANON_LAYOUT, KANON_LIST, KANON_MODE,
+  KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEYBOARD_VISIBLE, KANON_KEY_SOUND_LEVEL, KANON_LAYOUT, KANON_LIST, KANON_MODE,
   KANON_PANEL_HEIGHT_PX, KANON_PANEL_WIDTH_PX, KANON_TOOLBAR_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
 } from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
@@ -42,6 +42,7 @@ import { keyboardPanelGeometry, keyboardPanelHeight, panelScreen, panelStyleSize
 import { openKeyboardPreferences, refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent, layoutLanguage } from '../common/KeyboardConfig';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardBackground } from '../common/KeyboardBackground';
+import { harmonyKeyboardSound } from '../common/HarmonyKeyboardSound';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
 interface CursorInfo {
@@ -137,6 +138,7 @@ class KeyboardController {
   private mContext: InputMethodExtensionContext | undefined;
   private panel: inputMethodEngine.Panel | undefined;
   private panelReady: boolean = false;
+  private soundPanelVisible: boolean = false;
   private panelGeneration: number = 0;
   private active: boolean = false;
   private heightAdjustment: boolean = false;
@@ -191,6 +193,7 @@ class KeyboardController {
     refreshKeyboardHeightPercent();
     keyboardBackground.initialize(context, true).catch(() => {});
     keyboardSettingsSync.onApplied = async (snapshot, heightChanged: boolean, fromPeer: boolean) => {
+      this.updateKeySound();
       const candidateKey: string = `${snapshot.candidateFontSize}:${snapshot.candidateRows}`;
       const candidatesChanged: boolean = this.candidateSettingsKey !== candidateKey;
       this.candidateSettingsKey = candidateKey;
@@ -242,12 +245,20 @@ class KeyboardController {
         AppStorage.setOrCreate(KANON_PANEL_HEIGHT_PX, size.height);
       });
       // The OS can hide the panel on focus loss without keyboardHide.
-      // Observe the panel itself; visibility is only a hint to read the editor.
+      // Use actual panel visibility for the sound pool lifetime.
       panel.on('show', () => {
-        if (this.active && generation === this.panelGeneration) { kanonIme.editorVisibilityChanged(); }
+        if (this.active && generation === this.panelGeneration) {
+          this.soundPanelVisible = true;
+          this.updateKeySound();
+          kanonIme.editorVisibilityChanged();
+        }
       });
       panel.on('hide', () => {
-        if (this.active && generation === this.panelGeneration) { kanonIme.editorVisibilityChanged(); }
+        if (this.active && generation === this.panelGeneration) {
+          this.soundPanelVisible = false;
+          this.updateKeySound();
+          kanonIme.editorVisibilityChanged();
+        }
       });
       this.applyPanelRect(panel);
       await panel.setUiContent('pages/Index');
@@ -260,6 +271,8 @@ class KeyboardController {
   }
 
   private destroyPanel(): void {
+    this.soundPanelVisible = false;
+    harmonyKeyboardSound.release();
     this.heightAdjustment = false;
     this.adjustmentBottomInset = -1;
     this.panelGeneration++;
@@ -277,6 +290,14 @@ class KeyboardController {
       InputMethodEngine.destroyPanel(panel).catch((error: BusinessError) => {
         Log.showInfo(TAG, `panel-destroy failed code=${error.code}`);
       });
+    }
+  }
+
+  private updateKeySound(): void {
+    if (this.soundPanelVisible && this.mContext && AppStorage.get<number>(KANON_KEY_SOUND_LEVEL)) {
+      harmonyKeyboardSound.prepare(this.mContext);
+    } else {
+      harmonyKeyboardSound.release();
     }
   }
 

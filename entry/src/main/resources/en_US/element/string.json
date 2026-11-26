@@ -1,5 +1,10 @@
 {
     "string":  [
+      { "name": "settings_key_sound", "value": "Key sound" },
+      { "name": "settings_key_sound_off", "value": "Off" },
+      { "name": "settings_key_sound_low", "value": "Low" },
+      { "name": "settings_key_sound_high", "value": "High" },
+      { "name": "settings_reset_feedback_scope", "value": "Reset vibration, key sound, and shortcut layout to their defaults." },
       { "name": "settings_candidate_font", "value": "Candidate text size: %d" },
       { "name": "settings_candidate_rows", "value": "Candidate rows" },
       { "name": "settings_toggle_input", "value": "Multi-tap input" },

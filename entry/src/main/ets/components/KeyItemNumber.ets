@@ -22,6 +22,7 @@ import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
 import { keyPreviewSize } from '../common/KeyboardLayout';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 // 有大小写的按键组件
 @Component
@@ -85,6 +86,7 @@ export struct KeyItemNumber {
       this.active = true;
       this.longPressed = false;
       this.startEpoch = editorAdapter.getEpoch();
+      keyboardHaptics.press();
       this.startKeyState = this.keyState;
       this.pendingText = this.keyState === KeyState.LOWER_CASE ? this.keyValue.content : this.keyValue.upperContent;
       this.alternateText = this.keyValue.title;

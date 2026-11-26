@@ -1,6 +1,6 @@
 import {
   KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_DISTANCE, KANON_FLICK_ENABLED,
-  KANON_FLICK_PREVIEW_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEY_GAP,
+  KANON_FLICK_PREVIEW_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEY_GAP, KANON_KEY_SOUND_LEVEL,
   KANON_LAYOUT_ORDER, KANON_LONG_PRESS_MS, KANON_SETTINGS_GENERATION, KANON_SETTINGS_PENDING_COUNT,
   KANON_SETTINGS_REVISION, KANON_SHORTCUT_ORDER
 } from './AppStorageKeys';
@@ -101,6 +101,7 @@ function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   setValue(KANON_CANDIDATE_FONT_SIZE, snapshot.candidateFontSize);
   setValue(KANON_CANDIDATE_ROWS, snapshot.candidateRows);
   setValue(KANON_HAPTIC_LEVEL, snapshot.hapticLevel);
+  setValue(KANON_KEY_SOUND_LEVEL, snapshot.keySoundLevel);
   setValue(KANON_SHORTCUT_ORDER, snapshot.shortcutOrder);
   if (!previous || previous.heightPercent !== snapshot.heightPercent || AppStorage.get<number>(KANON_KEYBOARD_HEIGHT_PERCENT) === undefined) {
     setValue(KANON_KEYBOARD_HEIGHT_PERCENT, snapshot.heightPercent);

@@ -89,7 +89,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['deleteAnyCandidateId', 'P44', 'no learned entry preserves conversion and selection'],
   ['refreshAfterNoLearnedEntry', 'P44', 'no learned entry preserves conversion and selection'],
   ['omitCandidateDeleteNotice', 'P44', 'deletion results appear as timed keyboard text'],
-  ['qwertyEntersNumberMode', 'P45', 'QWERTY cycles between Japanese and English']]) {
+  ['qwertyEntersNumberMode', 'P45', 'QWERTY cycles between Japanese and English'],
+  ['playKeySoundWhenOff', 'P46', 'off never calls playback']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

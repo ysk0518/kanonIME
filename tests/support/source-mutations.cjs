@@ -1,4 +1,9 @@
 const mutations = {
+  playKeySoundWhenOff: {
+    file: 'common/KeyboardSound.ets',
+    before: 'if (level === 0) { return; }',
+    after: ''
+  },
   qwertyEntersNumberMode: {
     file: 'model/KeyboardModes.ets',
     before: "if (flick && mode === 'EN') { return 'NUMBER'; }",

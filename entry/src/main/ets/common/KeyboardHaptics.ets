@@ -1,13 +1,38 @@
-import { KANON_HAPTIC_LEVEL } from './AppStorageKeys';
+import { KANON_HAPTIC_LEVEL, KANON_KEY_SOUND_LEVEL } from './AppStorageKeys';
+import { DEFAULT_KEY_SOUND_LEVEL } from './KeyboardConfigValues';
+import { keyboardSound } from './HarmonyKeyboardSound';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import vibrator from '@ohos.vibrator';
+
+const PRESS_FEEDBACK_MS: number = 1500;
 
 class KeyboardHaptics {
   private supportedSoft: boolean | undefined = undefined;
   private supportedHard: boolean | undefined = undefined;
   private lastPulse: number = 0;
+  private pressedAt: number = -1;
+
+  // Character keys give feedback when the finger lands, as Samsung and Gboard do,
+  // instead of when the character is entered on release. The release then skips
+  // its own feedback once. A press that never reaches release expires.
+  press(): void {
+    this.fire();
+    this.pressedAt = Date.now();
+  }
 
   key(): void {
+    if (this.pressedAt >= 0) {
+      const pressed: boolean = Date.now() - this.pressedAt < PRESS_FEEDBACK_MS;
+      this.pressedAt = -1;
+      if (pressed) { return; }
+    }
+    this.fire();
+  }
+
+  private fire(): void {
+    // BASIC can attempt playback of the same local click. It uses no protected
+    // vibrator API or editor contents, and any playback failure is ignored.
+    keyboardSound.key(AppStorage.get<number>(KANON_KEY_SOUND_LEVEL) ?? DEFAULT_KEY_SOUND_LEVEL);
     const level: number = AppStorage.get<number>(KANON_HAPTIC_LEVEL) ?? 1;
     if (level === 0) { return; }
     const now: number = Date.now();
