@@ -1213,3 +1213,35 @@ test('P29: R-04: confirmed external empty resets and publishes without cancellin
   assert.equal(r.editor.calls.length, editorCalls);
   assert.equal(r.editor.text, '');
 });
+
+test('P48: roman keys typed during a Mozc call join one call that predicts after the last key', async () => {
+  const first = deferred();
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'convert', text: 's', output: () => first.promise },
+    { operation: 'convert', text: 'yu', output: response('しゅ') }
+  ] });
+  const typing = [r.session.keyText('s')];
+  await new Promise(resolve => setImmediate(resolve));
+  typing.push(r.session.keyText('y'), r.session.keyText('u'));
+  first.resolve(response('ｓ'));
+  await Promise.all(typing);
+  assert.equal(r.editor.text, 'しゅ');
+  r.bridge.assertDone();
+});
+
+test('P48: a key after another kind of request is not merged across it', async () => {
+  const first = deferred();
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'convert', text: 'k', output: () => first.promise },
+    { operation: 'convert', text: 'a', output: response('か') },
+    { operation: 'backspace', output: response('') },
+    { operation: 'convert', text: 'i', output: response('い') }
+  ] });
+  const typing = [r.session.keyText('k')];
+  await new Promise(resolve => setImmediate(resolve));
+  typing.push(r.session.keyText('a'), r.session.keyDelete(), r.session.keyText('i'));
+  first.resolve(response('ｋ'));
+  await Promise.all(typing);
+  assert.equal(r.editor.text, 'い');
+  r.bridge.assertDone();
+});

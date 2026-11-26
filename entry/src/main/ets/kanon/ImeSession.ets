@@ -50,6 +50,20 @@ interface ToggleTapRequest { kind: 'toggleTap'; key: string; uppercase: boolean;
 interface ToggleRightRequest { kind: 'toggleRight'; time: number; }
 interface ToggleBackRequest { kind: 'toggleBack'; time: number; }
 interface ToggleSelection { epoch: number; begin: number; end: number; }
+/** A queued Japanese roman-key request that later keys may still join before it starts. */
+interface OpenRomanKeys {
+  event: UiEvent;
+  epoch: number;
+  generation: number;
+  ticket: number;
+  started: boolean;
+  result: Promise<ImeSnapshot>;
+}
+
+/** One lowercase roman letter; Mozc converts a run of them in one call. */
+export function isRomanKey(text: string): boolean {
+  return text.length === 1 && text >= 'a' && text <= 'z';
+}
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest | RevertConversionRequest |
   ToggleTapRequest | ToggleRightRequest | ToggleBackRequest | DeleteLearnedCandidateRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
@@ -72,6 +86,7 @@ export class ImeSession {
   private preview: CompositionPreview;
   private completion: EnglishCompletionLifecycle;
   private cursorSync: CompositionCursorSync;
+  private openRomanKeys: OpenRomanKeys | undefined = undefined;
   private presentation: ImePresentation;
   private inputQueue: InputOperationQueue<ImeSnapshot>;
   private localRequests: ImeLocalRequests;
@@ -631,7 +646,36 @@ export class ImeSession {
   }
 
   async keyText(ch: string): Promise<void> {
-    await this.post('text', ch);
+    // Each Mozc call computes predictions (about 25 ms on device). Keys typed while
+    // an earlier call runs join the queued request instead of waiting one call each;
+    // Mozc then predicts only after the last of them.
+    const epoch: number = this.ports.editor.getEpoch();
+    const open: OpenRomanKeys | undefined = this.openRomanKeys;
+    if (open !== undefined && !open.started && isRomanKey(ch) && this.mode === 'JP' &&
+      open.epoch === epoch && open.generation === this.compositionGeneration &&
+      open.ticket === this.inputQueue.enqueuedCount()) {
+      open.event.text = (open.event.text ?? '') + ch;
+      await open.result;
+      return;
+    }
+    if (!isRomanKey(ch) || this.mode !== 'JP') {
+      await this.post('text', ch);
+      return;
+    }
+    const event: UiEvent = createInputEvent('text', ch);
+    const generation: number = this.compositionGeneration;
+    const entry: OpenRomanKeys = {
+      event: event, epoch: epoch, generation: generation, ticket: -1, started: false,
+      result: Promise.resolve(this.coord.getSnapshot())
+    };
+    entry.result = this.inputQueue.enqueue((): Promise<ImeSnapshot> => {
+      entry.started = true;
+      if (this.openRomanKeys === entry) { this.openRomanKeys = undefined; }
+      return this.postSerial(event, generation);
+    });
+    entry.ticket = this.inputQueue.enqueuedCount();
+    this.openRomanKeys = entry;
+    await entry.result;
   }
 
   async keyPaste(value: string): Promise<boolean> {

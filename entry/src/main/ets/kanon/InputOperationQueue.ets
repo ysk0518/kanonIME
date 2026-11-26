@@ -3,13 +3,18 @@ export class InputOperationQueue<T> {
   private tail: Promise<void> = Promise.resolve();
   private getEpoch: () => number;
   private staleResult: () => T;
+  private count: number = 0;
 
   constructor(getEpoch: () => number, staleResult: () => T) {
     this.getEpoch = getEpoch;
     this.staleResult = staleResult;
   }
 
+  /** Increases on every enqueue, so a caller can tell whether its operation is still the last one. */
+  enqueuedCount(): number { return this.count; }
+
   enqueue(operation: () => Promise<T>): Promise<T> {
+    this.count++;
     const epoch: number = this.getEpoch();
     const run: Promise<T> = this.tail.then((): Promise<T> => {
       if (epoch !== this.getEpoch()) { return Promise.resolve(this.staleResult()); }

@@ -70,8 +70,14 @@ function parseOut(json: string): ConvOut {
   return out;
 }
 
+/** One or more lowercase roman letters; several arrive together when fast keys were merged. */
 function isRomanLower(s: string): boolean {
-  return s.length === 1 && s >= 'a' && s <= 'z';
+  if (s.length === 0) { return false; }
+  for (let i: number = 0; i < s.length; i++) {
+    const c: string = s.charAt(i);
+    if (c < 'a' || c > 'z') { return false; }
+  }
+  return true;
 }
 
 export class MozcEngine implements EnginePort {
@@ -443,6 +449,9 @@ export class MozcEngine implements EnginePort {
       this.editing.afterInput(retainConversion, out.result.length > 0, out.preedit_len > 0);
       if (literal) {
         units = units.concat(literalInputs(t));
+      } else if (kind === 'text') {
+        // Keep one replayable unit per key, also for keys merged into one call.
+        for (let i: number = 0; i < unit.length; i++) { units.push(new CompositionInput(unit.charAt(i), '')); }
       } else {
         units.push(new CompositionInput(unit, kind === 'kana' ? t : ''));
       }
