@@ -40,12 +40,13 @@ export interface ImeSessionPorts {
 
 interface EnglishUndoRequest { kind: 'undoEnglish'; }
 interface RevertConversionRequest { kind: 'revertConversion'; }
+interface DeleteLearnedCandidateRequest { kind: 'deleteLearnedCandidate'; candidate: CandidateLabel; deleted: boolean; }
 interface ToggleTapRequest { kind: 'toggleTap'; key: string; uppercase: boolean; time: number; }
 interface ToggleRightRequest { kind: 'toggleRight'; time: number; }
 interface ToggleBackRequest { kind: 'toggleBack'; time: number; }
 interface ToggleSelection { epoch: number; begin: number; end: number; }
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest | RevertConversionRequest |
-  ToggleTapRequest | ToggleRightRequest | ToggleBackRequest;
+  ToggleTapRequest | ToggleRightRequest | ToggleBackRequest | DeleteLearnedCandidateRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
 interface ImeAdmissionContinue { kind: 'continue'; }
 interface ImeAdmissionStopped { kind: 'stop'; snapshot: ImeSnapshot; }
@@ -372,7 +373,8 @@ export class ImeSession {
       if (admission.kind === 'stop') { this.toggleRun = undefined; return admission.snapshot; }
       // Validate the epoch after both synchronization and the admission await.
       if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
-      if (request.kind !== 'toggleTap' && request.kind !== 'toggleRight' && request.kind !== 'toggleBack') {
+      if (request.kind !== 'toggleTap' && request.kind !== 'toggleRight' && request.kind !== 'toggleBack' &&
+        request.kind !== 'deleteLearnedCandidate') {
         this.toggleRun = undefined;
       }
       return await this.routeRequest(request, requestEpoch);
@@ -392,7 +394,7 @@ export class ImeSession {
     await this.synchronizeToggleSelection(requestEpoch);
     if (generation !== this.compositionGeneration &&
       (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' || request.kind === 'undo' ||
-        request.kind === 'toggleBack' || request.kind === 'revertConversion')) {
+        request.kind === 'toggleBack' || request.kind === 'revertConversion' || request.kind === 'deleteLearnedCandidate')) {
       return this.stopAdmission();
     }
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
@@ -415,6 +417,18 @@ export class ImeSession {
   }
 
   private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
+    if (request.kind === 'deleteLearnedCandidate') {
+      // Candidate IDs are reused. A menu can only delete the original candidate object.
+      if (this.mode !== 'JP' || request.candidate.deletable !== true ||
+        !this.coord.getCandidateView().includes(request.candidate)) { return this.coord.getSnapshot(); }
+      const revision: number = this.coord.getCandidateRevision();
+      const result: ImeSnapshot = await this.dispatchNormal(
+        createInputEvent('deleteCandidate', undefined, request.candidate.id, revision), requestEpoch);
+      request.deleted = requestEpoch === this.ports.editor.getEpoch() && result.lastError === 'ok' &&
+        this.coord.getCandidateRevision() !== revision;
+      if (request.deleted) { this.toggleRun = undefined; }
+      return result;
+    }
     if (request.kind === 'revertConversion') {
       this.ports.bindings.closeCandidates();
       const snapshot: ImeSnapshot = this.coord.getSnapshot();
@@ -569,6 +583,7 @@ export class ImeSession {
     finally { this.ports.prediction.editing = false; }
     const s: ImeSnapshot = this.coord.getSnapshot();
     if (epoch !== this.ports.editor.getEpoch()) { this.ports.prediction.clear(); return s; }
+    if (kind === 'deleteCandidate' && s.lastError !== 'ok') { return s; }
     if (kind === 'undo' && s.revision === undoRevision) { this.coord.takeUndoOrigin(); return s; }
     if (kind === 'undo') {
       const origin: number = this.coord.takeUndoOrigin();
@@ -716,6 +731,12 @@ export class ImeSession {
     const rev: number = this.isDirectEnglish() ?
       this.ports.prediction.getRevision() : this.coord.getCandidateRevision();
     await this.post('select', undefined, id, rev);
+  }
+
+  async deleteLearnedCandidate(candidate: CandidateLabel): Promise<boolean> {
+    const request: DeleteLearnedCandidateRequest = { kind: 'deleteLearnedCandidate', candidate: candidate, deleted: false };
+    await this.postRequest(request);
+    return request.deleted;
   }
 
   /** 先頭文節のみ確定（残りは未確定継続）。現行revを添える。 */

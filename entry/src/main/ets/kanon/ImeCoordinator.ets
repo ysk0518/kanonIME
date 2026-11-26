@@ -65,6 +65,7 @@ interface JapaneseCommit {
 export interface CandidateLabel {
   id: number;
   label: string;
+  deletable?: boolean;
 }
 
 /** Candidate visibility is independent of the engine's composition phase. */
@@ -293,7 +294,7 @@ export class ImeCoordinator {
       this.lastError = 'invalid-event';
       return;
     }
-    if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }
+    if (event.kind !== 'undo' && event.kind !== 'deleteCandidate') { this.forgetJapaneseCommit(); }
     if (event.kind === 'reset') {
       await this.doReset(epoch);
       return;
@@ -331,6 +332,10 @@ export class ImeCoordinator {
       return;
     }
     if (event.kind === 'undo' && (this.mode !== 'JP' || this.lastJapaneseCommit === undefined)) { return; }
+    if (event.kind === 'deleteCandidate' && this.mode !== 'JP') {
+      this.lastError = 'candidate-not-deletable';
+      return;
+    }
     if (event.kind === 'paste') {
       if (this.preeditLen > 0) {
         this.lastError = 'paste-needs-submit';
@@ -462,10 +467,9 @@ export class ImeCoordinator {
       this.lastError = 'empty-submit';
       return;
     }
-    // 候補タップ・文節確定は手元のrevisionで先にふるい落とす（REQ-08）。
-    if (event.kind === 'select' || event.kind === 'partial') {
-      const exp: number = event.kind === 'select' ? (event as CandidateInputEvent).expectedRevision :
-        (event as PartialInputEvent).expectedRevision;
+    // 候補選択・学習削除・文節確定は先にrevisionを照合する（REQ-08）。
+    if (event.kind === 'select' || event.kind === 'deleteCandidate' || event.kind === 'partial') {
+      const exp: number = (event as CandidateInputEvent | PartialInputEvent).expectedRevision;
       if (exp !== this.revision) {
         this.lastError = 'stale-revision';
         return;
@@ -499,6 +503,7 @@ export class ImeCoordinator {
       return;
     }
     await this.applyUpdate(epoch, seq, update, true, undo);
+    if (event.kind === 'deleteCandidate' && this.lastError === 'ok') { this.forgetJapaneseCommit(); }
   }
 
   private async applyUpdate(epoch: number, seq: number, update: EngineUpdate,

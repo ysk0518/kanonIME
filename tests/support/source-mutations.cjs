@@ -1,4 +1,9 @@
 const mutations = {
+  everyCandidateDeletable: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'if (c.deletable === true) { label.deletable = true; }',
+    after: 'label.deletable = true;'
+  },
   toggleDoesNotWrap: {
     file: 'kanon/ToggleInput.ets',
     before: '(this.index + offset + this.cycle.length) % this.cycle.length',
@@ -51,8 +56,8 @@ const mutations = {
   },
   japaneseUndoMove: {
     file: 'kanon/ImeCoordinator.ets',
-    before: "if (event.kind !== 'undo') { this.forgetJapaneseCommit(); }",
-    after: "if (event.kind !== 'undo' && event.kind !== 'move') { this.forgetJapaneseCommit(); }"
+    before: "if (event.kind !== 'undo' && event.kind !== 'deleteCandidate') { this.forgetJapaneseCommit(); }",
+    after: "if (event.kind !== 'undo' && event.kind !== 'deleteCandidate' && event.kind !== 'move') { this.forgetJapaneseCommit(); }"
   },
   japaneseUndoSelection: {
     file: 'kanon/ImeCoordinator.ets',

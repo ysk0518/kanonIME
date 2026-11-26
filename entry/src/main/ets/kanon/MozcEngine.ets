@@ -19,6 +19,7 @@ import { compositionCaretPath } from './CompositionCursorSync';
 class Cand {
   id: number = -1;
   value: string = '';
+  deletable?: boolean;
 }
 
 class ConvOut {
@@ -166,7 +167,9 @@ export class MozcEngine implements EnginePort {
     const labels: CandidateLabel[] = [];
     for (let i: number = 0; i < ordered.length; i++) {
       const c: Cand = ordered[i];
-      labels.push({ id: c.id, label: c.value ?? '' });
+      const label: CandidateLabel = { id: c.id, label: c.value ?? '' };
+      if (c.deletable === true) { label.deletable = true; }
+      labels.push(label);
     }
     this.lastIds = [];
     for (let i: number = 0; i < ordered.length; i++) {
@@ -187,6 +190,16 @@ export class MozcEngine implements EnginePort {
       candidateCount: out.ncand, candidateRevision: this.revision, candidates: labels,
       effects: effects, errorCode: 0, errorRecoverable: true
     };
+  }
+
+  private acceptComposingOutput(sessionId: string, epoch: number, seq: number, out: ConvOut): EngineUpdate {
+    this.inputUnits = [];
+    this.buffer = out.preedit;
+    this.editing.afterBackspace(out.preedit_len > 0);
+    this.selIdx = 0;
+    this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
+    this.revision++;
+    return this.fromOut(sessionId, epoch, seq, out, []);
   }
 
   private async callConvert(keys: string): Promise<ConvOut> {
@@ -275,7 +288,7 @@ export class MozcEngine implements EnginePort {
   async dispatch(sessionId: string, editorEpoch: number, sequence: number, event: InputEvent): Promise<EngineUpdate> {
     const ready: boolean = await this.ensure();
     if (!ready || this.bridge === null) {
-      return this.errUpdate(sessionId, editorEpoch, sequence, false);
+      return this.errUpdate(sessionId, editorEpoch, sequence, event.kind === 'deleteCandidate');
     }
     try {
       return await this.dispatchInner(sessionId, editorEpoch, sequence, event);
@@ -444,6 +457,18 @@ export class MozcEngine implements EnginePort {
       this.revision++;
       return this.fromOut(sessionId, epoch, seq, out, effects);
     }
+    if (kind === 'deleteCandidate') {
+      const id: number = (event as CandidateInputEvent).candidateId;
+      const candidate: Cand | undefined = this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
+      if (this.phase === 'empty' || candidate?.deletable !== true) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      const out: ConvOut = parseOut(await api.executeAsync('deleteCandidate', candidate.value, id));
+      if (!out.ok || out.preedit_len === 0 || out.result.length > 0) {
+        return this.errUpdate(sessionId, epoch, seq, true);
+      }
+      return this.acceptComposingOutput(sessionId, epoch, seq, out);
+    }
     if (kind === 'backspace') {
       if (this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
@@ -454,13 +479,7 @@ export class MozcEngine implements EnginePort {
       if (!out.ok) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }
-      this.inputUnits = [];
-      this.buffer = out.preedit;
-      this.editing.afterBackspace(out.preedit_len > 0);
-      this.selIdx = 0;
-      this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
-      this.revision++;
-      return this.fromOut(sessionId, epoch, seq, out, []);
+      return this.acceptComposingOutput(sessionId, epoch, seq, out);
     }
     if (kind === 'compositionCursor') {
       const text: string = this.lastPreedit;

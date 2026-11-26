@@ -5,6 +5,8 @@ import { KeyboardToolbar } from './KeyboardToolbar';
 import { SymbolToggleItem } from './SymbolToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 import { candidateAreaHeight, candidateRowHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
+import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfigValues';
+import { CandidateLabel } from '../kanon/ImeCoordinator';
 
 interface ExpandedCandidatePosition { top: number; height: number; }
 interface CandidateColumn {
@@ -23,14 +25,17 @@ export struct CandidateBar {
   @StorageLink('kanonCandidateDisplayRows') @Watch('selectionChanged') rows: number = DEFAULT_CANDIDATE_ROWS;
   @StorageLink('kanonFontScale') fontScale: number = 1;
   @StorageLink('submenuType') submenuType: number = SubMenuType.NORMAL;
-  @StorageLink('kanonMode') mode: string = 'JP';
+  @StorageLink('kanonMode') @Watch('closeDeleteMenu') mode: string = 'JP';
+  @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
   @StorageLink('kanonList') @Watch('candidatesChanged') candList: string[] = [];
   @StorageLink('kanonIdList') candIds: number[] = [];
   @StorageLink('kanonSel') @Watch('selectionChanged') sel: number = 0;
-  @StorageLink('kanonCandidatesExpanded') expanded: boolean = false;
+  @StorageLink('kanonCandidatesExpanded') @Watch('closeDeleteMenu') expanded: boolean = false;
   @StorageLink('kanonJapaneseComposing') japaneseComposing: boolean = false;
   @StorageLink('kanonConversionReading') conversionReading: string = '';
   @StorageLink('kanonCompositionCursor') compositionCursor: string = '';
+  @State private deleteMenuAnchor: string = '';
+  private deleteTarget: CandidateLabel | undefined = undefined;
   private stripScroller: Scroller = new Scroller();
   private expandedScroller: Scroller = new Scroller();
   private expandedPositions: Map<number, ExpandedCandidatePosition> = new Map();
@@ -53,6 +58,9 @@ export struct CandidateBar {
     return result;
   }
   private candidatesChanged(): void {
+    if (this.deleteTarget !== undefined && !kanonIme.getCandidates().includes(this.deleteTarget)) {
+      this.closeDeleteMenu();
+    }
     if (this.candList.length === 0) { this.expanded = false; }
     else if (this.sel <= 0) { this.stripScroller.scrollTo({ xOffset: 0, yOffset: 0 }); }
   }
@@ -80,6 +88,46 @@ export struct CandidateBar {
     }
   }
 
+  private candidateAnchor(index: number, full: boolean): string {
+    return `${full ? 'cand_expanded_slot' : 'cand_slot'}_${index}`;
+  }
+
+  private holdCandidate(label: string, index: number, full: boolean): void {
+    if (this.mode !== 'JP') { return; }
+    const item: CandidateLabel | undefined = kanonIme.getCandidates()[index];
+    if (item === undefined || item.id !== this.candIds[index] || item.label !== label) { return; }
+    this.closeDeleteMenu();
+    if (item.deletable !== true) {
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.candidate_not_learned') });
+      return;
+    }
+    this.deleteTarget = item;
+    this.deleteMenuAnchor = this.candidateAnchor(index, full);
+  }
+
+  private closeDeleteMenu(): void {
+    this.deleteTarget = undefined;
+    this.deleteMenuAnchor = '';
+  }
+
+  private async confirmDelete(): Promise<void> {
+    const item: CandidateLabel | undefined = this.deleteTarget;
+    this.closeDeleteMenu();
+    if (item !== undefined && !await kanonIme.deleteLearnedCandidate(item)) {
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.candidate_delete_failed') });
+    }
+  }
+
+  @Builder
+  deleteMenu() {
+    Row({ space: 4 }) {
+      Button($r('app.string.candidate_delete_learning')).fontSize(14)
+        .onClick(() => { this.confirmDelete(); }).id('candidate_delete_confirm')
+      Button($r('app.string.candidate_delete_cancel')).fontSize(14)
+        .onClick(() => { this.closeDeleteMenu(); }).id('candidate_delete_cancel')
+    }.padding(6).id('candidate_delete_menu')
+  }
+
   @Builder
   candidate(label: string, index: number, full: boolean) {
     Text(label)
@@ -96,7 +144,24 @@ export struct CandidateBar {
           if (this.expanded && index === this.sel) { this.revealExpandedSelection(); }
         }
       })
-      .onClick(() => this.tapCandidate(index)).id(`${full ? 'cand_expanded_slot' : 'cand_slot'}_${index}`)
+      .gesture(GestureGroup(GestureMode.Exclusive,
+        LongPressGesture({ repeat: false, duration: this.longPressMs })
+          .onAction(() => this.holdCandidate(label, index, full)),
+        TapGesture().onAction(() => this.tapCandidate(index))
+      ))
+      .onGestureJudgeBegin((info: GestureInfo): GestureJudgeResult =>
+        this.mode !== 'JP' && info.type === GestureControl.GestureType.LONG_PRESS_GESTURE ?
+          GestureJudgeResult.REJECT : GestureJudgeResult.CONTINUE)
+      .bindPopup(this.deleteMenuAnchor === this.candidateAnchor(index, full), {
+        builder: this.deleteMenu,
+        placement: Placement.Top,
+        onStateChange: (event) => {
+          if (!event.isVisible && this.deleteMenuAnchor === this.candidateAnchor(index, full)) {
+            this.closeDeleteMenu();
+          }
+        }
+      })
+      .id(this.candidateAnchor(index, full))
   }
 
   build() {

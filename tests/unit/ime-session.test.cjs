@@ -63,6 +63,121 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInp
   };
 }
 
+const learnedPaper = { id: 3, value: '紙', deletable: true };
+const paperReading = 'かみ';
+
+for (const converting of [false, true]) {
+  test(`P44: learned ${converting ? 'conversion' : 'prediction'} deletion refreshes the reading before the next key`, async () => {
+    const deletionStarted = deferred();
+    const finishDeletion = deferred();
+    const r = rig({ mode: 'JP', steps: [
+      { operation: 'literal', text: paperReading, output: response(paperReading, { candidates: [learnedPaper] }) },
+      ...(converting ? [{ operation: 'space', output: response('紙', {
+        candidates: [learnedPaper], focused_id: 3, focused_reading: paperReading
+      }) }] : []),
+      { operation: 'deleteCandidate', text: '紙', candidateId: 3, output: async () => {
+        deletionStarted.resolve();
+        await finishDeletion.promise;
+        return response(paperReading, { candidates: [{ id: 0, value: '神' }, { id: 3, value: '紙', deletable: false }] });
+      } },
+      { operation: 'literal', text: 'の', output: () => {
+        assert.equal(r.store.get('kanonState'), 'JP_COMPOSING');
+        assert.equal(r.store.get('kanonConversionReading'), '');
+        assert.deepEqual(r.store.get('kanonList'), ['神', '紙']);
+        assert.equal(r.editor.text, paperReading);
+        return response('かみの');
+      } }
+    ] });
+    await r.session.keyText(paperReading);
+    if (converting) { await r.session.keySpace(); }
+    const candidate = r.session.getCandidates()[0];
+    assert.deepEqual(candidate, { id: 3, label: '紙', deletable: true });
+    const deletion = r.session.deleteLearnedCandidate(candidate);
+    const typing = r.session.keyText('の');
+    await deletionStarted.promise;
+    assert.equal(r.bridge.calls.at(-1).operation, 'deleteCandidate');
+    finishDeletion.resolve();
+    assert.equal(await deletion, true);
+    await typing;
+    assert.equal(r.editor.text, 'かみの');
+    assert.equal(r.editor.count('insert'), 0);
+    r.bridge.assertDone();
+  });
+}
+
+test('P44: only candidates with a true deletable flag can be deleted', async () => {
+  const candidates = [learnedPaper, { id: 4, value: '神' }, { id: 5, value: '髪', deletable: false },
+    { id: 6, value: '上', deletable: 'true' }];
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'literal', text: paperReading, output: response(paperReading, { candidates }) }
+  ] });
+  await r.session.keyText(paperReading);
+  const items = r.session.getCandidates();
+  assert.deepEqual(items.map(item => item.deletable === true), [true, false, false, false]);
+  for (const item of items.slice(1)) {
+    assert.equal(await r.session.deleteLearnedCandidate(item), false);
+  }
+  assert.deepEqual(r.bridge.calls.map(call => call.operation), ['literal']);
+  r.bridge.assertDone();
+});
+
+test('P44: failed or unsupported deletion preserves the conversion and can be retried', async () => {
+  const conversion = response('紙', { candidates: [learnedPaper], focused_id: 3, focused_reading: paperReading });
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'literal', text: paperReading, output: response(paperReading) },
+    { operation: 'space', output: conversion },
+    { operation: 'deleteCandidate', candidateId: 3, output: response('紙', { ok: false }) },
+    { operation: 'deleteCandidate', candidateId: 3, error: new RangeError('Unknown native operation') },
+    { operation: 'deleteCandidate', candidateId: 3, output: response(paperReading) }
+  ] });
+  await r.session.keyText(paperReading);
+  await r.session.keySpace();
+  const original = r.session.getCandidates();
+  const writes = r.editor.calls.length;
+  for (let retry = 0; retry < 2; retry++) {
+    assert.equal(await r.session.deleteLearnedCandidate(original[0]), false);
+    assert.equal(r.session.getCandidates(), original);
+    assert.equal(r.store.get('kanonState'), 'JP_CONVERTING');
+    assert.equal(r.editor.text, '紙');
+    assert.equal(r.editor.calls.length, writes);
+  }
+  assert.equal(await r.session.deleteLearnedCandidate(original[0]), true);
+  assert.equal(r.editor.text, paperReading);
+  r.bridge.assertDone();
+});
+
+test('P44: a queued input invalidates the menu even when Mozc reuses the candidate ID', async () => {
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'literal', text: paperReading, output: response(paperReading, { candidates: [learnedPaper] }) },
+    { operation: 'literal', text: 'の', output: response('かみの', { candidates: [learnedPaper] }) }
+  ] });
+  await r.session.keyText(paperReading);
+  const previous = r.session.getCandidates()[0];
+  const typing = r.session.keyText('の');
+  const deletion = r.session.deleteLearnedCandidate(previous);
+  await typing;
+  assert.equal(await deletion, false);
+  assert.deepEqual(r.session.getCandidates()[0], previous);
+  assert.deepEqual(r.bridge.calls.map(call => call.operation), ['literal', 'literal']);
+  r.bridge.assertDone();
+});
+
+test('P44: candidate bar wires exclusive hold and tap gestures and dismisses on cancel', () => {
+  const bar = readFileSync(resolve(__dirname, '../../entry/src/main/ets/components/CandidateBar.ets'), 'utf8');
+  const locale = JSON.parse(readFileSync(resolve(__dirname, '../../entry/src/main/resources/base/element/string.json'), 'utf8'));
+  assert.match(bar, /@StorageLink\('kanonLongPressMs'\) longPressMs/);
+  assert.match(bar, /GestureGroup\(GestureMode\.Exclusive,\s*LongPressGesture\(\{ repeat: false, duration: this\.longPressMs \}\)\s*\.onAction\(\(\) => this\.holdCandidate\(label, index, full\)\),\s*TapGesture\(\)\.onAction\(\(\) => this\.tapCandidate\(index\)\)/);
+  assert.doesNotMatch(bar, /\.onClick\(\(\) => this\.tapCandidate/);
+  assert.match(bar, /this\.mode !== 'JP' && info\.type === GestureControl\.GestureType\.LONG_PRESS_GESTURE/);
+  assert.match(bar, /\.onClick\(\(\) => \{ this\.confirmDelete\(\); \}\)\.id\('candidate_delete_confirm'\)/);
+  assert.match(bar, /\.onClick\(\(\) => \{ this\.closeDeleteMenu\(\); \}\)\.id\('candidate_delete_cancel'\)/);
+  assert.match(bar, /closeDeleteMenu\(\): void \{\s*this\.deleteTarget = undefined;\s*this\.deleteMenuAnchor = '';/);
+  assert.match(bar, /\.id\('candidate_delete_menu'\)/);
+  assert.match(bar, /item\.deletable !== true[\s\S]*?showToast\(\{ message: \$r\('app\.string\.candidate_not_learned'\) \}\);\s*return;/);
+  assert.match(bar, /!await kanonIme\.deleteLearnedCandidate\(item\)[\s\S]*?showToast\(\{ message: \$r\('app\.string\.candidate_delete_failed'\) \}\)/);
+  assert.equal(locale.string.find(item => item.name === 'candidate_delete_failed').value, '削除できませんでした');
+});
+
 test('P43: every 12-key cycle advances and wraps in both directions', () => {
   const jp = { あ: 'あいうえおぁぃぅぇぉ', か: 'かきくけこ', さ: 'さしすせそ', た: 'たちつてとっ',
     な: 'なにぬねの', は: 'はひふへほ', ま: 'まみむめも', や: 'やゆよゃゅょ',

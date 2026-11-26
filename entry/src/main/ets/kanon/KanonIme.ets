@@ -169,6 +169,10 @@ class KanonIme {
     await this.session.selectCandidate(id);
   }
 
+  deleteLearnedCandidate(candidate: CandidateLabel): Promise<boolean> {
+    return this.session.deleteLearnedCandidate(candidate);
+  }
+
   async partialCommit(): Promise<void> {
     keyboardHaptics.key();
     await this.session.partialCommit();
