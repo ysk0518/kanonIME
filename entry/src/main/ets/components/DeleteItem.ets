@@ -16,6 +16,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { kanonIme } from '../kanon/KanonIme';
+import { keyRollover } from '../common/KeyRollover';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 @Styles function pressedStyles() {
@@ -96,6 +97,7 @@ export struct DeleteItem {
         if (this.pressing) {
           return;
         }
+        keyRollover.land();
         this.pressing = true;
         this.pressStarted = Date.now();
         this.deleteOnce(true);

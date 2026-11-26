@@ -16,6 +16,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { kanonIme } from '../kanon/KanonIme';
+import { keyRollover } from '../common/KeyRollover';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 import { enterKeyLabel } from '../model/KeyboardKeyLabels';
@@ -67,6 +68,7 @@ export struct ReturnItem {
       .id(this.keyId)
       .shadow({ radius: this.flick ? 0 : 1, color: $r('app.color.shadow'), offsetY: 3 })
       .onClick(() => {
+        keyRollover.land();
         kanonIme.keyReturn();
       })
       .stateStyles({

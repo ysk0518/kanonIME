@@ -16,6 +16,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
  */
 
 import { kanonIme } from '../kanon/KanonIme';
+import { keyRollover } from '../common/KeyRollover';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfig';
 import { editorAdapter } from '../kanon/EditorAdapter';
@@ -65,6 +66,7 @@ export struct SpaceItem {
   private touch(event: TouchEvent): void {
     if (event.type === TouchType.Cancel) { this.cancelTouch(); return; }
     if (event.type === TouchType.Down && event.changedTouches.length > 0) {
+      keyRollover.land();
       const point: TouchObject = event.changedTouches[0];
       this.spaceGesture.down(point.id, point.windowX, point.windowY, this.longPressMs);
       return;

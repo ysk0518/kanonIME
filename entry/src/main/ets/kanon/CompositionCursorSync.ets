@@ -16,6 +16,14 @@ export interface CompositionCursorPort {
   alignCursor: (position: number) => Promise<boolean>;
 }
 
+interface OwnCaret {
+  position: number;
+  at: number;
+}
+
+/** How long a caret our own preview write placed may still be echoed back late by the editor. */
+export const OWN_CARET_ECHO_MS: number = 600;
+
 export type CompositionCursorResult = 'ignored' | 'unchanged' | 'aligned' | 'retry' | 'failed' | 'stale';
 
 /** UTF-16 positions reached by single code-point moves. Never split a surrogate pair. */
@@ -43,8 +51,28 @@ export class CompositionCursorSync {
   private port: CompositionCursorPort;
   private pendingEpoch: number = -1;
   private version: number = 0;
+  private now: () => number;
+  private own: OwnCaret[] = [];
 
-  constructor(port: CompositionCursorPort) { this.port = port; }
+  constructor(port: CompositionCursorPort, now: () => number = (): number => Date.now()) {
+    this.port = port;
+    this.now = now;
+  }
+
+  /** Records the absolute caret a preview write of ours placed in the editor. */
+  wrote(position: number): void {
+    const at: number = this.now();
+    this.own = this.own.filter((item: OwnCaret): boolean => at - item.at < OWN_CARET_ECHO_MS);
+    this.own.push({ position: position, at: at });
+  }
+
+  // Fast typing writes "s" then "sy"; the editor may still report the caret after "s"
+  // once "sy" is shown. That echo is not the user tapping inside the composition.
+  private ownEcho(position: number): boolean {
+    const at: number = this.now();
+    return this.own.some((item: OwnCaret): boolean => item.position === position && at - item.at < OWN_CARET_ECHO_MS);
+  }
+
   notify(epoch: number): void { this.pendingEpoch = epoch; this.version++; }
   reset(): void { this.pendingEpoch = -1; this.version++; }
 
@@ -71,6 +99,7 @@ export class CompositionCursorSync {
     }
     const target: number = position - context.start;
     if (target === context.caret) { return 'unchanged'; }
+    if (this.ownEcho(position)) { return 'ignored'; }
     if (compositionCaretPath(context.text, context.caret, target) === undefined) {
       this.pendingEpoch = epoch;
       return 'failed';

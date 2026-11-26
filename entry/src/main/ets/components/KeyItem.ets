@@ -20,6 +20,7 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { kanonIme } from '../kanon/KanonIme';
 import { editorAdapter } from '../kanon/EditorAdapter';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { keyRollover } from '../common/KeyRollover';
 
 
 // 无大小写的按键组件
@@ -35,9 +36,12 @@ export struct KeyItem {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   private finger: number = -1;
   private startEpoch: number = -1;
+  private pending: (() => void) | undefined = undefined;
   @State private active: boolean = false;
 
   private cancelTouch(): void {
+    if (this.pending !== undefined) { keyRollover.release(this.pending); }
+    this.pending = undefined;
     this.finger = -1;
     this.startEpoch = -1;
     this.active = false;
@@ -46,27 +50,43 @@ export struct KeyItem {
   aboutToDisappear(): void { this.cancelTouch(); }
 
   private touch(event: TouchEvent): void {
-    if (event.type === TouchType.Cancel) { this.finger = -1; this.active = false; return; }
+    if (event.type === TouchType.Cancel) { this.cancelTouch(); return; }
+    // A key still held (here or elsewhere) is entered first so fast overlapping presses keep their order.
+    if (event.type === TouchType.Down) { keyRollover.land(); }
     if (event.type === TouchType.Down && this.finger < 0 && event.changedTouches.length > 0 && this.keyValue) {
       this.finger = event.changedTouches[0].id;
       this.active = true;
       this.startEpoch = editorAdapter.getEpoch();
+      const content: string = this.keyValue.content;
+      const epoch: number = this.startEpoch;
+      const enter: () => void = (): void => {
+        this.active = false;
+        this.enterKey(content, epoch);
+      };
+      this.pending = enter;
+      keyRollover.hold(enter);
       keyboardHaptics.press();
       return;
     }
     for (const touch of event.changedTouches) {
       if (touch.id !== this.finger) { continue; }
       if (event.type !== TouchType.Up) { return; }
+      const enter: (() => void) | undefined = this.pending;
+      this.pending = undefined;
       this.finger = -1;
       this.active = false;
-      if (this.startEpoch !== editorAdapter.getEpoch() || !this.keyValue) { return; }
-      if (this.directInput) {
-        keyboardHaptics.key();
-        kanonIme.keyPaste(this.keyValue.content);
-      } else if (this.kanaInput) { kanonIme.keyKana(this.keyValue.content); }
-      else { kanonIme.keyText(this.keyValue.content); }
+      if (enter !== undefined && keyRollover.release(enter)) { enter(); }
       return;
     }
+  }
+
+  private enterKey(content: string, epoch: number): void {
+    if (epoch !== editorAdapter.getEpoch()) { return; }
+    if (this.directInput) {
+      keyboardHaptics.key();
+      kanonIme.keyPaste(content);
+    } else if (this.kanaInput) { kanonIme.keyKana(content); }
+    else { kanonIme.keyText(content); }
   }
 
   build() {

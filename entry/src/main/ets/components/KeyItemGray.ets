@@ -17,6 +17,7 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
 
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { keyRollover } from '../common/KeyRollover';
 
 @Styles function pressedStyles() {
   .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
@@ -47,6 +48,7 @@ export struct KeyItemGray {
     .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
     .onClick(() => {
+      keyRollover.land();
       keyboardHaptics.key();
       this.onActivate?.();
     })
