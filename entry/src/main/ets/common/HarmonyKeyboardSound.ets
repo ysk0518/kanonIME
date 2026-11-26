@@ -12,8 +12,6 @@ class KeySoundSession {
   private resources: resourceManager.ResourceManager | undefined;
   private volumeGroup: audio.AudioVolumeGroupManager | undefined;
   private soundId: number = 0;
-  private streamId: number = 0;
-  private playback: Promise<void> = Promise.resolve();
 
   async load(context: common.Context): Promise<void> {
     try {
@@ -21,7 +19,7 @@ class KeySoundSession {
         .getVolumeGroupManagerSync(audio.DEFAULT_VOLUME_GROUP_ID);
       // The public SDK exposes no touch-sound usage. A short UI click belongs to
       // the notification volume rather than media. Also require normal ringer mode.
-      const pool: media.SoundPool = await media.createSoundPool(1, {
+      const pool: media.SoundPool = await media.createSoundPool(4, {
         usage: audio.StreamUsage.STREAM_USAGE_NOTIFICATION, rendererFlags: 0
       });
       this.pool = pool;
@@ -38,21 +36,12 @@ class KeySoundSession {
 
   play(volume: number): Promise<void> {
     const pool: media.SoundPool | undefined = this.pool;
-    if (!pool || this.soundId <= 0) { return Promise.resolve(); }
-    // Serialize the stop/start requests for one stream. Each press can restart
-    // the clip immediately without waiting for the previous clip to finish.
-    const run: Promise<void> = this.playback.then(async (): Promise<void> => {
-      if (!this.active || this.pool !== pool) { return; }
-      if (this.streamId > 0) {
-        try { await pool.stop(this.streamId); } catch (error) {}
-        this.streamId = 0;
-      }
-      if (!this.active || this.pool !== pool ||
-        this.volumeGroup?.getRingerModeSync() !== audio.AudioRingMode.RINGER_MODE_NORMAL) { return; }
-      this.streamId = await pool.play(this.soundId, { leftVolume: volume, rightVolume: volume });
-    });
-    this.playback = run.catch(() => {});
-    return this.playback;
+    if (!pool || this.soundId <= 0 || !this.active ||
+      this.volumeGroup?.getRingerModeSync() !== audio.AudioRingMode.RINGER_MODE_NORMAL) { return Promise.resolve(); }
+    // Start at once without waiting for the previous click. The pool keeps up to
+    // four overlapping streams and drops the oldest, so fast typing never queues.
+    return pool.play(this.soundId, { leftVolume: volume, rightVolume: volume })
+      .then((): void => {}).catch((): void => {});
   }
 
   async release(): Promise<void> {

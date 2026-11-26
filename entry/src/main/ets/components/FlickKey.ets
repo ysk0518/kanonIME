@@ -7,6 +7,7 @@ import { KANA_MODIFIER_FLICKS } from '../kanon/KanaInput';
 import { KanaModifier } from '../kanon/InputEventTypes';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyVisualScale, keyPreviewSize } from '../common/KeyboardLayout';
+import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct FlickKey {
@@ -70,6 +71,7 @@ export struct FlickKey {
       this.previewY = finger.windowY - finger.y - keyPreviewSize(this.inputStyle.basicButtonHeight) - 8;
       this.flickDirection = 0;
       this.active = true;
+      keyboardHaptics.press();
       this.showPreview();
     } else if (this.active) {
       for (const finger of event.changedTouches) {

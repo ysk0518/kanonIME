@@ -41,3 +41,18 @@ test('P46: playback exceptions and rejections stay out of key handling', async (
   sound.key(1);
   assert.equal(calls, 3);
 });
+
+test('P46: character keys give feedback on touch-down and release skips it once', () => {
+  const { readFileSync } = require('node:fs');
+  const { resolve } = require('node:path');
+  const read = name => readFileSync(resolve(__dirname, '../../entry/src/main/ets', name), 'utf8');
+  for (const name of ['components/FlickKey.ets', 'components/KeyItem.ets', 'components/KeyItemNumber.ets']) {
+    const source = read(name);
+    const down = source.slice(source.indexOf('event.type === TouchType.Down'));
+    assert.match(down.slice(0, 700), /keyboardHaptics\.press\(\);/, name);
+  }
+  const haptics = read('common/KeyboardHaptics.ets');
+  assert.match(haptics, /key\(\): void \{\s*if \(this\.pressedAt >= 0\) \{[\s\S]*?this\.pressedAt = -1;\s*if \(pressed\) \{ return; \}/);
+  const sound = read('common/HarmonyKeyboardSound.ets');
+  assert.doesNotMatch(sound, /pool\.stop\(/);
+});

@@ -51,6 +51,7 @@ export struct KeyItem {
       this.finger = event.changedTouches[0].id;
       this.active = true;
       this.startEpoch = editorAdapter.getEpoch();
+      keyboardHaptics.press();
       return;
     }
     for (const touch of event.changedTouches) {
