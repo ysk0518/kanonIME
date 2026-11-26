@@ -423,11 +423,7 @@ export class ImeCoordinator {
       this.lastError = 'toggle-stale';
       return;
     }
-    const selected: OpResult = await this.editor.selectRange(cursor - 1, cursor);
-    if (!selected.ok || epoch !== this.editor.getEpoch()) {
-      this.lastError = selected.ok ? 'stale-epoch' : `edit-${selected.code}`;
-      return;
-    }
+    // The validated character is immediately to the left of the collapsed caret.
     const deleted: OpResult = await this.editor.deleteForward(1);
     if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
     const result: OpResult = deleted.ok ? await this.editor.insert(event.text) : deleted;

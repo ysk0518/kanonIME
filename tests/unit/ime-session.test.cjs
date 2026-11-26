@@ -112,6 +112,48 @@ test('P43: Right ends the cycle without moving and Back reverses it', async () =
   }
 });
 
+test('P43: queued direct English taps wrap after replacement notifications', async () => {
+  const r = rig({ supported: false, toggleInput: true });
+  await r.session.keyToggleTap('a', true);
+
+  const insertingB = deferred();
+  const finishB = deferred();
+  const insert = r.editor.insert.bind(r.editor);
+  r.editor.insert = async text => {
+    if (text === 'B') {
+      insertingB.resolve();
+      await finishB.promise;
+    }
+    return insert(text);
+  };
+  const replace = r.session.keyToggleTap('a', false);
+  await insertingB.promise;
+  r.session.textChanged(true);
+  r.session.selectionChanged(0, 0);
+  const third = r.session.keyToggleTap('a', false);
+  const fourth = r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, '');
+
+  // The delete notification can arrive after insertion has completed,
+  // while the next queued tap is checking the empty-text hint.
+  r.hooks.queryEmpty = async () => {
+    r.hooks.queryEmpty = async () => ({ ok: true, code: 0, value: r.editor.text === '' });
+    r.session.selectionChanged(0, 0);
+    return r.hooks.queryEmpty();
+  };
+  finishB.resolve();
+  await Promise.all([replace, third, fourth]);
+  assert.deepEqual(r.editor.calls.filter(call => call.operation === 'insert').map(call => call.text),
+    ['A', 'B', 'C', 'A']);
+  assert.equal(r.prediction.getPrefix(), 'A');
+  assert.equal(r.editor.count('selectRange'), 0);
+
+  await r.session.keyToggleRight();
+  await r.session.keyToggleTap('a', false);
+  assert.equal(r.editor.text, 'Aa');
+  assert.equal(r.editor.count('moveCursor'), 0);
+});
+
 test('P43: time, another key, flick, Delete, confirmation and editor changes start new input', async () => {
   const r = rig({ toggleInput: true });
   const tap = key => r.session.keyToggleTap(key, false);
@@ -195,7 +237,9 @@ test('P43: a Japanese cycle at an interior caret preserves the suffix', async ()
     { operation: 'convert', text: 'a', output: response('ああか', { caret_utf16: 2 }) },
     { operation: 'backspace', output: response('あか', { caret_utf16: 1 }) },
     { operation: 'convert', text: 'i', output: response('あいか', { caret_utf16: 2 }) },
-    { operation: 'convert', text: 'a', output: response('あいあか', { caret_utf16: 3 }) }
+    { operation: 'backspace', output: response('あか', { caret_utf16: 1 }) },
+    { operation: 'convert', text: 'u', output: response('あうか', { caret_utf16: 2 }) },
+    { operation: 'convert', text: 'a', output: response('あうあか', { caret_utf16: 3 }) }
   ] });
   await r.session.keyKana('あ');
   await r.session.keyKana('か');
@@ -204,10 +248,15 @@ test('P43: a Japanese cycle at an interior caret preserves the suffix', async ()
   await r.session.keyToggleTap('あ', false);
   assert.equal(r.editor.text, 'あいか');
   assert.equal(r.editor.cursor, 2);
+  // setPreview moves to the end before the IME restores the interior caret.
+  r.session.selectionChanged(3, 3);
+  r.session.textChanged(false);
+  await r.session.keyToggleTap('あ', false);
+  assert.equal(r.editor.text, 'あうか');
   await r.session.keyToggleRight();
   assert.equal(r.editor.cursor, 2);
   await r.session.keyToggleTap('あ', false);
-  assert.equal(r.editor.text, 'あいあか');
+  assert.equal(r.editor.text, 'あうあか');
   r.bridge.assertDone();
 });
 
@@ -233,6 +282,21 @@ test('P43: a direct cursor change cannot replace the same letter at another posi
   await r.session.keyToggleTap('a', false);
   assert.equal(r.editor.text, 'aaXa');
   assert.equal(r.editor.count('deleteForward'), 0);
+});
+
+test('P43: a live direct cursor move or selection ends the cycle', async () => {
+  for (const selected of [false, true]) {
+    const r = rig({ supported: false, toggleInput: true, origin: 'X' });
+    await r.session.keyToggleTap('a', true);
+    await r.session.keyToggleTap('a', false);
+    if (selected) { await r.editor.selectRange(1, 2); }
+    else { r.editor.cursor = 1; }
+    r.session.selectionChanged(1, r.editor.cursor);
+    await r.session.keyToggleRight();
+    assert.equal(r.editor.text, 'XB');
+    assert.equal(r.editor.count('moveCursor'), 1);
+    assert.equal(r.prediction.getPrefix(), '');
+  }
 });
 
 // Observe the real collaborators at dispatch boundaries, including calls that

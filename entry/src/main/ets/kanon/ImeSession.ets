@@ -43,6 +43,7 @@ interface RevertConversionRequest { kind: 'revertConversion'; }
 interface ToggleTapRequest { kind: 'toggleTap'; key: string; uppercase: boolean; time: number; }
 interface ToggleRightRequest { kind: 'toggleRight'; time: number; }
 interface ToggleBackRequest { kind: 'toggleBack'; time: number; }
+interface ToggleSelection { epoch: number; begin: number; end: number; }
 type ImeRequest = UiEvent | ImeLocalRequest | EnglishUndoRequest | RevertConversionRequest |
   ToggleTapRequest | ToggleRightRequest | ToggleBackRequest;
 type LocalResetReason = 'epoch' | 'discard' | 'external-empty';
@@ -69,6 +70,8 @@ export class ImeSession {
   private inputQueue: InputOperationQueue<ImeSnapshot>;
   private localRequests: ImeLocalRequests;
   private toggleRun: ToggleRun | undefined = undefined;
+  private toggleEditing: boolean = false;
+  private toggleSelection: ToggleSelection | undefined = undefined;
   private now: () => number;
 
   constructor(ports: ImeSessionPorts, now: () => number = (): number => Date.now()) {
@@ -240,9 +243,10 @@ export class ImeSession {
 
   selectionChanged(begin: number, end: number): void {
     const epoch: number = this.ports.editor.getEpoch();
-    const run: ToggleRun | undefined = this.toggleRun;
-    if (run !== undefined && (begin !== end || (run.cursor >= 0 && begin !== run.cursor))) {
-      this.toggleRun = undefined;
+    if (this.toggleEditing || this.toggleRun !== undefined || this.toggleSelection !== undefined) {
+      this.toggleSelection = { epoch: epoch, begin: begin, end: end };
+    } else {
+      this.ports.prediction.selectionChanged(begin, end);
     }
     this.coord.selectionChanged(begin, end);
     this.cursorSync.notify(epoch);
@@ -262,19 +266,47 @@ export class ImeSession {
   }
 
   private scheduleEditorSync(): void {
-    if (!this.ready || this.editorSyncQueued || !this.editorSync.hasPending()) { return; }
+    if (!this.ready || this.editorSyncQueued ||
+      (!this.editorSync.hasPending() && this.toggleSelection === undefined)) { return; }
     this.editorSyncQueued = true;
     const revision: number = this.editorSync.getRevision();
     this.inputQueue.enqueue(async (): Promise<ImeSnapshot> => {
       await this.syncEpoch();
       await this.synchronizeExternalEditor();
+      await this.synchronizeToggleSelection(this.ports.editor.getEpoch());
       return this.coord.getSnapshot();
     }).catch((): ImeSnapshot => this.coord.getSnapshot()).finally((): void => {
       this.editorSyncQueued = false;
-      if (revision !== this.editorSync.getRevision() && this.editorSync.hasPending()) {
+      if (revision !== this.editorSync.getRevision()) {
         this.scheduleEditorSync();
       }
     });
+  }
+
+  private async synchronizeToggleSelection(epoch: number): Promise<void> {
+    // The editor may report the temporary caret from a delete or preview write
+    // after that write has finished. Read the live caret between queued edits.
+    while (this.toggleSelection !== undefined && epoch === this.ports.editor.getEpoch()) {
+      const hint: ToggleSelection = this.toggleSelection;
+      if (hint.epoch !== epoch) { this.toggleSelection = undefined; return; }
+      const run: ToggleRun | undefined = this.toggleRun;
+      let begin: number = hint.begin;
+      let end: number = hint.end;
+      if (run !== undefined && run.cursor >= 0 && !this.ports.editor.hasSelection() &&
+        (begin !== run.cursor || end !== run.cursor)) {
+        let cursor: number = -1;
+        try { cursor = await this.ports.editor.queryCursor(); } catch (error) { }
+        if (epoch !== this.ports.editor.getEpoch()) { return; }
+        if (hint !== this.toggleSelection) { continue; }
+        if (cursor >= 0 && !this.ports.editor.hasSelection()) { begin = cursor; end = cursor; }
+      }
+      this.toggleSelection = undefined;
+      if (run !== undefined && (begin !== end || this.ports.editor.hasSelection() ||
+        (run.cursor >= 0 && begin !== run.cursor))) {
+        this.toggleRun = undefined;
+      }
+      this.ports.prediction.selectionChanged(begin, end);
+    }
   }
 
   private async synchronizeExternalEditor(): Promise<boolean> {
@@ -335,14 +367,14 @@ export class ImeSession {
 
   private async postSerial(request: ImeRequest, generation: number = this.compositionGeneration): Promise<ImeSnapshot> {
     const requestEpoch: number = this.ports.editor.getEpoch();
-    if (request.kind !== 'toggleTap' && request.kind !== 'toggleRight' && request.kind !== 'toggleBack') {
-      this.toggleRun = undefined;
-    }
     try {
       const admission: ImeAdmission = await this.admit(request, generation, requestEpoch);
       if (admission.kind === 'stop') { this.toggleRun = undefined; return admission.snapshot; }
       // Validate the epoch after both synchronization and the admission await.
       if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
+      if (request.kind !== 'toggleTap' && request.kind !== 'toggleRight' && request.kind !== 'toggleBack') {
+        this.toggleRun = undefined;
+      }
       return await this.routeRequest(request, requestEpoch);
     } catch (e) {
       this.toggleRun = undefined;
@@ -357,6 +389,7 @@ export class ImeSession {
     await this.syncEpoch();
     if (requestEpoch !== this.ports.editor.getEpoch()) { return this.stopAdmission(); }
     if (!await this.synchronizeExternalEditor()) { return this.stopAdmission(); }
+    await this.synchronizeToggleSelection(requestEpoch);
     if (generation !== this.compositionGeneration &&
       (request.kind === 'select' || request.kind === 'partial' || request.kind === 'undoEnglish' || request.kind === 'undo' ||
         request.kind === 'toggleBack' || request.kind === 'revertConversion')) {
@@ -401,7 +434,9 @@ export class ImeSession {
       this.preview.reset();
     }
     if (request.kind === 'toggleTap' || request.kind === 'toggleRight' || request.kind === 'toggleBack') {
-      return this.routeToggle(request, requestEpoch);
+      this.toggleEditing = true;
+      try { return await this.routeToggle(request, requestEpoch); }
+      finally { this.toggleEditing = false; }
     }
     if (request.kind === 'prepare') {
       return this.localRequests.handle(request, requestEpoch);
