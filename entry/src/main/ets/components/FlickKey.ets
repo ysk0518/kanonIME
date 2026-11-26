@@ -3,6 +3,8 @@ import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_FLICK_DISTANCE } from '../common/KeyboardConfig';
 import { showKeyPreview, hideKeyPreview } from '../common/KeyPreviewState';
 import { editorAdapter } from '../kanon/EditorAdapter';
+import { KANA_MODIFIER_FLICKS } from '../kanon/KanaInput';
+import { KanaModifier } from '../kanon/InputEventTypes';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyVisualScale, keyPreviewSize } from '../common/KeyboardLayout';
 
@@ -20,6 +22,8 @@ export struct FlickKey {
   @Prop keyId: string = '';
   @Prop uppercase: boolean = false;
   @Prop displayLabel: string = '';
+  @Prop digitHint: string = '';
+  @Prop symbolHint: string = '';
   onLetter: () => void = () => {};
   @State private active: boolean = false;
   @State private flickDirection: number = 0;
@@ -78,7 +82,10 @@ export struct FlickKey {
           this.finger = -1;
           this.hidePreview();
           if (this.startEpoch !== editorAdapter.getEpoch()) { return; }
-          if (this.modifier) { kanonIme.modifyKana(); }
+          if (this.modifier) {
+            const modifier: KanaModifier | undefined = KANA_MODIFIER_FLICKS[this.flickDirection];
+            if (modifier !== undefined) { kanonIme.modifyKana(modifier); }
+          }
           else if (value.length > 0 && (this.english || this.textInput)) {
             const letter: boolean = /^[a-z]$/.test(value);
             if (value === ' ') { kanonIme.keySpace(); }
@@ -91,7 +98,7 @@ export struct FlickKey {
   }
 
   private label(): string {
-    const value: string = this.active ? (this.values[this.flickDirection] ?? '') :
+    const value: string = this.active && !this.modifier ? (this.values[this.flickDirection] ?? '') :
       this.displayLabel.length > 0 ? this.displayLabel : (this.values[0] ?? '');
     if (value === ' ' || value === 'space') { return 'space'; }
     return this.english && this.uppercase ? value.toUpperCase() : value;
@@ -102,16 +109,34 @@ export struct FlickKey {
   }
 
   build() {
-    Stack({ alignContent: Alignment.Center }) {
+    Column() {
+      if (this.digitHint.length > 0) {
+        Text(this.digitHint)
+          .fontSize(9).maxFontScale(1).maxLines(1)
+          .minFontSize(6).maxFontSize(9)
+          .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+          .width('90%').height('25%').textAlign(TextAlign.End)
+          .fontColor($r('app.color.key_text'))
+      }
       Text(this.label())
         .fontSize(this.labelFontSize())
         .maxFontScale(1.3).maxLines(1)
         .minFontSize(10).maxFontSize(this.labelFontSize())
         .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
-        .width('90%').height('70%').textAlign(TextAlign.Center)
+        .width('90%').height(this.symbolHint.length > 0 ? '62%' : this.digitHint.length > 0 ? '65%' : '70%')
+        .textAlign(TextAlign.Center)
         .fontWeight(this.active ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(this.active ? $r('app.color.candidate_accent') : $r('app.color.key_text'))
+      if (this.symbolHint.length > 0) {
+        Text(this.symbolHint)
+          .fontSize(10).maxFontScale(1).maxLines(1)
+          .minFontSize(6).maxFontSize(10)
+          .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+          .width('90%').height('28%').textAlign(TextAlign.Center)
+          .fontColor($r('app.color.key_text'))
+      }
     }
+    .justifyContent(this.digitHint.length > 0 ? FlexAlign.Start : FlexAlign.Center)
     .width('100%')
     .height('100%')
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))

@@ -1,4 +1,9 @@
 const mutations = {
+  swappedNumberFlickDirections: {
+    file: 'model/NumberFlickData.ets',
+    before: "['3', '+', '×', '÷', '-']",
+    after: "['3', '÷', '×', '+', '-']"
+  },
   japaneseUndoMatch: {
     file: 'kanon/ImeCoordinator.ets',
     before: 'cursor !== commit.cursor || !before.endsWith(commit.text) ||',

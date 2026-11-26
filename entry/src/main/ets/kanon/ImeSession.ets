@@ -7,7 +7,7 @@
  */
 
 import { CandidateLabel, EditorPort, ImeCoordinator, ImeSnapshot, OpResult } from './ImeCoordinator';
-import { EditorDirection, EditorEdge, InputEvent, UiEvent, UiEventKind } from './InputEventTypes';
+import { EditorDirection, EditorEdge, InputEvent, KanaModifier, UiEvent, UiEventKind } from './InputEventTypes';
 import { MozcEngine } from './MozcEngine';
 import { CompositionPreview, CompositionPreviewPort } from './CompositionPreview';
 import { CompositionCursorSync, CompositionCursorPort, CompositionCursorResult } from './CompositionCursorSync';
@@ -497,8 +497,8 @@ export class ImeSession {
     await this.post('kana', kana);
   }
 
-  async modifyKana(): Promise<void> {
-    await this.post('modifyKana');
+  async modifyKana(modifier?: KanaModifier): Promise<void> {
+    await this.post('modifyKana', modifier);
   }
 
   async keySpace(): Promise<void> {

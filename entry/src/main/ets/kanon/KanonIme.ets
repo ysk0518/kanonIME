@@ -1,7 +1,7 @@
 /* Kanon IME: HarmonyOS runtime bindings and keyboard entry points. */
 
 import { CandidateLabel, OpResult } from './ImeCoordinator';
-import { EditorEdge } from './InputEventTypes';
+import { EditorEdge, KanaModifier } from './InputEventTypes';
 import { fromEditorDirection } from './EditorDirectionMap';
 import { SDK_EDITOR_DIRECTIONS } from './SdkEditorDirections';
 import { realEditorPort } from './RealEditorPort';
@@ -79,9 +79,9 @@ class KanonIme {
     await this.session.keyKana(kana);
   }
 
-  async modifyKana(): Promise<void> {
+  async modifyKana(modifier?: KanaModifier): Promise<void> {
     keyboardHaptics.key();
-    await this.session.modifyKana();
+    await this.session.modifyKana(modifier);
   }
 
   async keySpace(feedback: boolean = true): Promise<void> {

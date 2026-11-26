@@ -57,6 +57,7 @@ export struct NumberFlickMenu {
             Column() {
               if (values[0].length > 0) {
                 FlickKey({ values: values, textInput: true,
+                  symbolHint: this.kind() === 'general' ? values.slice(1).join('') : '',
                   keyId: `number_flick_${row * 3 + index}` })
               }
             }.layoutWeight(1).height('100%')

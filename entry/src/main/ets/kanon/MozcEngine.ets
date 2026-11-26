@@ -8,7 +8,8 @@
  */
 
 import { CandidateLabel, CommitEffect, CompositionPhase, EnginePort, EngineUpdate } from './ImeCoordinator';
-import { CandidateInputEvent, CompositionCursorEvent, InputEvent, TextInputEvent } from './InputEventTypes';
+import { CandidateInputEvent, CompositionCursorEvent, InputEvent, KanaModifier, ModifyKanaInputEvent,
+  TextInputEvent } from './InputEventTypes';
 import { kanaRoman, modifiedKana } from './KanaInput';
 import { CompositionInput, literalInputs } from './CompositionInput';
 import { MozcBridgePort } from './MozcBridgePort';
@@ -318,6 +319,7 @@ export class MozcEngine implements EnginePort {
       return this.emptyUpdate(sessionId, epoch, seq);
     }
     if (kind === 'modifyKana') {
+      const modifier: KanaModifier | undefined = (event as ModifyKanaInputEvent).text;
       if (this.buffer.length === 0 && this.lastPreedit.length === 0) {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
@@ -329,7 +331,7 @@ export class MozcEngine implements EnginePort {
       if (!this.editing.canReplay()) {
         const caret: number = this.caretPosition(this.lastOut);
         const previous: string = this.lastPreedit.slice(Math.max(0, caret - 1), caret);
-        const kana: string = modifiedKana(previous);
+        const kana: string = modifiedKana(previous, modifier);
         const roman: string = kanaRoman(kana);
         if (kana === previous || roman.length === 0) {
           return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
@@ -346,9 +348,10 @@ export class MozcEngine implements EnginePort {
         return this.fromOut(sessionId, epoch, seq, this.lastOut, []);
       }
       const last: number = this.inputUnits.length - 1;
-      const kana: string = modifiedKana(this.inputUnits[last].kana);
+      const previous: string = this.inputUnits[last].kana;
+      const kana: string = modifiedKana(previous, modifier);
       const roman: string = kanaRoman(kana);
-      if (roman.length > 0) {
+      if (kana !== previous && roman.length > 0) {
         const units: CompositionInput[] = this.inputUnits.slice();
         units[last] = new CompositionInput(roman, kana);
         const out: ConvOut = await this.replay(units);

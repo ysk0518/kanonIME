@@ -4,6 +4,7 @@ export type UiEventKind = 'text' | 'kana' | 'modifyKana' | 'paste' | 'backspace'
   'selectAll' | 'forwardDelete' | 'select' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion';
 export type EditorEdge = 'begin' | 'end';
 export type EditorDirection = 'left' | 'right' | 'up' | 'down';
+export type KanaModifier = 'cycle' | 'voiced' | 'size' | 'semiVoiced';
 
 export interface UiEvent {
   kind: UiEventKind;
@@ -18,6 +19,7 @@ export interface UiEvent {
 }
 
 export interface TextInputEvent extends UiEvent { kind: 'text' | 'kana' | 'paste'; text: string; }
+export interface ModifyKanaInputEvent extends UiEvent { kind: 'modifyKana'; text?: KanaModifier; }
 export interface CompositionArrowEvent extends UiEvent { kind: 'compositionArrow'; text: 'left' | 'right'; }
 export interface CompositionCursorEvent extends UiEvent { kind: 'compositionCursor'; cursor: number; }
 export interface ModeInputEvent extends UiEvent { kind: 'mode'; text: 'JP' | 'EN'; }
@@ -31,10 +33,11 @@ export interface UndoCompletionEvent extends UiEvent {
   kind: 'undoCompletion'; text: string; cursor: number; prefixLength: number;
 }
 export interface SimpleInputEvent extends UiEvent {
-  kind: 'modifyKana' | 'backspace' | 'convert' | 'submit' | 'enter' | 'cancel' |
+  kind: 'backspace' | 'convert' | 'submit' | 'enter' | 'cancel' |
     'selectAll' | 'forwardDelete' | 'reset' | 'undo';
 }
 
 /** Only validated events may reach the engines or internal editing methods. */
 export type InputEvent = TextInputEvent | CompositionArrowEvent | CompositionCursorEvent | ModeInputEvent |
-  CandidateInputEvent | PartialInputEvent | DirectionInputEvent | EdgeInputEvent | UndoCompletionEvent | SimpleInputEvent;
+  CandidateInputEvent | PartialInputEvent | DirectionInputEvent | EdgeInputEvent | UndoCompletionEvent |
+  ModifyKanaInputEvent | SimpleInputEvent;

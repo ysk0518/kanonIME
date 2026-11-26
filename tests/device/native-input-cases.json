@@ -219,6 +219,42 @@
       {"id": "flick_control_1", "expect": "か"},
       {"id": "flick_control_6", "expect": "か"},
       {"id": "flick_control_1", "expect": "か"}
+    ] },
+    { "id": "D32", "steps": [
+      {"id": "layoutItem", "expect": ""},
+      {"id": "flick_か", "expect": "か"},
+      {"id": "flick_小゛゜", "flick": "left", "expect": "が"},
+      {"id": "flick_た", "flick": "up", "expect": "がつ"},
+      {"id": "flick_小゛゜", "flick": "up", "expect": "がっ"},
+      {"id": "flick_は", "expect": "がっは"},
+      {"id": "flick_小゛゜", "flick": "right", "expect": "がっぱ"},
+      {"id": "flick_あ", "expect": "がっぱあ"},
+      {"id": "flick_小゛゜", "flick": "right", "expect": "がっぱあ"}
+    ] },
+    { "id": "D33", "steps": [
+      {"id": "layoutItem", "expect": ""},
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "number_flick_2", "flick": "left", "expect": "+"},
+      {"id": "number_flick_2", "flick": "up", "expect": "+×"},
+      {"id": "number_flick_2", "flick": "right", "expect": "+×÷"},
+      {"id": "number_flick_2", "flick": "down", "expect": "+×÷-"},
+      {"id": "number_flick_9", "flick": "up", "expect": "+×÷-□"},
+      {"id": "number_flick_10", "flick": "up", "expect": "+×÷-□_"},
+      {"id": "number_flick_11", "flick": "right", "expect": "+×÷-□_!"},
+      {"id": "modeCycleItem", "expect": "+×÷-□_!"}
+    ] },
+    { "id": "D34", "steps": [
+      {"id": "layoutItem", "expect": ""},
+      {"id": "modeCycleItem", "expect": ""},
+      {"id": "flick_-", "expect": "-"},
+      {"id": "flick_-", "flick": "left", "expect": "-#"},
+      {"id": "flick_-", "flick": "up", "expect": "-#0"},
+      {"id": "flick_@", "flick": "left", "expect": "-#0/"},
+      {"id": "flick_@", "flick": "up", "expect": "-#0/:"},
+      {"id": "flick_@", "flick": "right", "expect": "-#0/:~"},
+      {"id": "modeCycleItem", "expect": "-#0/:~"},
+      {"id": "modeCycleItem", "expect": "-#0/:~"}
     ] }
   ]
 }
