@@ -528,8 +528,14 @@ export struct KeyboardSettings {
   build() {
     Column() {
       if (!this.languageOnly && this.page === SettingsPageId.Theme) {
-        KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBackHandlerChange: this.onBackgroundBackHandler })
-          .transition(this.slideTransition(SettingsPageId.Theme))
+        // The theme page has its own header; slide it as one opaque page.
+        Column() {
+          KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBackHandlerChange: this.onBackgroundBackHandler })
+        }
+        .width('100%').height('100%')
+        .backgroundColor($r('app.color.settings_background_surface'))
+        .zIndex(1)
+        .transition(this.slideTransition(SettingsPageId.Theme))
       } else {
         SettingsHeader({ title: this.languageOnly ? $r('app.string.settings_languages') : pageTitle(this.page),
           compact: this.languageOnly, onBack: () => this.goBack() })
@@ -542,6 +548,8 @@ export struct KeyboardSettings {
             .scrollBar(BarState.Auto).id(`keyboard_settings_scroll_${page}`)
             // Opaque, so the page underneath does not show through while sliding.
             .backgroundColor($r('app.color.settings_background_surface'))
+            // A sub-page always draws over the top page, entering or leaving.
+            .zIndex(page === SettingsPageId.Top ? 0 : 1)
             .transition(this.slideTransition(page))
         }, (page: SettingsPageId) => page.toString())
         this.footer()
