@@ -57,7 +57,7 @@ FULLとコンテナの比較にはreleaseを使う。製品ブリッジのohosTe
 | D22 | JP QWERTYでki→配列切替2回→ka→Enter | 途中の「き」を保持してQWERTYへ戻り、続けた文字と合わせて「きか」。切替は既存の未確定を確定する |
 | D23 | JP QWERTYできょうは→Space→Delete2回 | 最初のDeleteで読み「きょうは」へ戻り、次で「きょう」（JP-20） |
 | D23R | D23のSpace後に長押しドラッグで範囲を縮めてからDelete2回 | 範囲調整後も残り全体が読みへ戻り、次で1文字削除（JP-20） |
-| D24 | ki→候補一覧を開いて「取消」→Space→一覧を開いて「取消」→Delete | 入力中の取消は「き」を保持、変換中の取消は読み「き」へ戻す。Deleteで空（JP-19） |
+| D24 | ki→候補一覧を「…」で開閉→Space→一覧を開閉→Delete2回 | 一覧の開閉で未確定「き」と変換状態を変えない。変換中のDeleteで読み「き」へ戻り、次で空（JP-19） |
 | D25 | a→Enter→hinomaru→Space→一覧を開いて🇯🇵→Delete | 「あ🇯🇵」の国旗だけを1回で消し「あ」を残す。deleteForwardは文字単位（CM-06） |
 | D26 | enablePreviewText(false)欄 / EN、hel→Space→Delete2回 | 最初のDeleteは強調だけを解除して「hel」を保持、次で「he」（DE-07） |
 | D27 | a→Enter→kyouha→Space→欄の先頭付近をタップ→ka→Enter→i | タップでカーソルが移らず変換が継続し「あ今日はか」、確定後の入力も末尾へ入り「あ今日はかい」（Q5） |

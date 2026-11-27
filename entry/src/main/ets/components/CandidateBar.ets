@@ -159,11 +159,11 @@ export struct CandidateBar {
   @Builder
   candidate(label: string, index: number, full: boolean) {
     Text(label)
-      .fontSize(this.fontSize).maxFontScale(2)
+      .fontSize(full ? this.fontSize + 3 : this.fontSize).maxFontScale(2)
       .fontColor(index === this.sel ? $r('app.color.candidate_accent') : $r('app.color.candidate_text'))
       .fontWeight(index === this.sel ? FontWeight.Medium : FontWeight.Normal)
       .backgroundColor(index === this.sel ? $r('app.color.candidate_selected') : Color.Transparent)
-      .borderRadius(6).padding({ left: 12, right: 12, top: 3, bottom: 3 })
+      .borderRadius(6).padding(full ? { left: 16, right: 16, top: 12, bottom: 12 } : { left: 12, right: 12, top: 3, bottom: 3 })
       .maxLines(full ? 3 : 1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .constraintSize({ minHeight: this.rowHeight(), maxWidth: full ? '100%' : 280 })
       .onAreaChange((_oldArea: Area, area: Area) => {
@@ -233,32 +233,32 @@ export struct CandidateBar {
             }, (column: CandidateColumn) => column.key)
           }.listDirection(Axis.Horizontal).scrollBar(BarState.Off)
             .layoutWeight(1).height(this.barHeight()).id('cand_list')
+          // Samsung Keyboard: a round "…" opens and closes the full list.
           Stack() {
-            Image(this.expanded ? $r('app.media.ic_arrow_up') : $r('app.media.ic_arrow_down'))
-              .width(20).height(20).fillColor($r('app.color.text_secondary'))
-          }.width(40).height(this.barHeight())
+            Stack() {
+              Image($r('app.media.ic_more_horiz')).width(20).height(20).fillColor($r('app.color.key_text'))
+            }.width(32).height(32).borderRadius(16)
+              .backgroundColor(this.expanded ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+          }.width(44).height(this.barHeight())
             .onClick(() => { this.expanded = !this.expanded; })
             .accessibilityText(this.expanded ? $r('app.string.candidate_collapse') : $r('app.string.candidate_expand'))
             .id('cand_expand')
         }
       }.width('100%').height(this.barHeight())
       if (this.expanded && this.candList.length > 0) {
-        Scroll(this.expandedScroller) {
-          Flex({ wrap: FlexWrap.Wrap, alignContent: FlexAlign.Start, alignItems: ItemAlign.Start }) {
-            ForEach(this.candList, (label: string, index: number) => {
-              this.candidate(label, index, true)
-            })
-          }.width('100%')
-        }.scrollable(ScrollDirection.Vertical).height(Math.max(1, this.inputStyle.keyboardHeight - Math.max(36, this.toolbarHeight)))
-          .scrollBar(BarState.Auto).onAppear(() => { this.selectionChanged(); }).id('cand_expanded_list')
-        Row({ space: 20 }) {
-          Text($r('app.string.candidate_cancel')).fontSize(14).fontColor($r('app.color.text_secondary')).padding(8)
-            .onClick(() => { kanonIme.revertConversion(); }).id('cand_cancel')
-          if (this.mode === 'JP') {
-            Text($r('app.string.candidate_partial')).fontSize(14).fontColor($r('app.color.text_secondary')).padding(8)
-              .onClick(() => { kanonIme.partialCommit(); }).id('cand_partial')
-          }
-        }.height(Math.max(36, this.toolbarHeight))
+        // Samsung Keyboard's full list: larger candidates centered row by row
+        // across the whole width. Close it with the "…" button to use the keys.
+        Row() {
+          Scroll(this.expandedScroller) {
+            Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center, alignContent: FlexAlign.Start,
+              alignItems: ItemAlign.Center }) {
+              ForEach(this.candList, (label: string, index: number) => {
+                this.candidate(label, index, true)
+              })
+            }.width('100%').padding({ top: 4, bottom: 8 })
+          }.scrollable(ScrollDirection.Vertical).layoutWeight(1).height('100%')
+            .scrollBar(BarState.Auto).onAppear(() => { this.selectionChanged(); }).id('cand_expanded_list')
+        }.width('100%').height(Math.max(1, this.inputStyle.keyboardHeight))
       }
     }.width('100%').backgroundColor($r('app.color.candidate_background'))
   }
