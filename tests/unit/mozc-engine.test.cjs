@@ -275,18 +275,61 @@ test('P49: deferred keys update only the preedit; suggest fetches candidates for
   const r = deferredRig([
     { operation: 'convert', text: 'k', candidateId: 1, output: response('ｋ') },
     { operation: 'convert', text: 'a', candidateId: 1, output: response('か') },
-    { operation: 'suggest', candidateId: 1, output: response('か', { candidates: [{ id: 0, value: '蚊' }] }) }
+    { operation: 'suggest', text: '', candidateId: 1, output: response('か', { candidates: [{ id: 0, value: '蚊' }] }) }
   ]);
   const k = await r.send({ kind: 'text', text: 'k' });
   assert.equal(k.preeditLen, 1);
-  // A pending roman consonant is never suggested: MOVE_CURSOR would split "k" from the next vowel.
-  assert.equal(r.engine.needsSuggestion(), false);
   const a = await r.send({ kind: 'text', text: 'a' });
   assert.equal(r.engine.needsSuggestion(), true);
   assert.deepEqual(a.candidates, []);
   const s = await r.send({ kind: 'suggest' });
   assert.deepEqual(s.candidates, [{ id: 0, label: '蚊' }]);
   assert.equal(s.candidateRevision, s.revision);
+  assert.equal(r.engine.needsSuggestion(), false);
+  r.bridge.assertDone();
+});
+
+test('P50: a pending roman letter is suggested by retyping it, not by moving the cursor', async () => {
+  const r = deferredRig([
+    { operation: 'convert', text: 'a', candidateId: 1, output: response('あ') },
+    { operation: 'suggest', text: '', candidateId: 1, output: response('あ', { candidates: [{ id: 0, value: '亜' }] }) },
+    { operation: 'convert', text: 'h', candidateId: 1, output: response('あｈ') },
+    // MOVE_CURSOR would split "h" from the next vowel; the bridge deletes and retypes it.
+    { operation: 'suggest', text: 'h', output: response('あｈ', { candidates: [{ id: 0, value: 'あは' }] }) },
+    { operation: 'convert', text: 'a', candidateId: 1, output: response('あは') }
+  ]);
+  await r.send({ kind: 'text', text: 'a' });
+  await r.send({ kind: 'suggest' });
+  const h = await r.send({ kind: 'text', text: 'h' });
+  assert.equal(r.engine.needsSuggestion(), true);
+  // The candidates for "あ" stay shown, stale, until the retype answers.
+  assert.deepEqual(h.candidates, [{ id: 0, label: '亜' }]);
+  assert.ok(h.revision > h.candidateRevision);
+  const s = await r.send({ kind: 'suggest' });
+  assert.deepEqual(s.candidates, [{ id: 0, label: 'あは' }]);
+  assert.equal(s.candidateRevision, s.revision);
+  const ha = await r.send({ kind: 'text', text: 'a' });
+  assert.equal(ha.preeditLen, 2);
+  r.bridge.assertDone();
+});
+
+test('P50: a retype that changed the composition shows what Mozc holds', async () => {
+  const r = deferredRig([
+    { operation: 'convert', text: 'k', candidateId: 1, output: response('ｋ') },
+    { operation: 'suggest', text: 'k', output: response('ｋｋ', { candidates: [{ id: 0, value: 'kk' }] }) }
+  ]);
+  await r.send({ kind: 'text', text: 'k' });
+  const s = await r.send({ kind: 'suggest' });
+  assert.equal(s.preeditLen, 2);
+  assert.deepEqual(s.candidates, [{ id: 0, label: 'kk' }]);
+  r.bridge.assertDone();
+});
+
+test('P50: a tail that is not the letter just typed is not suggested', async () => {
+  const r = deferredRig([
+    { operation: 'convert', text: 'x', candidateId: 1, output: response('あ!') }
+  ]);
+  await r.send({ kind: 'text', text: 'x' });
   assert.equal(r.engine.needsSuggestion(), false);
   r.bridge.assertDone();
 });

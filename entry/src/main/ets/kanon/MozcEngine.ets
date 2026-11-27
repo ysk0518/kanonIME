@@ -77,6 +77,14 @@ function endsWithKana(s: string): boolean {
   return (c >= 0x3041 && c <= 0x3096) || (c >= 0x30A1 && c <= 0x30FA) || c === 0x30FC;
 }
 
+/** The preedit ends with the roman letter last typed, half or full width. */
+function endsWithRomanKey(s: string, key: string): boolean {
+  if (s.length === 0 || key.length !== 1) { return false; }
+  let c: number = s.charCodeAt(s.length - 1);
+  if (c >= 0xFF21 && c <= 0xFF5A) { c -= 0xFEE0; }
+  return String.fromCharCode(c).toLowerCase() === key;
+}
+
 /** Mozc cursor positions count Unicode characters, not UTF-16 units. */
 function codePointLength(s: string): number {
   let count: number = 0;
@@ -107,6 +115,8 @@ export class MozcEngine implements EnginePort {
   // session asks for candidates ("suggest") when no newer key is queued.
   private deferSuggestions: boolean = false;
   private suggestPending: boolean = false;
+  /** The pending roman letter "suggest" deletes and retypes; empty to move the cursor. */
+  private retypeKey: string = '';
   private lastLabels: CandidateLabel[] = [];
   private lastCandidateRevision: number = 0;
   private revision: number = 0;
@@ -231,17 +241,25 @@ export class MozcEngine implements EnginePort {
     };
   }
 
-  // A key typed with deferred suggestions. When the text before the caret is
-  // complete kana, keep showing the previous candidates (stale: their revision
-  // no longer matches, so a tap on one is rejected) until "suggest" replaces
-  // them. A pending roman consonant cannot be suggested without breaking the
-  // next key, and its predictions are the slowest; show none until a kana forms.
-  private deferredUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut): EngineUpdate {
+  // A key typed with deferred suggestions. Keep showing the previous candidates
+  // (stale: their revision no longer matches, so a tap on one is rejected)
+  // until "suggest" replaces them. A pending roman letter cannot be suggested
+  // by moving the cursor without breaking the next key, so "suggest" deletes
+  // and retypes that letter instead; any other tail shows no candidates.
+  private deferredUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut,
+    romanKey: string): EngineUpdate {
     const previousLabels: CandidateLabel[] = this.lastLabels;
     const previousRevision: number = this.lastCandidateRevision;
     const update: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, []);
     const caret: number = this.caretPosition(out);
-    if (caret !== out.preedit.length || !endsWithKana(out.preedit)) { return update; }
+    if (caret !== out.preedit.length) { return update; }
+    if (endsWithKana(out.preedit)) {
+      this.retypeKey = '';
+    } else if (romanKey.length > 0 && endsWithRomanKey(out.preedit, romanKey)) {
+      this.retypeKey = romanKey;
+    } else {
+      return update;
+    }
     this.suggestPending = true;
     this.lastIds = [];
     this.lastLabels = previousLabels;
@@ -257,13 +275,20 @@ export class MozcEngine implements EnginePort {
     this.suggestPending = false;
     let out: ConvOut;
     try {
-      out = parseOut(await this.bridge.executeAsync('suggest', '', codePointLength(this.lastPreedit)));
+      out = parseOut(await this.bridge.executeAsync('suggest', this.retypeKey, codePointLength(this.lastPreedit)));
     } catch (e) {
       out = new ConvOut();
       out.ok = false;
     }
-    // The preedit must be unchanged; otherwise keep the composition as shown.
-    if (!out.ok || out.preedit !== this.lastPreedit) { return this.currentUpdate(sessionId, epoch, seq); }
+    const retyped: boolean = this.retypeKey.length > 0;
+    this.retypeKey = '';
+    // Moving the cursor leaves the composition as shown, so keep it on any
+    // mismatch. A retype has already changed Mozc: show whatever it holds now.
+    if (!out.ok) {
+      return retyped ? this.errUpdate(sessionId, epoch, seq, true) : this.currentUpdate(sessionId, epoch, seq);
+    }
+    if (!retyped && out.preedit !== this.lastPreedit) { return this.currentUpdate(sessionId, epoch, seq); }
+    if (out.preedit_len === 0) { this.phase = 'empty'; }
     this.revision++;
     return this.fromOut(sessionId, epoch, seq, out, []);
   }
@@ -412,6 +437,7 @@ export class MozcEngine implements EnginePort {
     if (kind === 'suggest') { return await this.suggest(sessionId, epoch, seq); }
     // Any other operation replaces the composition the deferred candidates were for.
     this.suggestPending = false;
+    this.retypeKey = '';
     if (kind === 'undo') {
       const out: ConvOut = parseOut(await api.undo());
       if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
@@ -557,7 +583,7 @@ export class MozcEngine implements EnginePort {
       if (!deferred || this.phase !== 'composing' || effects.length > 0) {
         return this.fromOut(sessionId, epoch, seq, out, effects);
       }
-      return this.deferredUpdate(sessionId, epoch, seq, out);
+      return this.deferredUpdate(sessionId, epoch, seq, out, kind === 'text' ? unit.charAt(unit.length - 1) : '');
     }
     if (kind === 'deleteCandidate') {
       const id: number = (event as CandidateInputEvent).candidateId;

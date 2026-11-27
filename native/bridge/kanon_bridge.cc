@@ -425,6 +425,23 @@ std::string ExecuteOperation(const AsyncOperation& task) {
       input.set_request_suggestion(!deferSuggestion && i + 1 == task.text.size());
       ok = Call(input, &output);
     }
+  } else if (task.operation == "suggest" && task.text.size() == 1) {
+    // A pending roman letter: moving the cursor would split it from the next
+    // key, so delete it without suggestions and type it again with them.
+    mozc::commands::KeyEvent key;
+    if (!mozc::KeyParser::ParseKey("Backspace", &key)) return OutputToJson(false, output);
+    mozc::commands::Input erase;
+    erase.set_type(mozc::commands::Input::SEND_KEY);
+    *erase.mutable_key() = key;
+    erase.set_request_suggestion(false);
+    ok = Call(erase, &output) && output.consumed();
+    if (ok) {
+      mozc::commands::Input retype;
+      retype.set_type(mozc::commands::Input::SEND_KEY);
+      retype.mutable_key()->set_key_code(task.text[0]);
+      retype.set_request_suggestion(true);
+      ok = Call(retype, &output);
+    }
   } else if (task.operation == "suggest") {
     // Recompute candidates for the current composition without a key. Moving
     // the cursor to where it already is runs Mozc's suggestion for the
