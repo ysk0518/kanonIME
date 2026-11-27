@@ -1,3 +1,4 @@
+import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -29,6 +30,8 @@ import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
 // 空格组件
 @Component
 export struct SpaceItem {
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private gamingX: number = 0;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   spaceWith: Resource | string | undefined = undefined;
@@ -67,6 +70,7 @@ export struct SpaceItem {
     if (event.type === TouchType.Cancel) { this.cancelTouch(); return; }
     if (event.type === TouchType.Down && event.changedTouches.length > 0) {
       keyRollover.land();
+      gamingPresses.down(event);
       const point: TouchObject = event.changedTouches[0];
       this.spaceGesture.down(point.id, point.windowX, point.windowY, this.longPressMs);
       return;
@@ -85,12 +89,14 @@ export struct SpaceItem {
           .minFontSize(8).maxFontSize(14).maxFontScale(1.25)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST).maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .fontColor($r('app.color.key_text'))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.pressing))
       }
       .backgroundColor(backgroundKeyColor(this.pressing ? $r('app.color.key_item_normal_pressed') :
         $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .width(this.spaceWith)
       .borderRadius(4)
+      .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 4, this.pressing))
+      .onAreaChange((_old: Area, area: Area) => { this.gamingX = gamingKeyX(area); })
       .height('100%')
       .clip(true)
       .id('spaceItem')

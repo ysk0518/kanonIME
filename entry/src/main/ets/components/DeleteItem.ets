@@ -1,3 +1,4 @@
+import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -30,11 +31,13 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 // タップで1文字削除。長押しでは間隔を短縮し、前の削除が完了してから次を送る。
 @Component
 export struct DeleteItem {
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private gamingX: number = 0;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
-  private pressing: boolean = false;
+  @State private pressing: boolean = false;
   private busy: boolean = false;
   private pressStarted: number = 0;
   private repeatTimer: number = -1;
@@ -86,18 +89,21 @@ export struct DeleteItem {
   build() {
     Stack() {
       Image($rawfile('delete.svg'))
-            .fillColor($r('app.color.key_text'))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.pressing))
         .width(this.inputStyle.featurePicSize)
         .height(this.inputStyle.featurePicSize)
     }
     .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 4, this.pressing))
+    .onAreaChange((_old: Area, area: Area) => { this.gamingX = gamingKeyX(area); })
     .onTouch((event: TouchEvent) => {
       if (event.type === TouchType.Down) {
         if (this.pressing) {
           return;
         }
         keyRollover.land();
+        gamingPresses.down(event);
         this.pressing = true;
         this.pressStarted = Date.now();
         this.deleteOnce(true);

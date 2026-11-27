@@ -36,6 +36,8 @@ import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../common/KeyboardLayout';
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
+import { GamingFlowClock, GamingRippleOverlay } from '../components/GamingEffects';
+import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
 const TAG: string = 'index->';
@@ -47,6 +49,8 @@ struct Index {
   @StorageLink('kanonBackgroundPoster') backgroundPoster: string = '';
   @StorageLink('kanonBackgroundAnimate') backgroundAnimate: boolean = true;
   @StorageLink('kanonKeyboardVisible') keyboardVisible: boolean = false;
+  @StorageProp('kanonGamingUnlocked') gamingUnlocked: boolean = DEFAULT_GAMING_UNLOCKED;
+  @StorageProp('kanonGamingEffect') gamingEffect: GamingEffect = DEFAULT_GAMING_EFFECT;
   @StorageLink('kanonBackgroundZoom') backgroundZoom: number = 100;
   @StorageLink('kanonBackgroundX') backgroundX: number = 0;
   @StorageLink('kanonBackgroundY') backgroundY: number = 0;
@@ -121,6 +125,11 @@ struct Index {
     return candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, rows, this.fontScale);
   }
 
+  private gamingActive(): boolean {
+    return this.gamingUnlocked && this.keyboardVisible &&
+      this.submenuType === SubMenuType.NORMAL && !this.candidatesExpanded;
+  }
+
   build() {
     Stack() {
       if (this.backgroundPhoto.length > 0) {
@@ -164,14 +173,21 @@ struct Index {
               Submenu()
             }
           } else if (!this.candidatesExpanded || this.submenuType === SubMenuType.SIZE) {
-            if (keyboardMenuType(this.layout, this.menuType, this.inputPattern) === MenuType.NUMBER) {
-              NumberFlickMenu()
-            } else if (this.menuType === MenuType.SPECIAL) {
-              SymbolMenu()
-            } else {
-              if (this.layout === 'jp_flick' || this.layout === 'en_flick') { FlickMenu() }
-              else { KeyMenu() }
-            }
+            Stack() {
+              if (keyboardMenuType(this.layout, this.menuType, this.inputPattern) === MenuType.NUMBER) {
+                NumberFlickMenu()
+              } else if (this.menuType === MenuType.SPECIAL) {
+                SymbolMenu()
+              } else {
+                if (this.layout === 'jp_flick' || this.layout === 'en_flick') { FlickMenu() }
+                else { KeyMenu() }
+              }
+              if (this.gamingActive() && this.gamingEffect === 'flow') {
+                GamingFlowClock()
+              } else if (this.gamingActive() && this.gamingEffect === 'ripple') {
+                GamingRippleOverlay()
+              }
+            }.width('100%').height('100%')
           }
         }
         .width('100%')

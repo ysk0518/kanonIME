@@ -1,4 +1,24 @@
 const mutations = {
+  gamingTapGap: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'now - this.lastTap >= 2000',
+    after: 'now - this.lastTap > 2000'
+  },
+  gamingResetLocks: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'gamingEffect: defaults.gamingEffect',
+    after: 'gamingEffect: defaults.gamingEffect, gamingUnlocked: false'
+  },
+  gamingMenuWithoutUnlock: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'group.styleHeading && gamingUnlocked',
+    after: 'group.styleHeading'
+  },
+  gamingRippleEvictsNewest: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'this.rings.shift();',
+    after: 'this.rings.pop();'
+  },
   shortcutMovePastEnd: {
     file: 'common/ShortcutConfigValues.ets',
     before: 'next >= 0 && next < order.length;',

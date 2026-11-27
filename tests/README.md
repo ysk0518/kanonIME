@@ -16,6 +16,7 @@ npm run test:mutations
 node tests/run.cjs
 node tests/run.cjs --test-name-pattern "R02:"
 node tests/run.cjs --test-name-pattern "P57:"
+node tests/run.cjs --test-name-pattern "P58:"
 node tests/mutations.cjs
 ```
 
@@ -77,6 +78,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | `settings-menu.test.cjs` | P55のカード構成・遷移先、言語と背景の要約、即時保存の差分、全体リセット、IMEとの同期 |
 | `keyboard-settings.test.cjs` / `settings-menu.test.cjs` / `settings-sync.test.cjs` / `mozc-engine.test.cjs` / `ime-session.test.cjs` | P56のスマート入力の既定値・検証・旧データ補完、カードとリセット、IMEへの同期、設定を変更した後の絵文字候補・自動大文字・ピリオド入力 |
 | `settings-subpages.test.cjs` | P57のショートカットの上下移動・削除・追加・端での無効判定、サイズからの高さの差分、テーマの未保存判定 |
+| `gaming-effect.test.cjs` | P58の7回タップと2秒境界、設定の検証・旧データ補完、メニューの表示条件と要約、IMEへの同期、解放を保つリセット、波紋8個の上限と古い輪からの削除 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
@@ -164,6 +166,7 @@ Node 24以降のテストには30秒の期限を付け、故意に処理を壊�
 | P38 | 不明な起点を位置0で補う／起点が不明でも表示更新へ進む |
 | P56 | 絵文字候補・自動大文字・スペース2回でのピリオド入力のオフ設定をそれぞれ無視する |
 | P57 | 末尾のショートカットの下移動を許す、高さスライダーの値を無視する、テーマの横位置の変更を見落とす |
+| P58 | タップ間隔がちょうど2秒のときに回数を維持する、リセットで再ロックする、未解放でメニューに表示する、上限で最新側の波紋を消す |
 
 ## 別に確認すること
 

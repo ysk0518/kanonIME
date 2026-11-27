@@ -3,9 +3,10 @@ import { languageLayouts, layoutLanguage } from './KeyboardConfigValues';
 import { KeyboardSettingsPatch, KeyboardSettingsSnapshot } from './KeyboardSettingsModel';
 import { keyboardHeightPercent, keyboardKeyGap } from './KeyboardLayout';
 import { shortcutOrder } from './ShortcutConfigValues';
+import { gamingEffect } from './GamingEffectModel';
 
 export enum SettingsPageId {
-  Top, Languages, JapaneseInput, Theme, Size, Layout, Toolbar, Feedback, About
+  Top, Languages, JapaneseInput, Theme, Size, Layout, Toolbar, Feedback, About, Gaming
 }
 
 export enum SettingsMenuAction {
@@ -45,6 +46,19 @@ export const SETTINGS_MENU: SettingsMenuGroup[] = [
     { action: SettingsMenuAction.Reset, page: SettingsPageId.Top }, open(SettingsPageId.About)
   ] }
 ];
+
+export function settingsMenuRows(group: SettingsMenuGroup, gamingUnlocked: boolean): SettingsMenuRow[] {
+  if (group.styleHeading && gamingUnlocked) { return group.rows.concat([open(SettingsPageId.Gaming)]); }
+  return group.rows;
+}
+
+export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string): string {
+  switch (gamingEffect(effect)) {
+    case 'flow': return flow;
+    case 'ripple': return ripple;
+    default: return off;
+  }
+}
 
 export function settingsLanguages(layoutOrder: string): string[] {
   return languageLayouts(layoutOrder).map((id: string) => layoutLanguage(id));
@@ -124,7 +138,7 @@ export function settingsReset(): SettingsReset {
     emojiSuggestions: defaults.emojiSuggestions, autoCapitalize: defaults.autoCapitalize,
     doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
-    heightPercent: defaults.heightPercent
+    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect
   };
   return { patch: patch, background: new BackgroundConfig() };
 }

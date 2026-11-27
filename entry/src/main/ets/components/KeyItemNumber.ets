@@ -1,3 +1,4 @@
+import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -28,6 +29,8 @@ import { keyRollover } from '../common/KeyRollover';
 // 有大小写的按键组件
 @Component
 export struct KeyItemNumber {
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private gamingX: number = 0;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
@@ -93,6 +96,7 @@ export struct KeyItemNumber {
       this.longPressed = false;
       this.startEpoch = editorAdapter.getEpoch();
       keyboardHaptics.press();
+      gamingPresses.down(event);
       this.startKeyState = this.keyState;
       this.pendingText = this.keyState === KeyState.LOWER_CASE ? this.keyValue.content : this.keyValue.upperContent;
       this.alternateText = this.keyValue.title;
@@ -143,13 +147,15 @@ export struct KeyItemNumber {
           .minFontSize(8).maxFontSize(this.inputStyle.en_fontSize)
           .maxFontScale(1.25).maxLines(1)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
-          .fontColor($r('app.color.key_text'))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.active))
       }
     }
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 4, this.active))
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_old: Area, area: Area) => {
+      this.gamingX = gamingKeyX(area);
       const width: number = Number(area.width);
       const height: number = Number(area.height);
       if (this.finger >= 0 && (Math.abs(width - this.keyWidth) > 0.5 || Math.abs(height - this.keyHeight) > 0.5)) {

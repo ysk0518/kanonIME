@@ -11,6 +11,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyX } from '../common/GamingKeyFeedback';
 
 @Component
 export struct FlickMenu {
@@ -19,6 +20,9 @@ export struct FlickMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @State private englishUpper: boolean = false;
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private controlX: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  @State private pressedControl: number = -1;
   // The session reports a sentence start in English (Samsung Keyboard's automatic capitals).
   @StorageLink('kanonSentenceStart') @Watch('applySentenceStart') sentenceStart: boolean = false;
   private autoUpper: boolean = false;
@@ -46,7 +50,8 @@ export struct FlickMenu {
       .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      .fontColor(action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text'))
+      .fontColor(gamingKeyColor(this.gamingPhase, this.controlX[action],
+        action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text')))
       .fontWeight(action === 8 && this.englishUpper ? FontWeight.Medium : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .width('100%')
@@ -55,6 +60,13 @@ export struct FlickMenu {
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') :
         action === 1 ? '直前の確定を取り消す' : label)
       .borderRadius(6)
+      .outline(gamingKeyOutline(this.gamingPhase, this.controlX[action], 6, this.pressedControl === action))
+      .onAreaChange((_old: Area, area: Area) => { this.controlX[action] = gamingKeyX(area); })
+      .onTouch((event: TouchEvent) => {
+        if (gamingControlPressed(event, this.gamingPhase, this.pressedControl === action)) {
+          this.pressedControl = action;
+        } else if (this.pressedControl === action) { this.pressedControl = -1; }
+      })
       .onClick(() => {
         if (action === 1) {
           if (kanonIme.toggleInputEnabled()) { kanonIme.keyToggleBack(); }

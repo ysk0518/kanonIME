@@ -1,3 +1,4 @@
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyX } from '../common/GamingKeyFeedback';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { refreshSharedLayoutOrder } from '../common/KeyboardConfig';
@@ -8,6 +9,9 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct ModeCycleItem {
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private gamingX: number = 0;
+  @State private gamingPressed: boolean = false;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   keyWidth: Resource | string | number | undefined = undefined;
@@ -65,16 +69,22 @@ export struct ModeCycleItem {
     Stack({ alignContent: Alignment.Center }) {
       if (this.converts()) {
         Text($r('app.string.keyboard_convert')).fontSize(16).maxFontScale(1).maxLines(1)
-          .fontColor($r('app.color.key_text'))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text')))
       } else {
         Row({ space: 1 }) {
-          Text('あ').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'あ' ? $r('app.color.candidate_accent') :
-            $r('app.color.key_item_normal_text'))
-          Text('A').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === 'A' ? $r('app.color.candidate_accent') :
-            $r('app.color.key_item_normal_text'))
+          Text('あ').fontSize(14).maxFontScale(1).maxLines(1).fontColor(gamingKeyColor(this.gamingPhase, this.gamingX,
+            this.active() === 'あ' ? $r('app.color.candidate_accent') :
+            $r('app.color.key_item_normal_text')))
+            .fontWeight(this.gamingPhase >= 0 && this.active() === 'あ' ? FontWeight.Bold : FontWeight.Normal)
+          Text('A').fontSize(14).maxFontScale(1).maxLines(1).fontColor(gamingKeyColor(this.gamingPhase, this.gamingX,
+            this.active() === 'A' ? $r('app.color.candidate_accent') :
+            $r('app.color.key_item_normal_text')))
+            .fontWeight(this.gamingPhase >= 0 && this.active() === 'A' ? FontWeight.Bold : FontWeight.Normal)
           if (this.flick) {
-            Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(this.active() === '1' ? $r('app.color.candidate_accent') :
-              $r('app.color.key_item_normal_text'))
+            Text('1').fontSize(14).maxFontScale(1).maxLines(1).fontColor(gamingKeyColor(this.gamingPhase, this.gamingX,
+              this.active() === '1' ? $r('app.color.candidate_accent') :
+                $r('app.color.key_item_normal_text')))
+              .fontWeight(this.gamingPhase >= 0 && this.active() === '1' ? FontWeight.Bold : FontWeight.Normal)
           }
         }
       }
@@ -83,10 +93,15 @@ export struct ModeCycleItem {
     .height('100%')
     .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(this.keyRadius)
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, this.keyRadius, this.gamingPressed))
+    .onAreaChange((_old: Area, area: Area) => { this.gamingX = gamingKeyX(area); })
     .enabled(!this.numericOnly())
     .opacity(this.numericOnly() ? 0.7 : 1)
     .accessibilityText(this.accessibilityLabel())
     .id('modeCycleItem')
+    .onTouch((event: TouchEvent) => {
+      this.gamingPressed = gamingControlPressed(event, this.gamingPhase, this.gamingPressed);
+    })
     .onClick(() => { this.cycle(); })
   }
 }

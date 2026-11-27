@@ -1,3 +1,4 @@
+import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -26,6 +27,8 @@ import { keyRollover } from '../common/KeyRollover';
 // 无大小写的按键组件
 @Component
 export struct KeyItem {
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @State private gamingX: number = 0;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @Prop @Watch('cancelTouch') keyValue: keySourceListType | undefined = undefined;
@@ -66,6 +69,7 @@ export struct KeyItem {
       this.pending = enter;
       keyRollover.hold(enter);
       keyboardHaptics.press();
+      gamingPresses.down(event);
       return;
     }
     for (const touch of event.changedTouches) {
@@ -97,11 +101,13 @@ export struct KeyItem {
           .maxFontScale(Math.max(1, Math.min(1.5, (this.inputStyle.basicButtonHeight - 8) / 28))).maxLines(1)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .fontColor($r('app.color.key_text'))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.active))
       }
     }
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 4, this.active))
+    .onAreaChange((_old: Area, area: Area) => { this.gamingX = gamingKeyX(area); })
     .width(this.keyWidth ?? this.inputStyle.basicButtonWidth)
     .height('100%')
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })

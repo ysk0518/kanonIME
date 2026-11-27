@@ -17,7 +17,16 @@ import { CandidateAppearancePreview } from './CandidateAppearancePreview';
 import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, SettingsMenuGroup,
   SettingsNumber, SettingsToggle, SettingsReset, settingsLanguages, settingsLanguageSummary, settingsThemeSummary,
   settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
-  settingsShortcutPatch, settingsReset } from '../common/SettingsMenuModel';
+  settingsShortcutPatch, settingsReset, settingsMenuRows, settingsGamingSummary } from '../common/SettingsMenuModel';
+import { GAMING_EFFECTS, GamingEffect, GamingTapResult, GamingUnlockTaps } from '../common/GamingEffectModel';
+
+function gamingEffectTitle(effect: GamingEffect): Resource {
+  switch (effect) {
+    case 'flow': return $r('app.string.settings_gaming_flow');
+    case 'ripple': return $r('app.string.settings_gaming_ripple');
+    default: return $r('app.string.settings_gaming_off');
+  }
+}
 
 function pageTitle(page: SettingsPageId): Resource {
   switch (page) {
@@ -30,6 +39,7 @@ function pageTitle(page: SettingsPageId): Resource {
     case SettingsPageId.Toolbar: return $r('app.string.settings_menu_toolbar');
     case SettingsPageId.Feedback: return $r('app.string.settings_menu_feedback');
     case SettingsPageId.About: return $r('app.string.settings_menu_about');
+    case SettingsPageId.Gaming: return $r('app.string.settings_menu_gaming');
   }
 }
 
@@ -45,6 +55,7 @@ export struct KeyboardSettings {
   @State private spacingPreviewQwerty: boolean = false;
   @State private version: string = '';
   @State private hasBackground: boolean = false;
+  private gamingTaps: GamingUnlockTaps = new GamingUnlockTaps();
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
   @StorageLink('kanonSettingsSyncState') syncState: string = '';
   @StorageLink('kanonSettingsRequestSyncState') requestState: string = '';
@@ -86,7 +97,33 @@ export struct KeyboardSettings {
     if (!this.saving) { this.snapshot = readSettings(); }
   }
 
-  private pageChanged(): void { this.activeSlider = undefined; }
+  private pageChanged(): void {
+    this.activeSlider = undefined;
+    this.gamingTaps.reset();
+  }
+
+  private showGamingToast(message: Resource): void {
+    try { this.getUIContext().getPromptAction().showToast({ message: message, duration: 1200 }); } catch (error) {}
+  }
+
+  private async tapVersion(): Promise<void> {
+    if (this.saving || this.page !== SettingsPageId.About) { return; }
+    switch (this.gamingTaps.tap(Date.now(), this.snapshot.gamingUnlocked)) {
+      case GamingTapResult.ThreeLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 3)); break;
+      case GamingTapResult.TwoLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 2)); break;
+      case GamingTapResult.OneLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 1)); break;
+      case GamingTapResult.Unlock:
+        await this.save({ gamingUnlocked: true });
+        if (this.snapshot.gamingUnlocked) { this.showGamingToast($r('app.string.settings_gaming_unlocked')); }
+        break;
+      case GamingTapResult.AlreadyUnlocked:
+        this.showGamingToast($r('app.string.settings_gaming_already_unlocked')); break;
+      default: break;
+    }
+  }
 
   private syncPending(): boolean {
     const state: string = keyboardSettingsSync.isReplica() ? this.requestState : this.syncState;
@@ -170,6 +207,12 @@ export struct KeyboardSettings {
           resources.getStringSync($r('app.string.settings_summary_english').id),
           resources.getStringSync($r('app.string.settings_summary_separator').id));
       }
+      if (page === SettingsPageId.Gaming) {
+        return settingsGamingSummary(this.snapshot.gamingEffect,
+          resources.getStringSync(gamingEffectTitle('off').id),
+          resources.getStringSync(gamingEffectTitle('flow').id),
+          resources.getStringSync(gamingEffectTitle('ripple').id));
+      }
       return settingsThemeSummary(this.hasBackground,
         resources.getStringSync($r('app.string.settings_theme_standard').id),
         resources.getStringSync($r('app.string.settings_theme_image').id));
@@ -247,7 +290,8 @@ export struct KeyboardSettings {
         Column({ space: 4 }) {
           Text(row.action === SettingsMenuAction.Reset ? $r('app.string.settings_menu_reset') : pageTitle(row.page))
             .fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
-          if (row.page === SettingsPageId.Languages || row.page === SettingsPageId.Theme) {
+          if (row.page === SettingsPageId.Languages || row.page === SettingsPageId.Theme ||
+            row.page === SettingsPageId.Gaming) {
             Text(this.rowSummary(row.page)).fontSize(14)
               .fontColor($r('app.color.settings_accent')).width('100%')
           }
@@ -287,7 +331,7 @@ export struct KeyboardSettings {
                   $r('app.string.settings_summary_english'))
             }, (setting: SettingsToggle) => setting.toString())
           } else {
-            ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
+            ForEach(settingsMenuRows(group, this.snapshot.gamingUnlocked), (row: SettingsMenuRow, index: number) => {
               if (index > 0) { this.divider() }
               this.navigationRow(row)
             }, (row: SettingsMenuRow) => row.page.toString())
@@ -462,6 +506,27 @@ export struct KeyboardSettings {
   }
 
   @Builder
+  gamingOptions() {
+    Column() {
+      ForEach(GAMING_EFFECTS, (effect: GamingEffect, index: number) => {
+        if (index > 0) { this.divider() }
+        Button({ type: ButtonType.Normal }) {
+          Row({ space: 12 }) {
+            Text(gamingEffectTitle(effect)).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            Radio({ value: effect, group: 'keyboard_gaming_effect' })
+              .checked(this.snapshot.gamingEffect === effect)
+              .hitTestBehavior(HitTestMode.None).accessibilityLevel('no')
+          }.width('100%').constraintSize({ minHeight: 56 })
+        }.width('100%').padding(0).backgroundColor(Color.Transparent)
+          .enabled(!this.saving).accessibilityChecked(this.snapshot.gamingEffect === effect)
+          .onClick(() => {
+            if (this.snapshot.gamingEffect !== effect) { this.save({ gamingEffect: effect }); }
+          }).id(`keyboard_config_gaming_${effect}`)
+      }, (effect: GamingEffect) => effect)
+    }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
   content() {
     if (this.languageOnly || this.page === SettingsPageId.Languages) {
       this.languages()
@@ -482,11 +547,17 @@ export struct KeyboardSettings {
         onChange: (ids: string[]) => this.save(settingsShortcutPatch(ids)) })
     } else if (this.page === SettingsPageId.Feedback) {
       this.feedback()
+    } else if (this.page === SettingsPageId.Gaming && this.snapshot.gamingUnlocked) {
+      this.gamingOptions()
     } else if (this.page === SettingsPageId.About) {
       Column({ space: 8 }) {
         this.label($r('app.string.settings_app_name'))
         if (this.version !== '') {
-          this.help($r('app.string.settings_about_version', this.version))
+          Button({ type: ButtonType.Normal }) {
+            Text($r('app.string.settings_about_version', this.version))
+              .fontSize(14).fontColor($r('app.color.text_secondary')).width('100%')
+          }.width('100%').constraintSize({ minHeight: 44 }).padding(0).backgroundColor(Color.Transparent)
+            .onClick(() => { this.tapVersion(); }).id('keyboard_settings_version')
         }
       }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
       DebugConsole().padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
