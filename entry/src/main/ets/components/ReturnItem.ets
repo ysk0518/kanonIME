@@ -1,4 +1,5 @@
-import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyX } from '../common/GamingKeyFeedback';
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -34,7 +35,8 @@ import { enterKeyLabel } from '../model/KeyboardKeyLabels';
 @Component
 export struct ReturnItem {
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
-  @State private gamingX: number = 0;
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private gamingCenter: GamingPoint | undefined = undefined;
   @State private gamingPressed: boolean = false;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
@@ -54,21 +56,22 @@ export struct ReturnItem {
       Stack() {
         if (this.label() === '改行' || this.label() === '検索') {
           Image($rawfile(this.label() === '検索' ? 'search.svg' : 'return.svg'))
-            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text')))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
             .width(this.inputStyle.returnPicSize).height(this.inputStyle.returnPicSize)
         } else {
           Text(this.label())
             .minFontSize(8).maxFontSize(this.inputStyle.symbol_fontSize).maxFontScale(1.25)
             .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
             .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text')))
+            .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
         }
       }
       .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .width(this.returnWidth)
       .borderRadius(this.flick ? 6 : 4)
-      .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, this.flick ? 6 : 4, this.gamingPressed))
-      .onAreaChange((_old: Area, area: Area) => { this.gamingX = gamingKeyX(area); })
+      .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, this.flick ? 6 : 4, this.gamingPressed))
+      .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))
+      .onAreaChange((_old: Area, area: Area) => { this.gamingCenter = gamingKeyCenter(area); })
       .height('100%')
       .accessibilityText(this.englishComposing ? '確定' : this.label())
       .id(this.keyId)

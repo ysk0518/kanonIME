@@ -1,19 +1,20 @@
 import { ColorMetrics } from '@ohos.arkui.node';
 import { KANON_GAMING_PHASE } from '../common/AppStorageKeys';
-import { GAMING_RIPPLE_MS, GamingRipple, GamingRipples } from '../common/GamingEffectModel';
-import { GAMING_FLOW_STEPS, GAMING_FLOW_TICK_MS, gamingPresses } from '../common/GamingKeyFeedback';
+import { DEFAULT_GAMING_SPEED, GAMING_FLOW_STEPS, GAMING_RIPPLE_MS, GAMING_WAVE_TICK_MS, GamingPoint, GamingRipple, GamingRipples,
+  GamingWaveFrame, gamingFlowPeriodMs, gamingFlowStep, gamingSpreadDurationMs } from '../common/GamingEffectModel';
+import { gamingKeyCenter, gamingPresses, publishGamingWave } from '../common/GamingKeyFeedback';
 
 @Component
 export struct GamingFlowClock {
   @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshPalette') themeVersion: number = 0;
+  @StorageProp('kanonGamingSpeed') @Watch('restartClock') speed: number = DEFAULT_GAMING_SPEED;
   private paletteOffset: number = 0;
   private startedAt: number = 0;
   private timer: number = -1;
 
   aboutToAppear(): void {
-    this.startedAt = Date.now();
+    this.restartClock();
     this.refreshPalette();
-    this.timer = setInterval(() => this.publishPhase(), GAMING_FLOW_TICK_MS);
   }
 
   aboutToDisappear(): void {
@@ -31,9 +32,15 @@ export struct GamingFlowClock {
   }
 
   private publishPhase(): void {
-    const elapsed: number = Math.max(0, Date.now() - this.startedAt);
-    const step: number = Math.floor(elapsed / GAMING_FLOW_TICK_MS) % GAMING_FLOW_STEPS;
+    const step: number = gamingFlowStep(Date.now() - this.startedAt, this.speed);
     AppStorage.setOrCreate(KANON_GAMING_PHASE, this.paletteOffset + step);
+  }
+
+  private restartClock(): void {
+    clearInterval(this.timer);
+    this.startedAt = Date.now();
+    this.publishPhase();
+    this.timer = setInterval(() => this.publishPhase(), gamingFlowPeriodMs(this.speed) / GAMING_FLOW_STEPS);
   }
 
   build() {
@@ -42,8 +49,66 @@ export struct GamingFlowClock {
 }
 
 @Component
+export struct GamingWaveClock {
+  @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
+  private presses: GamingRipples = new GamingRipples();
+  private maxRadius: number = 0;
+  private previous: number = 0;
+  private timer: number = -1;
+  private onPress: (x: number, y: number, area: Area) => void = (_x: number, _y: number, area: Area): void => {
+    const bandWidth: number = Math.min(Number(area.width), Number(area.height));
+    if (!(this.maxRadius > 0) || !Number.isFinite(bandWidth) || bandWidth <= 0) { return; }
+    const center: GamingPoint = gamingKeyCenter(area);
+    const now: number = Date.now();
+    this.presses.add(center.x, center.y, now, gamingSpreadDurationMs(this.speed), bandWidth);
+    if (this.timer === -1) {
+      this.previous = now;
+      this.timer = setTimeout(() => this.publishFrame(), 0);
+    }
+  };
+
+  aboutToAppear(): void { gamingPresses.listen(this.onPress); }
+
+  aboutToDisappear(): void {
+    gamingPresses.unlisten(this.onPress);
+    this.stopClock();
+    this.presses = new GamingRipples();
+  }
+
+  private stopClock(): void {
+    clearTimeout(this.timer);
+    this.timer = -1;
+    publishGamingWave(undefined);
+  }
+
+  private publishFrame(): void {
+    const presses: GamingRipple[] = this.presses.activeAt(this.previous);
+    if (presses.length === 0) {
+      this.stopClock();
+      return;
+    }
+    const now: number = Date.now();
+    const frame: GamingWaveFrame = { presses: presses, previous: this.previous, now: now, maxRadius: this.maxRadius };
+    this.previous = now;
+    publishGamingWave(frame);
+    this.timer = setTimeout(() => this.publishFrame(), GAMING_WAVE_TICK_MS);
+  }
+
+  build() {
+    Stack() {}.width('100%').height('100%').constraintSize({ maxWidth: 720 })
+      .hitTestBehavior(HitTestMode.None).accessibilityLevel('no')
+      .onAreaChange((_old: Area, area: Area) => {
+        const width: number = Number(area.width);
+        const height: number = Number(area.height);
+        this.maxRadius = Math.sqrt(width * width + height * height);
+      })
+  }
+}
+
+@Component
 struct GamingRippleRing {
   finished: () => void = () => {};
+  duration: number = GAMING_RIPPLE_MS;
   @State private expanded: boolean = false;
   private startTimer: number = -1;
 
@@ -69,7 +134,7 @@ struct GamingRippleRing {
       .scale({ x: this.expanded ? 1 : 0.16, y: this.expanded ? 1 : 0.16 })
       .onAppear(() => {
         this.startTimer = setTimeout(() => {
-          this.getUIContext().animateTo({ duration: GAMING_RIPPLE_MS, curve: Curve.EaseOut,
+          this.getUIContext().animateTo({ duration: this.duration, curve: Curve.EaseOut,
             onFinish: () => this.finished() }, () => { this.expanded = true; });
         }, 0);
       })
@@ -78,14 +143,17 @@ struct GamingRippleRing {
 
 @Component
 export struct GamingRippleOverlay {
+  @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
   @State private rings: GamingRipple[] = [];
   private model: GamingRipples = new GamingRipples();
   private left: number = 0;
   private top: number = 0;
   private measured: boolean = false;
   private alive: boolean = false;
-  private onPress: (x: number, y: number) => void = (x: number, y: number): void => {
-    if (this.measured) { this.rings = this.model.add(x - this.left, y - this.top, Date.now()); }
+  private onPress: (x: number, y: number, area: Area) => void = (x: number, y: number, _area: Area): void => {
+    if (this.measured) {
+      this.rings = this.model.add(x - this.left, y - this.top, Date.now(), gamingSpreadDurationMs(this.speed));
+    }
   };
 
   aboutToAppear(): void {
@@ -105,7 +173,7 @@ export struct GamingRippleOverlay {
   build() {
     Stack() {
       ForEach(this.rings, (ring: GamingRipple) => {
-        GamingRippleRing({ finished: () => this.removeRing(ring.id) })
+        GamingRippleRing({ duration: ring.duration, finished: () => this.removeRing(ring.id) })
           .position({ x: ring.x - 64, y: ring.y - 64 })
           .hitTestBehavior(HitTestMode.None)
       }, (ring: GamingRipple) => ring.id.toString())

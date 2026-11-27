@@ -18,11 +18,13 @@ import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, Set
   SettingsNumber, SettingsToggle, SettingsReset, settingsLanguages, settingsLanguageSummary, settingsThemeSummary,
   settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
   settingsShortcutPatch, settingsReset, settingsMenuRows, settingsGamingSummary } from '../common/SettingsMenuModel';
-import { GAMING_EFFECTS, GamingEffect, GamingTapResult, GamingUnlockTaps } from '../common/GamingEffectModel';
+import { GAMING_EFFECTS, MAX_GAMING_SPEED, MIN_GAMING_SPEED, GamingEffect, GamingTapResult,
+  GamingUnlockTaps } from '../common/GamingEffectModel';
 
 function gamingEffectTitle(effect: GamingEffect): Resource {
   switch (effect) {
     case 'flow': return $r('app.string.settings_gaming_flow');
+    case 'wave': return $r('app.string.settings_gaming_wave');
     case 'ripple': return $r('app.string.settings_gaming_ripple');
     default: return $r('app.string.settings_gaming_off');
   }
@@ -211,7 +213,8 @@ export struct KeyboardSettings {
         return settingsGamingSummary(this.snapshot.gamingEffect,
           resources.getStringSync(gamingEffectTitle('off').id),
           resources.getStringSync(gamingEffectTitle('flow').id),
-          resources.getStringSync(gamingEffectTitle('ripple').id));
+          resources.getStringSync(gamingEffectTitle('ripple').id),
+          resources.getStringSync(gamingEffectTitle('wave').id));
       }
       return settingsThemeSummary(this.hasBackground,
         resources.getStringSync($r('app.string.settings_theme_standard').id),
@@ -244,6 +247,7 @@ export struct KeyboardSettings {
       case SettingsNumber.Haptics: return this.snapshot.hapticLevel;
       case SettingsNumber.KeySound: return this.snapshot.keySoundLevel;
       case SettingsNumber.Height: return this.snapshot.heightPercent;
+      case SettingsNumber.GamingSpeed: return this.snapshot.gamingSpeed;
     }
   }
 
@@ -256,14 +260,19 @@ export struct KeyboardSettings {
       case SettingsNumber.KeyGap: return $r('app.string.settings_key_gap', this.sliderValue(setting));
       case SettingsNumber.CandidateFont: return $r('app.string.settings_candidate_font', this.sliderValue(setting));
       case SettingsNumber.Height: return $r('app.string.settings_keyboard_height', `${this.sliderValue(setting)}%`);
+      case SettingsNumber.GamingSpeed: return $r('app.string.settings_gaming_speed', this.sliderValue(setting));
       case SettingsNumber.LongPress:
         return $r('app.string.settings_long_press_seconds', (this.sliderValue(setting) / 1000).toFixed(2));
       default: return $r('app.string.settings_flick_sensitivity');
     }
   }
 
+  private sliderEnabled(setting: SettingsNumber): boolean {
+    return !this.saving && (setting !== SettingsNumber.GamingSpeed || this.snapshot.gamingEffect !== 'off');
+  }
+
   private sliderChanged(setting: SettingsNumber, value: number, mode: SliderChangeMode): void {
-    if (this.saving) { return; }
+    if (!this.sliderEnabled(setting)) { return; }
     if (mode === SliderChangeMode.End || mode === SliderChangeMode.Click) {
       this.activeSlider = undefined;
       if (value !== this.numberValue(setting)) { this.save(settingsNumberPatch(setting, value)); }
@@ -420,7 +429,7 @@ export struct KeyboardSettings {
     Text(this.sliderTitle(setting)).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
     Slider({ value: this.sliderValue(setting), min: min, max: max, step: step })
       .sliderInteractionMode(SliderInteraction.SLIDE_AND_CLICK_UP)
-      .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
+      .selectedColor($r('app.color.settings_accent')).enabled(this.sliderEnabled(setting))
       .onChange((value: number, mode: SliderChangeMode) => this.sliderChanged(setting, value, mode))
       .accessibilityText(this.sliderTitle(setting)).id(id).width('100%')
   }
@@ -523,6 +532,11 @@ export struct KeyboardSettings {
             if (this.snapshot.gamingEffect !== effect) { this.save({ gamingEffect: effect }); }
           }).id(`keyboard_config_gaming_${effect}`)
       }, (effect: GamingEffect) => effect)
+      this.divider()
+      Column({ space: 4 }) {
+        this.slider(SettingsNumber.GamingSpeed, MIN_GAMING_SPEED, MAX_GAMING_SPEED, 1, 'keyboard_config_gaming_speed')
+      }.padding({ top: 14, bottom: 16 })
+        .opacity(this.snapshot.gamingEffect === 'off' ? 0.5 : 1)
     }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
   }
 

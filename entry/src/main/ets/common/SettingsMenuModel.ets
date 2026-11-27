@@ -52,9 +52,10 @@ export function settingsMenuRows(group: SettingsMenuGroup, gamingUnlocked: boole
   return group.rows;
 }
 
-export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string): string {
+export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string, wave: string = off): string {
   switch (gamingEffect(effect)) {
     case 'flow': return flow;
+    case 'wave': return wave;
     case 'ripple': return ripple;
     default: return off;
   }
@@ -105,7 +106,7 @@ export function settingsTogglePatch(setting: SettingsToggle, value: boolean): Ke
 }
 
 export enum SettingsNumber {
-  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height
+  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height, GamingSpeed
 }
 
 export function settingsNumberPatch(setting: SettingsNumber, value: number): KeyboardSettingsPatch {
@@ -118,6 +119,7 @@ export function settingsNumberPatch(setting: SettingsNumber, value: number): Key
     case SettingsNumber.Haptics: return { hapticLevel: value };
     case SettingsNumber.KeySound: return { keySoundLevel: value };
     case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(value) };
+    case SettingsNumber.GamingSpeed: return { gamingSpeed: value };
   }
 }
 
@@ -138,7 +140,7 @@ export function settingsReset(): SettingsReset {
     emojiSuggestions: defaults.emojiSuggestions, autoCapitalize: defaults.autoCapitalize,
     doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
-    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect
+    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect, gamingSpeed: defaults.gamingSpeed
   };
   return { patch: patch, background: new BackgroundConfig() };
 }

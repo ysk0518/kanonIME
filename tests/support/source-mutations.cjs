@@ -1,4 +1,24 @@
 const mutations = {
+  gamingWaveNoRadiusLimit: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'if (distance >= frame.maxRadius) { continue; }',
+    after: ''
+  },
+  gamingWaveDropsStrongerPress: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'if (intensity > sample.intensity)',
+    after: 'if (intensity > 0)'
+  },
+  gamingSpeedIgnoresLevel: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'FLOW_PERIODS_MS[level - MIN_GAMING_SPEED]',
+    after: 'FLOW_PERIODS_MS[DEFAULT_GAMING_SPEED - MIN_GAMING_SPEED]'
+  },
+  gamingResetKeepsSpeed: {
+    file: 'common/SettingsMenuModel.ets',
+    before: ', gamingSpeed: defaults.gamingSpeed',
+    after: ''
+  },
   gamingTapGap: {
     file: 'common/GamingEffectModel.ets',
     before: 'now - this.lastTap >= 2000',

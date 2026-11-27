@@ -11,7 +11,8 @@ import { kanonIme } from '../kanon/KanonIme';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { FLICK_ACTION_COLUMN_WIDTH, FLICK_SIDE_PADDING } from '../common/KeyboardLayout';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
-import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyX } from '../common/GamingKeyFeedback';
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 
 @Component
 export struct FlickMenu {
@@ -21,7 +22,9 @@ export struct FlickMenu {
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @State private englishUpper: boolean = false;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
-  @State private controlX: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private controlCenters: (GamingPoint | undefined)[] =
+    [undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined];
   @State private pressedControl: number = -1;
   // The session reports a sentence start in English (Samsung Keyboard's automatic capitals).
   @StorageLink('kanonSentenceStart') @Watch('applySentenceStart') sentenceStart: boolean = false;
@@ -50,7 +53,7 @@ export struct FlickMenu {
       .maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      .fontColor(gamingKeyColor(this.gamingPhase, this.controlX[action],
+      .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.controlCenters[action],
         action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text')))
       .fontWeight(action === 8 && this.englishUpper ? FontWeight.Medium : FontWeight.Normal)
       .textAlign(TextAlign.Center)
@@ -60,8 +63,9 @@ export struct FlickMenu {
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') :
         action === 1 ? '直前の確定を取り消す' : label)
       .borderRadius(6)
-      .outline(gamingKeyOutline(this.gamingPhase, this.controlX[action], 6, this.pressedControl === action))
-      .onAreaChange((_old: Area, area: Area) => { this.controlX[action] = gamingKeyX(area); })
+      .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.controlCenters[action], 6, this.pressedControl === action))
+      .linearGradient(gamingKeyTint(this.gamingTime, this.controlCenters[action]))
+      .onAreaChange((_old: Area, area: Area) => { this.controlCenters[action] = gamingKeyCenter(area); })
       .onTouch((event: TouchEvent) => {
         if (gamingControlPressed(event, this.gamingPhase, this.pressedControl === action)) {
           this.pressedControl = action;

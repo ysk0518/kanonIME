@@ -27,7 +27,8 @@ import { ReturnItem } from './ReturnItem';
 import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
-import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyX } from '../common/GamingKeyFeedback';
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 
 @Styles function pressedStyles() {
   .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
@@ -49,7 +50,8 @@ export struct KeyMenu {
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
-  @State private shiftX: number = 0;
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private shiftCenter: GamingPoint | undefined = undefined;
   @State private gamingPressed: boolean = false;
   // The session reports a sentence start in English (Samsung Keyboard's automatic capitals).
   @StorageLink('kanonSentenceStart') @Watch('applySentenceStart') sentenceStart: boolean = false;
@@ -113,14 +115,15 @@ export struct KeyMenu {
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
         Stack() {
           Image($rawfile(this.keyState === KeyState.ONCE_UPPER_CASE ? 'shift light.svg' : this.keyState === KeyState.UPPER_CASE ? 'shift light long.svg' : 'shift.svg'))
-            .fillColor(gamingKeyColor(this.gamingPhase, this.shiftX, $r('app.color.key_text')))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.shiftCenter, $r('app.color.key_text')))
             .width(this.inputStyle.featurePicSize)
             .height(this.inputStyle.featurePicSize)
         }
         .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
         .borderRadius(4)
-        .outline(gamingKeyOutline(this.gamingPhase, this.shiftX, 4, this.gamingPressed))
-        .onAreaChange((_old: Area, area: Area) => { this.shiftX = gamingKeyX(area); })
+        .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.shiftCenter, 4, this.gamingPressed))
+        .linearGradient(gamingKeyTint(this.gamingTime, this.shiftCenter))
+        .onAreaChange((_old: Area, area: Area) => { this.shiftCenter = gamingKeyCenter(area); })
         .onTouch((event: TouchEvent) => {
           this.gamingPressed = gamingControlPressed(event, this.gamingPhase, this.gamingPressed);
         })

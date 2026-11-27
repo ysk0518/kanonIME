@@ -114,7 +114,11 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['gamingTapGap', 'P58', 'a gap of exactly two seconds'],
   ['gamingResetLocks', 'P58', 'unlock and effect sync'],
   ['gamingMenuWithoutUnlock', 'P58', 'the gaming row appears'],
-  ['gamingRippleEvictsNewest', 'P58', 'ripples retain only eight newest']]) {
+  ['gamingRippleEvictsNewest', 'P58', 'ripples retain only eight newest'],
+  ['gamingWaveNoRadiusLimit', 'P58b', 'the wave is zero at the maximum radius'],
+  ['gamingWaveDropsStrongerPress', 'P58b', 'overlapping presses use the strongest wave'],
+  ['gamingSpeedIgnoresLevel', 'P58b', 'flow cycles and wave and ripple durations'],
+  ['gamingResetKeepsSpeed', 'P58b', 'speed syncs independently']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

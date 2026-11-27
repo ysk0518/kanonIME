@@ -2,7 +2,8 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DE
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_SOUND_LEVEL, KEYBOARD_LAYOUTS,
   DEFAULT_EMOJI_SUGGESTIONS, DEFAULT_AUTO_CAPITALIZE, DEFAULT_DOUBLE_SPACE_PERIOD, languageLayouts } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
-import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect, gamingEffect } from './GamingEffectModel';
+import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_SPEED, DEFAULT_GAMING_UNLOCKED, GamingEffect, gamingEffect,
+  validGamingSpeed } from './GamingEffectModel';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
@@ -21,6 +22,7 @@ export class KeyboardSettingsSnapshot {
   emojiSuggestions: boolean = DEFAULT_EMOJI_SUGGESTIONS;
   gamingUnlocked: boolean = DEFAULT_GAMING_UNLOCKED;
   gamingEffect: GamingEffect = DEFAULT_GAMING_EFFECT;
+  gamingSpeed: number = DEFAULT_GAMING_SPEED;
   autoCapitalize: boolean = DEFAULT_AUTO_CAPITALIZE;
   doubleSpacePeriod: boolean = DEFAULT_DOUBLE_SPACE_PERIOD;
   keyGap: number = DEFAULT_KEY_GAP;
@@ -44,6 +46,7 @@ export interface KeyboardSettingsPatch {
   emojiSuggestions?: boolean;
   gamingUnlocked?: boolean;
   gamingEffect?: GamingEffect;
+  gamingSpeed?: number;
   autoCapitalize?: boolean;
   doubleSpacePeriod?: boolean;
   keyGap?: number;
@@ -108,6 +111,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
     (patch.keyPreview === undefined || typeof patch.keyPreview === 'boolean') &&
     (patch.emojiSuggestions === undefined || typeof patch.emojiSuggestions === 'boolean') &&
     (patch.gamingUnlocked === undefined || typeof patch.gamingUnlocked === 'boolean') &&
+    (patch.gamingSpeed === undefined || validGamingSpeed(patch.gamingSpeed)) &&
     (patch.autoCapitalize === undefined || typeof patch.autoCapitalize === 'boolean') &&
     (patch.doubleSpacePeriod === undefined || typeof patch.doubleSpacePeriod === 'boolean') &&
     (patch.keyGap === undefined || inRange(patch.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
@@ -127,6 +131,7 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
     typeof snapshot.keyPreview === 'boolean' &&
     (snapshot.emojiSuggestions === undefined || typeof snapshot.emojiSuggestions === 'boolean') &&
     (snapshot.gamingUnlocked === undefined || typeof snapshot.gamingUnlocked === 'boolean') &&
+    (snapshot.gamingSpeed === undefined || validGamingSpeed(snapshot.gamingSpeed)) &&
     (snapshot.autoCapitalize === undefined || typeof snapshot.autoCapitalize === 'boolean') &&
     (snapshot.doubleSpacePeriod === undefined || typeof snapshot.doubleSpacePeriod === 'boolean') &&
     (snapshot.keyGap === undefined || inRange(snapshot.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
@@ -144,6 +149,7 @@ export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettin
   if (copy.emojiSuggestions === undefined) { copy.emojiSuggestions = DEFAULT_EMOJI_SUGGESTIONS; }
   if (copy.gamingUnlocked === undefined) { copy.gamingUnlocked = DEFAULT_GAMING_UNLOCKED; }
   copy.gamingEffect = gamingEffect(copy.gamingEffect);
+  if (copy.gamingSpeed === undefined) { copy.gamingSpeed = DEFAULT_GAMING_SPEED; }
   if (copy.autoCapitalize === undefined) { copy.autoCapitalize = DEFAULT_AUTO_CAPITALIZE; }
   if (copy.doubleSpacePeriod === undefined) { copy.doubleSpacePeriod = DEFAULT_DOUBLE_SPACE_PERIOD; }
   if (copy.toggleInputEnabled === undefined) { copy.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED; }
@@ -166,6 +172,7 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.emojiSuggestions !== undefined) { next.emojiSuggestions = patch.emojiSuggestions; }
   if (patch.gamingUnlocked !== undefined) { next.gamingUnlocked = patch.gamingUnlocked; }
   if (patch.gamingEffect !== undefined) { next.gamingEffect = gamingEffect(patch.gamingEffect); }
+  if (patch.gamingSpeed !== undefined) { next.gamingSpeed = patch.gamingSpeed; }
   if (patch.autoCapitalize !== undefined) { next.autoCapitalize = patch.autoCapitalize; }
   if (patch.doubleSpacePeriod !== undefined) { next.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { next.keyGap = Math.round(patch.keyGap); }
@@ -193,6 +200,7 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.emojiSuggestions !== undefined) { merged.emojiSuggestions = patch.emojiSuggestions; }
   if (patch.gamingUnlocked !== undefined) { merged.gamingUnlocked = patch.gamingUnlocked; }
   if (patch.gamingEffect !== undefined) { merged.gamingEffect = gamingEffect(patch.gamingEffect); }
+  if (patch.gamingSpeed !== undefined) { merged.gamingSpeed = patch.gamingSpeed; }
   if (patch.autoCapitalize !== undefined) { merged.autoCapitalize = patch.autoCapitalize; }
   if (patch.doubleSpacePeriod !== undefined) { merged.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { merged.keyGap = patch.keyGap; }

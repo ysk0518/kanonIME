@@ -1,4 +1,5 @@
-import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
+import { gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint, gamingPresses } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -30,7 +31,8 @@ import { keyRollover } from '../common/KeyRollover';
 @Component
 export struct KeyItemNumber {
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
-  @State private gamingX: number = 0;
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private gamingCenter: GamingPoint | undefined = undefined;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('kanonLongPressMs') longPressMs: number = DEFAULT_LONG_PRESS_MS;
@@ -147,15 +149,16 @@ export struct KeyItemNumber {
           .minFontSize(8).maxFontSize(this.inputStyle.en_fontSize)
           .maxFontScale(1.25).maxLines(1)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
-          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.active))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text'), this.active))
       }
     }
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(4)
-    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 4, this.active))
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, 4, this.active))
+    .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_old: Area, area: Area) => {
-      this.gamingX = gamingKeyX(area);
+      this.gamingCenter = gamingKeyCenter(area);
       const width: number = Number(area.width);
       const height: number = Number(area.height);
       if (this.finger >= 0 && (Math.abs(width - this.keyWidth) > 0.5 || Math.abs(height - this.keyHeight) > 0.5)) {

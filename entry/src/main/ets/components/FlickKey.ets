@@ -1,4 +1,5 @@
-import { gamingKeyColor, gamingKeyOutline, gamingKeyX, gamingPresses } from '../common/GamingKeyFeedback';
+import { gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint, gamingPresses } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_FLICK_DISTANCE } from '../common/KeyboardConfig';
@@ -13,7 +14,8 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 @Component
 export struct FlickKey {
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
-  @State private gamingX: number = 0;
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private gamingCenter: GamingPoint | undefined = undefined;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
@@ -128,7 +130,7 @@ export struct FlickKey {
           .minFontSize(6).maxFontSize(9)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
           .width('90%').height('25%').textAlign(TextAlign.End)
-          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.active))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text'), this.active))
       }
       Text(this.label())
         .fontSize(this.labelFontSize())
@@ -138,7 +140,7 @@ export struct FlickKey {
         .width('90%').height(this.symbolHint.length > 0 ? '62%' : this.digitHint.length > 0 ? '65%' : '70%')
         .textAlign(TextAlign.Center)
         .fontWeight(this.active ? FontWeight.Medium : FontWeight.Normal)
-        .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX,
+        .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter,
           this.active ? $r('app.color.candidate_accent') : $r('app.color.key_text'), this.active))
       if (this.symbolHint.length > 0) {
         Text(this.symbolHint)
@@ -146,7 +148,7 @@ export struct FlickKey {
           .minFontSize(6).maxFontSize(10)
           .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
           .width('90%').height('28%').textAlign(TextAlign.Center)
-          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingX, $r('app.color.key_text'), this.active))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text'), this.active))
       }
     }
     .justifyContent(this.digitHint.length > 0 ? FlexAlign.Start : FlexAlign.Center)
@@ -154,11 +156,12 @@ export struct FlickKey {
     .height('100%')
     .backgroundColor(backgroundKeyColor(this.active ? $r('app.color.key_item_normal_pressed') : $r('app.color.key_item_normal'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
     .borderRadius(6)
-    .outline(gamingKeyOutline(this.gamingPhase, this.gamingX, 6, this.active))
+    .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, 6, this.active))
+    .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))
     .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 2 })
     .onTouch((event: TouchEvent) => this.touch(event))
     .onAreaChange((_oldArea: Area, area: Area) => {
-      this.gamingX = gamingKeyX(area);
+      this.gamingCenter = gamingKeyCenter(area);
       this.keyWidth = Number(area.width);
     })
     .id(this.keyId.length > 0 ? this.keyId : `flick_${this.values[0]}`)

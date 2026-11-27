@@ -36,7 +36,7 @@ import { kanonIme } from '../kanon/KanonIme';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../common/KeyboardLayout';
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
-import { GamingFlowClock, GamingRippleOverlay } from '../components/GamingEffects';
+import { GamingFlowClock, GamingRippleOverlay, GamingWaveClock } from '../components/GamingEffects';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
@@ -184,6 +184,8 @@ struct Index {
               }
               if (this.gamingActive() && this.gamingEffect === 'flow') {
                 GamingFlowClock()
+              } else if (this.gamingActive() && this.gamingEffect === 'wave') {
+                GamingWaveClock()
               } else if (this.gamingActive() && this.gamingEffect === 'ripple') {
                 GamingRippleOverlay()
               }
