@@ -58,7 +58,7 @@ export function validInputEvent(event: UiEvent): boolean {
         typeof event.previous === 'string' && event.previous.length === 1 &&
         (event.cursor === undefined || nonnegativeInteger(event.cursor));
     case 'backspace': case 'convert': case 'submit': case 'enter':
-    case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset': case 'undo':
+    case 'cancel': case 'selectAll': case 'forwardDelete': case 'reset': case 'undo': case 'suggest':
       return true;
     default:
       return false;
