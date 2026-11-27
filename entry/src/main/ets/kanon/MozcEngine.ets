@@ -70,14 +70,55 @@ function parseOut(json: string): ConvOut {
   return out;
 }
 
+/** Hiragana, katakana or the long vowel mark: no roman key is pending before the caret. */
+function endsWithKana(s: string): boolean {
+  if (s.length === 0) { return false; }
+  const c: number = s.charCodeAt(s.length - 1);
+  return (c >= 0x3041 && c <= 0x3096) || (c >= 0x30A1 && c <= 0x30FA) || c === 0x30FC;
+}
+
+/** The preedit ends with the roman letter last typed, half or full width. */
+function endsWithRomanKey(s: string, key: string): boolean {
+  if (s.length === 0 || key.length !== 1) { return false; }
+  let c: number = s.charCodeAt(s.length - 1);
+  if (c >= 0xFF21 && c <= 0xFF5A) { c -= 0xFEE0; }
+  return String.fromCharCode(c).toLowerCase() === key;
+}
+
+/** Mozc cursor positions count Unicode characters, not UTF-16 units. */
+function codePointLength(s: string): number {
+  let count: number = 0;
+  for (let i: number = 0; i < s.length; i++) {
+    const c: number = s.charCodeAt(i);
+    if (c >= 0xD800 && c <= 0xDBFF && i + 1 < s.length) { i++; }
+    count++;
+  }
+  return count;
+}
+
+/** One or more lowercase roman letters; several arrive together when fast keys were merged. */
 function isRomanLower(s: string): boolean {
-  return s.length === 1 && s >= 'a' && s <= 'z';
+  if (s.length === 0) { return false; }
+  for (let i: number = 0; i < s.length; i++) {
+    const c: string = s.charAt(i);
+    if (c < 'a' || c > 'z') { return false; }
+  }
+  return true;
 }
 
 export class MozcEngine implements EnginePort {
   private bridge: MozcBridgePort;
   private buffer: string = '';
   private inputUnits: CompositionInput[] = [];
+  // Each Mozc key with suggestions costs 20-30 ms, and 100-200 ms for the first
+  // consonant of a new word. With deferral a key only updates the preedit; the
+  // session asks for candidates ("suggest") when no newer key is queued.
+  private deferSuggestions: boolean = false;
+  private suggestPending: boolean = false;
+  /** The pending roman letter "suggest" deletes and retypes; empty to move the cursor. */
+  private retypeKey: string = '';
+  private lastLabels: CandidateLabel[] = [];
+  private lastCandidateRevision: number = 0;
   private revision: number = 0;
   private lastIds: number[] = [];
   private selIdx: number = 0;
@@ -89,8 +130,14 @@ export class MozcEngine implements EnginePort {
   /** Replay ownership and candidate commit scope are independent editing policies. */
   private editing: MozcEditState = new MozcEditState();
 
-  constructor(bridge: MozcBridgePort) {
+  constructor(bridge: MozcBridgePort, deferSuggestions: boolean = false) {
     this.bridge = bridge;
+    this.deferSuggestions = deferSuggestions;
+  }
+
+  /** True when the shown preedit is newer than its candidates; see suggestLater. */
+  needsSuggestion(): boolean {
+    return this.suggestPending && this.phase === 'composing';
   }
 
   /** 強調中の候補位置（診断表示用）。 */
@@ -181,6 +228,8 @@ export class MozcEngine implements EnginePort {
     }
     this.lastPreedit = out.preedit;
     this.lastLens = out.candlens.join(',');
+    this.lastLabels = labels;
+    this.lastCandidateRevision = this.revision;
     const hasPre: boolean = out.preedit_len > 0;
     return {
       sessionId: sessionId, editorEpoch: epoch, sequence: seq, revision: this.revision,
@@ -189,6 +238,71 @@ export class MozcEngine implements EnginePort {
       segCount: hasPre ? (out.segcount > 0 ? out.segcount : 1) : 0,
       candidateCount: out.ncand, candidateRevision: this.revision, candidates: labels,
       effects: effects, errorCode: 0, errorRecoverable: true
+    };
+  }
+
+  // A key typed with deferred suggestions. Keep showing the previous candidates
+  // (stale: their revision no longer matches, so a tap on one is rejected)
+  // until "suggest" replaces them. A pending roman letter cannot be suggested
+  // by moving the cursor without breaking the next key, so "suggest" deletes
+  // and retypes that letter instead; any other tail shows no candidates.
+  private deferredUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut,
+    romanKey: string): EngineUpdate {
+    const previousLabels: CandidateLabel[] = this.lastLabels;
+    const previousRevision: number = this.lastCandidateRevision;
+    const update: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, []);
+    const caret: number = this.caretPosition(out);
+    if (caret !== out.preedit.length) { return update; }
+    if (endsWithKana(out.preedit)) {
+      this.retypeKey = '';
+    } else if (romanKey.length > 0 && endsWithRomanKey(out.preedit, romanKey)) {
+      this.retypeKey = romanKey;
+    } else {
+      return update;
+    }
+    this.suggestPending = true;
+    this.lastIds = [];
+    this.lastLabels = previousLabels;
+    this.lastCandidateRevision = previousRevision;
+    update.candidates = previousLabels;
+    update.candidateCount = previousLabels.length;
+    update.candidateRevision = previousRevision;
+    return update;
+  }
+
+  private async suggest(sessionId: string, epoch: number, seq: number): Promise<EngineUpdate> {
+    if (!this.needsSuggestion()) { return this.currentUpdate(sessionId, epoch, seq); }
+    this.suggestPending = false;
+    let out: ConvOut;
+    try {
+      out = parseOut(await this.bridge.executeAsync('suggest', this.retypeKey, codePointLength(this.lastPreedit)));
+    } catch (e) {
+      out = new ConvOut();
+      out.ok = false;
+    }
+    const retyped: boolean = this.retypeKey.length > 0;
+    this.retypeKey = '';
+    // Moving the cursor leaves the composition as shown, so keep it on any
+    // mismatch. A retype has already changed Mozc: show whatever it holds now.
+    if (!out.ok) {
+      return retyped ? this.errUpdate(sessionId, epoch, seq, true) : this.currentUpdate(sessionId, epoch, seq);
+    }
+    if (!retyped && out.preedit !== this.lastPreedit) { return this.currentUpdate(sessionId, epoch, seq); }
+    if (out.preedit_len === 0) { this.phase = 'empty'; }
+    this.revision++;
+    return this.fromOut(sessionId, epoch, seq, out, []);
+  }
+
+  // The state as last shown, for a suggestion that no longer applies.
+  private currentUpdate(sessionId: string, epoch: number, seq: number): EngineUpdate {
+    const hasPre: boolean = this.phase !== 'empty' && this.lastPreedit.length > 0;
+    return {
+      sessionId: sessionId, editorEpoch: epoch, sequence: seq, revision: this.revision,
+      consumed: true, phase: hasPre ? this.phase : 'empty', hasPreedit: hasPre,
+      preeditLen: hasPre ? this.lastPreedit.length : 0, caretUtf16: hasPre ? this.caretPosition(this.lastOut) : 0,
+      segCount: hasPre ? (this.lastOut.segcount > 0 ? this.lastOut.segcount : 1) : 0,
+      candidateCount: this.lastLabels.length, candidateRevision: this.lastCandidateRevision,
+      candidates: this.lastLabels, effects: [], errorCode: 0, errorRecoverable: true
     };
   }
 
@@ -202,10 +316,10 @@ export class MozcEngine implements EnginePort {
     return this.fromOut(sessionId, epoch, seq, out, []);
   }
 
-  private async callConvert(keys: string): Promise<ConvOut> {
+  private async callConvert(keys: string, deferSuggestion: boolean = false): Promise<ConvOut> {
     const api: MozcBridgePort = this.bridge;
     try {
-      return parseOut(await api.executeAsync('convert', keys, 0));
+      return parseOut(await api.executeAsync('convert', keys, deferSuggestion ? 1 : 0));
     } catch (e) {
       const out = new ConvOut();
       out.ok = false;
@@ -320,6 +434,10 @@ export class MozcEngine implements EnginePort {
   private async dispatchInner(sessionId: string, epoch: number, seq: number, event: InputEvent): Promise<EngineUpdate> {
     const api: MozcBridgePort = this.bridge;
     const kind: string = event.kind;
+    if (kind === 'suggest') { return await this.suggest(sessionId, epoch, seq); }
+    // Any other operation replaces the composition the deferred candidates were for.
+    this.suggestPending = false;
+    this.retypeKey = '';
     if (kind === 'undo') {
       const out: ConvOut = parseOut(await api.undo());
       if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
@@ -431,7 +549,11 @@ export class MozcEngine implements EnginePort {
         const restored: ConvOut = await this.replay(units);
         if (!restored.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
       }
-      const out: ConvOut = literal ? await this.callLiteral(t) : await this.callConvert(unit);
+      // Defer candidates only for keys typed at the end of a composition.
+      const atEnd: boolean = this.phase === 'empty' ||
+        (this.phase === 'composing' && this.caretPosition(this.lastOut) === this.lastPreedit.length);
+      const deferred: boolean = this.deferSuggestions && !literal && !retainConversion && atEnd;
+      const out: ConvOut = literal ? await this.callLiteral(t) : await this.callConvert(unit, deferred);
       if (!out.ok) { return this.errUpdate(sessionId, epoch, seq, true); }
       const effects: CommitEffect[] = [];
       if (out.result.length > 0) {
@@ -443,6 +565,9 @@ export class MozcEngine implements EnginePort {
       this.editing.afterInput(retainConversion, out.result.length > 0, out.preedit_len > 0);
       if (literal) {
         units = units.concat(literalInputs(t));
+      } else if (kind === 'text') {
+        // Keep one replayable unit per key, also for keys merged into one call.
+        for (let i: number = 0; i < unit.length; i++) { units.push(new CompositionInput(unit.charAt(i), '')); }
       } else {
         units.push(new CompositionInput(unit, kind === 'kana' ? t : ''));
       }
@@ -455,7 +580,10 @@ export class MozcEngine implements EnginePort {
       this.phase = out.preedit_len > 0 ? 'composing' : 'empty';
       if (this.phase === 'empty') { this.setInputUnits([]); }
       this.revision++;
-      return this.fromOut(sessionId, epoch, seq, out, effects);
+      if (!deferred || this.phase !== 'composing' || effects.length > 0) {
+        return this.fromOut(sessionId, epoch, seq, out, effects);
+      }
+      return this.deferredUpdate(sessionId, epoch, seq, out, kind === 'text' ? unit.charAt(unit.length - 1) : '');
     }
     if (kind === 'deleteCandidate') {
       const id: number = (event as CandidateInputEvent).candidateId;

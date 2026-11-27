@@ -1,7 +1,8 @@
 /** SDK-free input protocol. UiEvent is untrusted until the queue validates it. */
 export type UiEventKind = 'text' | 'kana' | 'modifyKana' | 'replaceToggle' | 'paste' | 'backspace' | 'convert' |
   'compositionArrow' | 'compositionCursor' | 'submit' | 'enter' | 'cancel' | 'move' | 'selectMove' | 'selectEdge' |
-  'selectAll' | 'forwardDelete' | 'select' | 'deleteCandidate' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion';
+  'selectAll' | 'forwardDelete' | 'select' | 'deleteCandidate' | 'partial' | 'reset' | 'mode' | 'undo' | 'undoCompletion' |
+  'suggest';
 export type EditorEdge = 'begin' | 'end';
 export type EditorDirection = 'left' | 'right' | 'up' | 'down';
 export type KanaModifier = 'cycle' | 'voiced' | 'size' | 'semiVoiced';
@@ -37,7 +38,7 @@ export interface UndoCompletionEvent extends UiEvent {
   kind: 'undoCompletion'; text: string; cursor: number; prefixLength: number;
 }
 export interface SimpleInputEvent extends UiEvent {
-  kind: 'backspace' | 'convert' | 'submit' | 'enter' | 'cancel' |
+  kind: 'backspace' | 'convert' | 'submit' | 'enter' | 'cancel' | 'suggest' |
     'selectAll' | 'forwardDelete' | 'reset' | 'undo';
 }
 
