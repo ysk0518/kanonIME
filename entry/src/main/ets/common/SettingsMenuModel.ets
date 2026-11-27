@@ -1,7 +1,7 @@
 import { BackgroundConfig } from './BackgroundAppearance';
 import { languageLayouts, layoutLanguage } from './KeyboardConfigValues';
 import { KeyboardSettingsPatch, KeyboardSettingsSnapshot } from './KeyboardSettingsModel';
-import { keyboardKeyGap } from './KeyboardLayout';
+import { keyboardHeightPercent, keyboardKeyGap } from './KeyboardLayout';
 import { shortcutOrder } from './ShortcutConfigValues';
 
 export enum SettingsPageId {
@@ -91,7 +91,7 @@ export function settingsTogglePatch(setting: SettingsToggle, value: boolean): Ke
 }
 
 export enum SettingsNumber {
-  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound
+  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height
 }
 
 export function settingsNumberPatch(setting: SettingsNumber, value: number): KeyboardSettingsPatch {
@@ -103,6 +103,7 @@ export function settingsNumberPatch(setting: SettingsNumber, value: number): Key
     case SettingsNumber.CandidateRows: return { candidateRows: value };
     case SettingsNumber.Haptics: return { hapticLevel: value };
     case SettingsNumber.KeySound: return { keySoundLevel: value };
+    case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(value) };
   }
 }
 

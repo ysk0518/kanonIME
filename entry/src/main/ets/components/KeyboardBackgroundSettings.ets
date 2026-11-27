@@ -1,7 +1,7 @@
 import common from '@ohos.app.ability.common';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { BackgroundConfig, keyboardBackground, copyBackgroundPhoto, BackgroundPhotoError } from '../common/KeyboardBackground';
-import { backgroundImageUri, backgroundPosterUri,
+import { backgroundDraftChanged, backgroundImageUri, backgroundPosterUri,
   DEFAULT_GIF_ANIMATE } from '../common/BackgroundAppearance';
 import { readSharedLayoutOrder, DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { KeyboardBackgroundCanvas } from './KeyboardBackgroundCanvas';
@@ -11,18 +11,19 @@ import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
 import { processBackgroundGif, restoreBackgroundGif, inspectBackgroundGif, GifBackgroundStats } from '../common/GifBackgroundProcessor';
 import { GifBackgroundComparison } from './GifBackgroundComparison';
-import { DebugConsole } from './DebugConsole';
+import { SettingsHeader } from './SettingsHeader';
 import { debugLog, debugErrorCode } from '../common/DebugLog';
 
 @Component
 export struct KeyboardBackgroundSettings {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('kanonBackgroundVersion') @Watch('backgroundChanged') backgroundVersion: number = 0;
+  @StorageLink('kanonBackgroundSavedRevision') savedRevision: number = 0;
   @StorageLink('kanonBackgroundPeerVersion') @Watch('syncConfirmed') peerVersion: number = 0;
   @StorageLink('kanonSettingsForeground') @Watch('foregroundChanged') foreground: boolean = true;
   @State private synced: boolean = true;
   @State private draft: BackgroundConfig = new BackgroundConfig();
-  @State @Watch('busyChanged') private busy: boolean = false;
+  @State private busy: boolean = false;
   @State private message: ResourceStr = '';
   @State private loaded: boolean = false;
   @State private showGestureHint: boolean = true;
@@ -35,6 +36,7 @@ export struct KeyboardBackgroundSettings {
   @State private gifStatsError: ResourceStr = '';
   private saved: BackgroundConfig = new BackgroundConfig();
   private alive: boolean = false;
+  private confirmingExit: boolean = false;
   private travelX: number = 0;
   private travelY: number = 0;
   private dragX: number = 0;
@@ -44,12 +46,11 @@ export struct KeyboardBackgroundSettings {
   private dragging: boolean = false;
   private pinchZoom: number = 100;
   onClose: () => void = () => {};
-  onBusyChange: (busy: boolean) => void = () => {};
-
-  private busyChanged(): void { this.onBusyChange(this.busy); }
+  onBackHandlerChange: (handler: (() => void) | undefined) => void = () => {};
 
   async aboutToAppear(): Promise<void> {
     this.alive = true;
+    this.onBackHandlerChange(() => this.requestClose());
     const layout: string = AppStorage.get<string>('kanonLayout') ??
       (readSharedLayoutOrder() ?? DEFAULT_LAYOUT_ORDER).split(',')[0];
     this.previewQwerty = layout.endsWith('_qwerty');
@@ -59,6 +60,8 @@ export struct KeyboardBackgroundSettings {
       if (!this.alive) { return; }
       this.draft = keyboardBackground.get();
       this.saved = this.draft;
+      this.synced = this.savedRevision !== this.saved.version || this.peerVersion >= this.saved.version;
+      if (!this.synced) { this.message = $r('app.string.background_sync_pending'); }
       this.readGifSettings();
       this.loaded = true;
       keyboardBackground.preview(this.draft);
@@ -71,6 +74,7 @@ export struct KeyboardBackgroundSettings {
 
   aboutToDisappear(): void {
     this.alive = false;
+    this.onBackHandlerChange(undefined);
     keyboardBackground.endPreview();
     keyboardBackground.pruneGifOriginals();
   }
@@ -82,7 +86,7 @@ export struct KeyboardBackgroundSettings {
   }
 
   private backgroundChanged(): void {
-    if (!this.alive || !this.loaded || this.busy || this.changed()) { return; }
+    if (!this.alive || !this.loaded || this.busy || !this.synced || this.changed()) { return; }
     this.draft = keyboardBackground.get();
     this.saved = this.draft;
     this.readGifSettings();
@@ -91,9 +95,9 @@ export struct KeyboardBackgroundSettings {
   }
 
   private syncConfirmed(): void {
-    if (!this.synced && this.loaded && this.peerVersion >= this.draft.version && this.matchesSaved()) {
+    if (!this.synced && this.loaded && this.peerVersion >= this.saved.version) {
       this.synced = true;
-      this.message = $r('app.string.background_saved');
+      if (!this.changed()) { this.message = $r('app.string.background_saved'); }
     }
   }
 
@@ -137,17 +141,26 @@ export struct KeyboardBackgroundSettings {
     } finally { if (this.alive) { this.busy = false; } }
   }
 
-  private matchesSaved(): boolean {
-    return this.draft.version === this.saved.version && this.draft.photo === this.saved.photo &&
-      this.draft.format === this.saved.format && this.draft.poster === this.saved.poster &&
-      this.draft.animate === this.saved.animate &&
-      this.draft.sourceId === this.saved.sourceId && this.draft.gifResolution === this.saved.gifResolution &&
-      this.draft.gifFps === this.saved.gifFps &&
-      this.draft.zoom === this.saved.zoom && this.draft.x === this.saved.x && this.draft.y === this.saved.y &&
-      this.draft.brightness === this.saved.brightness && this.draft.keyOpacity === this.saved.keyOpacity;
-  }
+  private changed(): boolean { return this.loaded && backgroundDraftChanged(this.draft, this.saved); }
 
-  private changed(): boolean { return this.loaded && (!this.synced || !this.matchesSaved()); }
+  private requestClose(): void {
+    if (this.busy || this.confirmingExit) { return; }
+    if (!this.changed()) { this.onClose(); return; }
+    const options: AlertDialogParamWithOptions = {
+      title: $r('app.string.background_unsaved_title'),
+      message: $r('app.string.background_unsaved_message'),
+      autoCancel: true,
+      onDidDisappear: () => { this.confirmingExit = false; },
+      buttonDirection: DialogButtonDirection.VERTICAL,
+      buttons: [
+        { value: $r('app.string.common_save'), action: () => { this.save(true); } },
+        { value: $r('app.string.background_discard'), action: () => this.onClose() },
+        { value: $r('app.string.settings_reset_cancel'), action: () => {} }
+      ]
+    };
+    this.confirmingExit = true;
+    this.getUIContext().showAlertDialog(options);
+  }
 
   private copyDraft(): BackgroundConfig {
     const draft = new BackgroundConfig();
@@ -258,6 +271,7 @@ export struct KeyboardBackgroundSettings {
     draft.y = this.dragTravelY > 0.5 ? Math.max(-100, Math.min(100,
       this.dragY + event.offsetY / this.dragTravelY * 100)) : 0;
     this.draft = draft;
+    this.message = '';
     keyboardBackground.preview(draft);
   }
 
@@ -268,6 +282,7 @@ export struct KeyboardBackgroundSettings {
 
   /** Replace the draft so every preview observes the same new state. */
   private setAdjustment(field: string, value: number): void {
+    if (this.busy) { return; }
     const draft: BackgroundConfig = this.copyDraft();
     switch (field) {
       case 'zoom': draft.zoom = value; break;
@@ -278,10 +293,11 @@ export struct KeyboardBackgroundSettings {
       default: return;
     }
     this.draft = draft;
+    this.message = '';
     keyboardBackground.preview(this.draft);
   }
 
-  private async save(): Promise<void> {
+  private async save(closeAfter: boolean = false): Promise<void> {
     if (this.busy || !this.changed()) { return; }
     this.busy = true;
     debugLog.record('settings', 'save pressed');
@@ -290,10 +306,11 @@ export struct KeyboardBackgroundSettings {
       if (!this.alive) { return; }
       this.draft = keyboardBackground.get();
       this.saved = this.draft;
-      this.synced = synced;
+      this.synced = synced || this.peerVersion >= this.saved.version;
       debugLog.record('settings', `save finished imeConfirmed=${synced}`);
-      this.message = synced ? $r('app.string.background_saved') :
+      this.message = this.synced ? $r('app.string.background_saved') :
         $r('app.string.background_sync_pending');
+      if (closeAfter) { this.onClose(); }
     } catch (error) {
       debugLog.record('settings', `save failed code=${debugErrorCode(error)}`);
       if (this.alive) { this.message = $r('app.string.background_sync_failed'); }
@@ -301,140 +318,192 @@ export struct KeyboardBackgroundSettings {
     finally { if (this.alive) { this.busy = false; } }
   }
 
+  private async retrySync(): Promise<void> {
+    if (this.busy || this.synced) { return; }
+    this.busy = true;
+    this.message = $r('app.string.background_sync_pending');
+    try { await keyboardBackground.retrySync(); }
+    catch (error) {
+      if (this.alive && !this.synced) { this.message = $r('app.string.settings_sync_retry_failed'); }
+    } finally { if (this.alive) { this.busy = false; } }
+  }
+
+  @Builder
+  previewCard() {
+    Column({ space: 12 }) {
+      KeyboardPreviewLayoutSwitch({ qwerty: this.previewQwerty, disabled: this.busy,
+        idPrefix: 'background_preview', onChange: (qwerty: boolean) => { this.previewQwerty = qwerty; } })
+      Stack() {
+        KeyboardBackgroundCanvas({
+          source: backgroundImageUri(this.draft), poster: backgroundPosterUri(this.draft),
+          play: this.draft.animate, active: this.foreground && !this.busy,
+          zoom: this.draft.zoom, x: this.draft.x, y: this.draft.y, photoBrightness: this.draft.brightness,
+          onGeometry: (width: number, height: number) => {
+            this.travelX = width;
+            this.travelY = height;
+          }
+        }).width('100%').height(160)
+        BackgroundKeyPreview({ qwerty: this.previewQwerty,
+          keyOpacity: this.draft.photo.length > 0 ? this.draft.keyOpacity : 100 })
+          .width('100%').height(160)
+        BackgroundGestureHint({ source: this.draft.photo,
+          available: this.showGestureHint && this.loaded && !this.busy && this.foreground })
+          .width('100%').height(160)
+      }.width('100%').height(160).clip(true).borderRadius(12)
+        .backgroundColor($r('app.color.keyboard_background')).id('background_preview')
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) { this.showGestureHint = false; }
+        })
+        .priorityGesture(GestureGroup(GestureMode.Parallel,
+          PinchGesture({ fingers: 2, distance: 3 })
+            .onActionStart((event: GestureEvent) => {
+              this.dragging = false;
+              this.pinchZoom = this.draft.zoom;
+              this.scalePhoto(event);
+            })
+            .onActionUpdate((event: GestureEvent) => this.scalePhoto(event))
+            .onActionEnd((event: GestureEvent) => this.scalePhoto(event)),
+          PanGesture({ fingers: 1, direction: PanDirection.All, distance: 3 })
+          .onActionStart((event: GestureEvent) => {
+            this.dragging = event.fingerList.length === 1;
+            this.dragX = this.draft.x;
+            this.dragY = this.draft.y;
+            this.dragTravelX = this.travelX;
+            this.dragTravelY = this.travelY;
+            this.movePhoto(event);
+          })
+          .onActionUpdate((event: GestureEvent) => this.movePhoto(event))
+          .onActionEnd((event: GestureEvent) => {
+            this.movePhoto(event);
+            this.dragging = false;
+          })
+          .onActionCancel(() => { this.dragging = false; })))
+      Text($r('app.string.background_gesture_help'))
+        .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  adjustmentCard() {
+    Column({ space: 12 }) {
+      Row({ space: 8 }) {
+        Button(this.busy ? $r('app.string.background_processing') : $r('app.string.background_pick')).layoutWeight(1)
+          .enabled(this.loaded && !this.busy).onClick(() => this.choosePhoto()).id('background_pick')
+        Button($r('app.string.common_reset')).layoutWeight(1)
+          .fontColor($r('app.color.text_normal')).backgroundColor($r('app.color.key_item_normal'))
+          .enabled(this.loaded && !this.busy && this.draft.photo.length > 0)
+          .onClick(() => {
+            this.draft = new BackgroundConfig();
+            keyboardBackground.preview(this.draft);
+            this.message = '';
+          }).id('background_reset')
+      }.width('100%')
+      BackgroundAdjustment({ label: $r('app.string.background_zoom'), value: this.draft.zoom, minimum: 100, maximum: 250,
+        available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_zoom',
+        onChange: (value: number) => this.setAdjustment('zoom', value) })
+      BackgroundAdjustment({ label: $r('app.string.background_x'), value: this.draft.x, minimum: -100, maximum: 100, suffix: '',
+        available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_x',
+        onChange: (value: number) => this.setAdjustment('x', value) })
+      BackgroundAdjustment({ label: $r('app.string.background_y'), value: this.draft.y, minimum: -100, maximum: 100, suffix: '',
+        available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_y',
+        onChange: (value: number) => this.setAdjustment('y', value) })
+      BackgroundAdjustment({ label: $r('app.string.background_brightness'), value: this.draft.brightness, minimum: 20, maximum: 100,
+        available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_brightness',
+        onChange: (value: number) => this.setAdjustment('brightness', value) })
+      BackgroundAdjustment({ label: $r('app.string.background_key_opacity'), value: this.draft.keyOpacity, minimum: 0, maximum: 100,
+        available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_key_opacity',
+        onChange: (value: number) => this.setAdjustment('keyOpacity', value) })
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  gifCard() {
+    Column({ space: 12 }) {
+      Row({ space: 8 }) {
+        Text($r('app.string.background_animate')).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+        Toggle({ type: ToggleType.Switch, isOn: this.draft.animate })
+          .selectedColor($r('app.color.settings_accent')).enabled(!this.busy)
+          .accessibilityText($r('app.string.background_animate_accessibility')).id('background_animate')
+          .onChange((value: boolean) => {
+            const draft: BackgroundConfig = this.copyDraft();
+            draft.animate = value;
+            this.draft = draft;
+            this.message = '';
+            keyboardBackground.preview(draft);
+          })
+      }.width('100%').constraintSize({ minHeight: 56 })
+      Text($r('app.string.background_gif_limits'))
+        .fontSize(12).fontColor($r('app.color.text_secondary'))
+      GifBackgroundComparison({ original: this.originalGifStats, current: this.currentGifStats,
+        pending: this.gifStatsPending, error: this.gifStatsError })
+      BackgroundAdjustment({ label: $r('app.string.background_gif_resolution'), value: this.gifResolution,
+        minimum: 1, maximum: 1280, suffix: 'px', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_resolution',
+        onChange: (value: number) => { this.gifResolution = Math.round(value); } })
+      BackgroundAdjustment({ label: $r('app.string.background_gif_fps'), value: this.gifFps,
+        minimum: 1, maximum: 100, suffix: 'fps', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_fps',
+        onChange: (value: number) => { this.gifFps = Math.round(value); } })
+      Row({ space: 8 }) {
+        Button(this.busy ? $r('app.string.background_gif_processing') : $r('app.string.background_gif_apply'))
+          .layoutWeight(1).fontSize(14)
+          .enabled(!this.busy && (this.gifResolution !== this.draft.gifResolution || this.gifFps !== this.draft.gifFps))
+          .onClick(() => this.applyGifSettings()).id('background_gif_apply')
+        Button($r('app.string.background_gif_reset')).layoutWeight(1).fontSize(14)
+          .fontColor($r('app.color.text_normal')).backgroundColor($r('app.color.key_item_normal'))
+          .enabled(!this.busy && this.gifDefaultsChanged())
+          .onClick(() => this.applyGifSettings(true)).id('background_gif_defaults')
+      }.width('100%')
+      if (this.originalGifStats.frames > 0 && !this.gifStatsPending) {
+        Text($r('app.string.background_gif_original_defaults', this.originalGifResolution(), this.originalGifFps()))
+          .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
+      }
+      Text($r('app.string.background_gif_apply_help'))
+        .fontSize(12).fontColor($r('app.color.text_secondary'))
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  keyboardCheckCard() {
+    Column({ space: 8 }) {
+      TextInput({ placeholder: $r('app.string.background_check_placeholder') })
+        .id('background_keyboard_check')
+      Text($r('app.string.background_live_help'))
+        .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  footer() {
+    Column({ space: 8 }) {
+      if (this.message !== '') {
+        Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')).width('100%')
+      } else if (!this.synced && !this.changed()) {
+        Text($r('app.string.background_sync_pending')).fontSize(13)
+          .fontColor($r('app.color.text_secondary')).width('100%')
+      }
+      if (!this.synced && !this.changed()) {
+        Button($r('app.string.settings_sync_retry')).fontSize(12).height(32).enabled(!this.busy)
+          .onClick(() => this.retrySync()).id('background_sync_retry')
+      }
+      Button($r('app.string.common_save')).width('100%').height(40).fontSize(13).maxFontScale(1)
+        .enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
+    }.width('100%').padding({ left: 16, right: 16, top: 8, bottom: 12 })
+  }
+
   build() {
     Column() {
-      Row() {
-        Button('‹').width(44).height(44).fontSize(28)
-          .backgroundColor(Color.Transparent).fontColor($r('app.color.text_normal'))
-          .enabled(!this.busy).accessibilityText($r('app.string.common_back')).onClick(() => this.onClose())
-        Text($r('app.string.background_title')).fontSize(20).fontColor($r('app.color.text_normal')).layoutWeight(1)
-        Button($r('app.string.common_save')).enabled(!this.busy && this.changed()).onClick(() => this.save()).id('background_save')
-      }.width('100%').height(56)
-      Column({ space: 12 }) {
-        KeyboardPreviewLayoutSwitch({ qwerty: this.previewQwerty, disabled: this.busy,
-          idPrefix: 'background_preview', onChange: (qwerty: boolean) => { this.previewQwerty = qwerty; } })
-        Stack() {
-          KeyboardBackgroundCanvas({
-            source: backgroundImageUri(this.draft), poster: backgroundPosterUri(this.draft),
-            play: this.draft.animate, active: this.foreground && !this.busy,
-            zoom: this.draft.zoom, x: this.draft.x, y: this.draft.y, photoBrightness: this.draft.brightness,
-            onGeometry: (width: number, height: number) => {
-              this.travelX = width;
-              this.travelY = height;
-            }
-          }).width('100%').height(160)
-          BackgroundKeyPreview({ qwerty: this.previewQwerty,
-            keyOpacity: this.draft.photo.length > 0 ? this.draft.keyOpacity : 100 })
-            .width('100%').height(160)
-          BackgroundGestureHint({ source: this.draft.photo,
-            available: this.showGestureHint && this.loaded && !this.busy && this.foreground })
-            .width('100%').height(160)
-        }.width('100%').height(160).clip(true).borderRadius(12)
-          .backgroundColor($r('app.color.keyboard_background')).id('background_preview')
-          .onTouch((event: TouchEvent) => {
-            if (event.type === TouchType.Down) { this.showGestureHint = false; }
-          })
-          .priorityGesture(GestureGroup(GestureMode.Parallel,
-            PinchGesture({ fingers: 2, distance: 3 })
-              .onActionStart((event: GestureEvent) => {
-                this.dragging = false;
-                this.pinchZoom = this.draft.zoom;
-                this.scalePhoto(event);
-              })
-              .onActionUpdate((event: GestureEvent) => this.scalePhoto(event))
-              .onActionEnd((event: GestureEvent) => this.scalePhoto(event)),
-            PanGesture({ fingers: 1, direction: PanDirection.All, distance: 3 })
-            .onActionStart((event: GestureEvent) => {
-              this.dragging = event.fingerList.length === 1;
-              this.dragX = this.draft.x;
-              this.dragY = this.draft.y;
-              this.dragTravelX = this.travelX;
-              this.dragTravelY = this.travelY;
-              this.movePhoto(event);
-            })
-            .onActionUpdate((event: GestureEvent) => this.movePhoto(event))
-            .onActionEnd((event: GestureEvent) => {
-              this.movePhoto(event);
-              this.dragging = false;
-            })
-            .onActionCancel(() => { this.dragging = false; })))
-        Text($r('app.string.background_gesture_help'))
-          .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
-      }.width('100%').padding({ left: 16, right: 16, top: 12, bottom: 12 })
+      SettingsHeader({ title: $r('app.string.settings_menu_theme'), disabled: this.busy,
+        onBack: () => this.requestClose() })
       Scroll() {
-        Column({ space: 12 }) {
-          TextInput({ placeholder: $r('app.string.background_check_placeholder') })
-            .id('background_keyboard_check')
-          Text($r('app.string.background_live_help'))
-            .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
-          Row({ space: 8 }) {
-            Button(this.busy ? $r('app.string.background_processing') : $r('app.string.background_pick')).layoutWeight(1)
-              .enabled(this.loaded && !this.busy).onClick(() => this.choosePhoto()).id('background_pick')
-            Button($r('app.string.common_reset')).layoutWeight(1).enabled(this.loaded && !this.busy && this.draft.photo.length > 0)
-              .onClick(() => {
-                this.draft = new BackgroundConfig();
-                keyboardBackground.preview(this.draft);
-                this.message = '';
-              }).id('background_reset')
-          }
+        Column({ space: 16 }) {
+          this.previewCard()
+          this.adjustmentCard()
           if (this.draft.format === 'gif' && this.draft.photo.length > 0) {
-            Row({ space: 8 }) {
-              Text($r('app.string.background_animate')).fontSize(14).fontColor($r('app.color.text_normal')).layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.draft.animate }).enabled(!this.busy)
-                .accessibilityText($r('app.string.background_animate_accessibility')).id('background_animate')
-                .onChange((value: boolean) => {
-                  const draft: BackgroundConfig = this.copyDraft();
-                  draft.animate = value;
-                  this.draft = draft;
-                  keyboardBackground.preview(draft);
-                })
-            }.width('100%')
-            Text($r('app.string.background_gif_limits'))
-              .fontSize(12).fontColor($r('app.color.text_secondary'))
-            GifBackgroundComparison({ original: this.originalGifStats, current: this.currentGifStats,
-              pending: this.gifStatsPending, error: this.gifStatsError })
-            BackgroundAdjustment({ label: $r('app.string.background_gif_resolution'), value: this.gifResolution,
-              minimum: 1, maximum: 1280, suffix: 'px', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_resolution',
-              onChange: (value: number) => { this.gifResolution = Math.round(value); } })
-            BackgroundAdjustment({ label: $r('app.string.background_gif_fps'), value: this.gifFps,
-              minimum: 1, maximum: 100, suffix: 'fps', available: !this.busy && !this.gifStatsPending, sliderId: 'background_gif_fps',
-              onChange: (value: number) => { this.gifFps = Math.round(value); } })
-            Row({ space: 8 }) {
-              Button(this.busy ? $r('app.string.background_gif_processing') : $r('app.string.background_gif_apply'))
-                .layoutWeight(1).fontSize(14)
-                .enabled(!this.busy && (this.gifResolution !== this.draft.gifResolution || this.gifFps !== this.draft.gifFps))
-                .onClick(() => this.applyGifSettings()).id('background_gif_apply')
-              Button($r('app.string.background_gif_reset')).layoutWeight(1).fontSize(14)
-                .fontColor($r('app.color.text_normal')).backgroundColor($r('app.color.key_item_normal'))
-                .enabled(!this.busy && this.gifDefaultsChanged())
-                .onClick(() => this.applyGifSettings(true)).id('background_gif_defaults')
-            }.width('100%')
-            if (this.originalGifStats.frames > 0 && !this.gifStatsPending) {
-              Text($r('app.string.background_gif_original_defaults', this.originalGifResolution(), this.originalGifFps()))
-                .width('100%').fontSize(12).fontColor($r('app.color.text_secondary'))
-            }
-            Text($r('app.string.background_gif_apply_help'))
-              .fontSize(12).fontColor($r('app.color.text_secondary'))
+            this.gifCard()
           }
-          BackgroundAdjustment({ label: $r('app.string.background_zoom'), value: this.draft.zoom, minimum: 100, maximum: 250,
-            available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_zoom',
-            onChange: (value: number) => this.setAdjustment('zoom', value) })
-          BackgroundAdjustment({ label: $r('app.string.background_x'), value: this.draft.x, minimum: -100, maximum: 100, suffix: '',
-            available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_x',
-            onChange: (value: number) => this.setAdjustment('x', value) })
-          BackgroundAdjustment({ label: $r('app.string.background_y'), value: this.draft.y, minimum: -100, maximum: 100, suffix: '',
-            available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_y',
-            onChange: (value: number) => this.setAdjustment('y', value) })
-          BackgroundAdjustment({ label: $r('app.string.background_brightness'), value: this.draft.brightness, minimum: 20, maximum: 100,
-            available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_brightness',
-            onChange: (value: number) => this.setAdjustment('brightness', value) })
-          BackgroundAdjustment({ label: $r('app.string.background_key_opacity'), value: this.draft.keyOpacity, minimum: 0, maximum: 100,
-            available: !this.busy && this.draft.photo.length > 0, sliderId: 'background_key_opacity',
-            onChange: (value: number) => this.setAdjustment('keyOpacity', value) })
-          if (this.message !== '') { Text(this.message).fontSize(13).fontColor($r('app.color.text_secondary')) }
-        }.width('100%').padding(16)
-      }.layoutWeight(1).width('100%').id('background_settings_scroll')
-      DebugConsole().padding({ left: 16, right: 16, bottom: 8 })
-    }.width('100%').height('100%').backgroundColor($r('app.color.menu_background'))
+          this.keyboardCheckCard()
+        }.width('100%').padding({ left: 16, right: 16, top: 6, bottom: 12 })
+      }.layoutWeight(1).width('100%').align(Alignment.Top).scrollBar(BarState.Auto).id('background_settings_scroll')
+      this.footer()
+    }.width('100%').height('100%').backgroundColor($r('app.color.settings_background_surface'))
   }
 }

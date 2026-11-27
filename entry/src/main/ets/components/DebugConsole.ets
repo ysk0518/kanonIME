@@ -10,17 +10,14 @@ export struct DebugConsole {
 
   build() {
     Column({ space: 4 }) {
-      Row({ space: 4 }) {
-        Text($r('app.string.debug_mode')).fontSize(13).fontColor($r('app.color.text_normal')).layoutWeight(1)
-        Radio({ value: 'off', group: 'kanon-debug-mode' }).checked(!this.debugEnabled)
-          .onChange((checked: boolean) => { if (checked) { debugLog.setEnabled(false); } })
-          .accessibilityText($r('app.string.debug_off')).id('debug_off')
-        Text($r('app.string.debug_off')).fontSize(13).fontColor($r('app.color.text_normal'))
-        Radio({ value: 'on', group: 'kanon-debug-mode' }).checked(this.debugEnabled)
-          .onChange((checked: boolean) => { if (checked) { debugLog.setEnabled(true); } })
-          .accessibilityText($r('app.string.debug_on')).id('debug_on')
-        Text($r('app.string.debug_on')).fontSize(13).fontColor($r('app.color.text_normal'))
-      }.width('100%').height(36)
+      Row({ space: 12 }) {
+        Text($r('app.string.debug_mode')).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+        Toggle({ type: ToggleType.Switch, isOn: this.debugEnabled })
+          .selectedColor($r('app.color.settings_accent'))
+          .onChange((enabled: boolean) => {
+            if (enabled !== this.debugEnabled) { debugLog.setEnabled(enabled); }
+          }).accessibilityText($r('app.string.debug_mode')).id('debug_toggle')
+      }.width('100%').constraintSize({ minHeight: 56 })
       if (this.debugEnabled) {
         Row() {
           Text($r('app.string.debug_help')).fontSize(11).fontColor($r('app.color.text_secondary')).layoutWeight(1)

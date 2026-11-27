@@ -19,6 +19,15 @@ export class BackgroundConfig {
   keyOpacity: number = 85;
 }
 
+export function backgroundDraftChanged(draft: BackgroundConfig, saved: BackgroundConfig): boolean {
+  return draft.photo !== saved.photo || draft.format !== saved.format || draft.poster !== saved.poster ||
+    draft.animate !== saved.animate || draft.sourceId !== saved.sourceId ||
+    draft.gifResolution !== saved.gifResolution || draft.gifFps !== saved.gifFps ||
+    draft.gifWidth !== saved.gifWidth || draft.gifHeight !== saved.gifHeight || draft.gifFrames !== saved.gifFrames ||
+    draft.zoom !== saved.zoom || draft.x !== saved.x || draft.y !== saved.y ||
+    draft.brightness !== saved.brightness || draft.keyOpacity !== saved.keyOpacity;
+}
+
 export const MAX_BACKGROUND_PHOTO: number = 6800000;
 export const MAX_BACKGROUND_POSTER: number = 350000;
 export const MAX_BACKGROUND_PAYLOAD: number = 7500000;
