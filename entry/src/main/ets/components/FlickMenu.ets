@@ -19,6 +19,9 @@ export struct FlickMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @State private englishUpper: boolean = false;
+  // The session reports a sentence start in English (Samsung Keyboard's automatic capitals).
+  @StorageLink('kanonSentenceStart') @Watch('applySentenceStart') sentenceStart: boolean = false;
+  private autoUpper: boolean = false;
   private keys: string[][] = [
     ['あ', 'い', 'う', 'え', 'お'], ['か', 'き', 'く', 'け', 'こ'], ['さ', 'し', 'す', 'せ', 'そ'],
     ['た', 'ち', 'つ', 'て', 'と'], ['な', 'に', 'ぬ', 'ね', 'の'], ['は', 'ひ', 'ふ', 'へ', 'ほ'],
@@ -64,9 +67,24 @@ export struct FlickMenu {
           if (kanonIme.toggleInputEnabled()) { kanonIme.keyToggleRight(); }
           else { kanonIme.keyMove(inputMethodEngine.CURSOR_RIGHT); }
         }
-        else if (action === 8) { keyboardHaptics.key(); kanonIme.endToggleInput(); this.englishUpper = !this.englishUpper; }
+        else if (action === 8) {
+          keyboardHaptics.key(); kanonIme.endToggleInput(); this.autoUpper = false; this.englishUpper = !this.englishUpper;
+        }
       })
       .id(`flick_control_${action}`)
+  }
+
+  aboutToAppear(): void { this.applySentenceStart(); }
+
+  // Capitalize once for a sentence start; undo only a capital this set itself.
+  applySentenceStart(): void {
+    if (this.layout === 'en_flick' && this.sentenceStart && !this.englishUpper) {
+      this.englishUpper = true;
+      this.autoUpper = true;
+    } else if (!this.sentenceStart && this.autoUpper) {
+      this.englishUpper = false;
+      this.autoUpper = false;
+    }
   }
 
   build() {
