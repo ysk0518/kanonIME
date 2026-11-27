@@ -95,6 +95,11 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['suggestRomanOnlyWord', 'P51', 'the first roman letters of a word are not suggested'],
   ['periodWithoutWord', 'P52', 'a word and one space end with a period on the second space'],
   ['noSentenceStart', 'P52', 'the shift keys follow sentence starts in English text fields'],
+  ['emojiDuringConversion', 'P53', 'converting, an interior caret and a nonmatching reading exclude emoji'],
+  ['emojiAtInteriorCaret', 'P53', 'converting, an interior caret and a nonmatching reading exclude emoji'],
+  ['duplicateEmojiSuggestion', 'P53', 'emoji follow the first Mozc candidate'],
+  ['omitDeferredEmoji', 'P53', 'deferred suggest inserts emoji'],
+  ['commitEmojiOnFailedReset', 'P53', 'failed reset leaves the emoji uncommitted'],
   ['forgetNextWord', 'P54', 'a selected candidate commits and shows Mozc next-word predictions'],
   ['keepNextWordAfterDelete', 'P54', 'deleting committed text drops the next-word predictions']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
