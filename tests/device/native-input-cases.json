@@ -131,10 +131,11 @@
       {"id": "qwerty_k"},
       {"id": "qwerty_i", "expect": "き"},
       {"id": "cand_expand"},
-      {"id": "cand_cancel", "expect": "き"},
+      {"id": "cand_expand", "expect": "き"},
       {"id": "spaceItem"},
       {"id": "cand_expand"},
-      {"id": "cand_cancel", "expect": "き"},
+      {"id": "cand_expand"},
+      {"id": "deleteItem", "expect": "き"},
       {"id": "deleteItem", "expect": ""}
     ] },
     { "id": "D25", "steps": [

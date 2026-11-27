@@ -157,14 +157,6 @@ export struct CandidateBar {
   }
 
   @Builder
-  sideButton(label: Resource, key: string, action: () => void) {
-    Text(label).fontSize(14).fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
-      .maxLines(2).width(60).height(64).borderRadius(10)
-      .backgroundColor($r('app.color.key_item_gray'))
-      .onClick(action).id(key)
-  }
-
-  @Builder
   candidate(label: string, index: number, full: boolean) {
     Text(label)
       .fontSize(full ? this.fontSize + 3 : this.fontSize).maxFontScale(2)
@@ -254,23 +246,9 @@ export struct CandidateBar {
         }
       }.width('100%').height(this.barHeight())
       if (this.expanded && this.candList.length > 0) {
-        // Samsung Keyboard's full list: rounded side buttons on the left and
-        // larger candidates centered row by row.
+        // Samsung Keyboard's full list: larger candidates centered row by row
+        // across the whole width. Close it with the "…" button to use the keys.
         Row() {
-          Column({ space: 8 }) {
-            this.sideButton($r('app.string.candidate_cancel'), 'cand_cancel', () => { kanonIme.revertConversion(); })
-            if (this.mode === 'JP') {
-              this.sideButton($r('app.string.candidate_partial'), 'cand_partial', () => { kanonIme.partialCommit(); })
-            }
-            Stack() {
-              Image($r('app.media.ic_emoji')).width(24).height(24).fillColor($r('app.color.key_text'))
-            }
-            .width(60).height(64).borderRadius(10)
-            .backgroundColor($r('app.color.key_item_gray'))
-            .accessibilityText($r('app.string.keyboard_show_emoji'))
-            .onClick(() => { this.expanded = false; this.submenuType = SubMenuType.EMOJI; })
-            .id('cand_emoji')
-          }.width(72).height('100%').padding({ left: 8, top: 8 })
           Scroll(this.expandedScroller) {
             Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center, alignContent: FlexAlign.Start,
               alignItems: ItemAlign.Center }) {
