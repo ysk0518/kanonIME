@@ -34,82 +34,51 @@ export struct Submenu {
     } else { this.settingsError = true; }
   }
 
+  // Samsung Keyboard's "more" panel: round icons with names in a grid.
+  @Builder
+  item(icon: Resource, label: string, key: string, action: () => void) {
+    Column({ space: 8 }) {
+      Stack() {
+        Image(icon).width(24).height(24).fillColor($r('app.color.key_text'))
+      }
+      .width(52).height(52).borderRadius(26)
+      .backgroundColor($r('app.color.key_item_normal'))
+      Text(label).fontColor($r('app.color.text_normal')).fontSize(13)
+        .maxLines(2).textAlign(TextAlign.Center).textOverflow({ overflow: TextOverflow.Ellipsis })
+    }
+    .width('100%').padding({ top: 12, bottom: 4 })
+    .alignItems(HorizontalAlign.Center)
+    .onClick(action)
+    .accessibilityText(label)
+    .id(key)
+  }
+
   build() {
     Column() {
       Grid() {
-      GridItem() {
-        Text('設定')
-          .fontColor($r('app.color.text_normal'))
-          .fontSize(this.inputStyle.editFontSize)
-          .width('100%')
-          .height('100%')
-          .textAlign(TextAlign.Center)
-          .id('keyboardSettings')
-          .onClick(() => { this.showSettings(); })
-      }
-      GridItem() {
-        Text('使用する言語')
-          .fontColor($r('app.color.text_normal'))
-          .fontSize(this.inputStyle.editFontSize)
-          .width('100%').height('100%')
-          .textAlign(TextAlign.Center)
-          .id('keyboardLanguageSettings')
-          .onClick(() => { this.submenuType = SubMenuType.SETTINGS; })
-      }
-      GridItem() {
-        Text('サイズ')
-          .fontColor($r('app.color.text_normal')).fontSize(this.inputStyle.editFontSize)
-          .width('100%').height('100%').textAlign(TextAlign.Center)
-          .onClick(() => { this.submenuType = SubMenuType.SIZE; })
-          .id('keyboardSizeSettings')
-      }
-      GridItem() {
-        Text('背景画像').fontColor($r('app.color.text_normal')).fontSize(this.inputStyle.editFontSize)
-          .width('100%').height('100%').textAlign(TextAlign.Center)
-          .onClick(() => this.showSettings(true)).id('keyboardBackgroundSettings')
-      }
-      GridItem() {
-        Column({ space: 8 }) {
-          Text('クリップボード')
-            .fontColor($r('app.color.text_normal'))
-            .fontSize(this.inputStyle.editFontSize)
-          Image($r('app.media.ic_clipboard'))
-            .fillColor($r('app.color.key_text'))
-            .width(24).height(24)
+        GridItem() { this.item($r('app.media.ic_gear'), '設定', 'keyboardSettings', () => { this.showSettings(); }) }
+        GridItem() {
+          this.item($r('app.media.ic_globe'), '使用する言語', 'keyboardLanguageSettings',
+            () => { this.submenuType = SubMenuType.SETTINGS; })
         }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.Center)
-        .onClick(() => { this.submenuType = SubMenuType.CLIPBOARD; })
-        .id('clipboard_open')
-      }
-      GridItem() {
-        Column() {
-          Image($r('app.media.ic_edit'))
-            .fillColor($r('app.color.key_text'))
-            .size({ width: this.inputStyle.editPicSize, height: this.inputStyle.editPicSize })
-            .objectFit(ImageFit.Cover)
-          Text('テキスト編集')
-            .fontColor($r('app.color.text_normal'))
-            .fontSize(this.inputStyle.editFontSize)
-            .opacity(0.6)
-            .margin({ top: 8 })
+        GridItem() {
+          this.item($r('app.media.ic_resize'), 'サイズ', 'keyboardSizeSettings', () => { this.submenuType = SubMenuType.SIZE; })
         }
-        .width('100%')
-        .height('100%')
-        .justifyContent(FlexAlign.Center)
-        .id('btnEdit')
-        .onClick(() => {
-          this.submenuType = SubMenuType.EDIT;
-        })
-      }
+        GridItem() {
+          this.item($r('app.media.ic_image'), '背景画像', 'keyboardBackgroundSettings', () => { this.showSettings(true); })
+        }
+        GridItem() {
+          this.item($r('app.media.ic_clipboard'), 'クリップボード', 'clipboard_open',
+            () => { this.submenuType = SubMenuType.CLIPBOARD; })
+        }
+        GridItem() {
+          this.item($r('app.media.ic_edit'), 'テキスト編集', 'btnEdit', () => { this.submenuType = SubMenuType.EDIT; })
+        }
       }
       .width('100%')
-      .layoutWeight(1)
-      .columnsTemplate('1fr 1fr')
-      .rowsTemplate('1fr 1fr 1fr')
-      .columnsGap(12)
-      .rowsGap(12)
+      .columnsTemplate('1fr 1fr 1fr 1fr')
+      .rowsGap(8)
+      .padding({ left: 8, right: 8, top: 8 })
       if (this.settingsError) {
         Text('設定を開けませんでした。アプリアイコンから設定を開けます。')
           .fontSize(12).fontColor($r('app.color.text_error')).padding(8)

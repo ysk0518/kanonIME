@@ -49,7 +49,7 @@ test('P10: default settings satisfy the product validation rules', () => {
   assert.equal(validSettingsSnapshot(value), true);
   assert.equal(value.layoutOrder, 'jp_flick,en_flick');
   assert.equal(value.keyGap, 6); assert.equal(value.heightPercent, 100);
-  assert.equal(value.shortcutOrder, 'settings,clipboard');
+  assert.equal(value.shortcutOrder, 'clipboard,settings');
 });
 
 test('P10: numeric patch limits accept boundaries and reject outside or nonfinite values', () => {

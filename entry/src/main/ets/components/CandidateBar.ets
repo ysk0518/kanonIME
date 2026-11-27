@@ -202,7 +202,7 @@ export struct CandidateBar {
           KeyboardToolbar()
         } else {
           Column() {
-            Stack() { Image($r('app.media.ic_more')).width(20).height(20).fillColor($r('app.color.key_text')) }
+            Stack() { Image($r('app.media.ic_more_horiz')).width(20).height(20).fillColor($r('app.color.key_text')) }
               .width(40).height(this.rowHeight())
               .onClick(() => { this.submenuType = SubMenuType.MENU; })
               .accessibilityText($r('app.string.candidate_menu')).id('candidate_keyboard_menu')
@@ -216,8 +216,8 @@ export struct CandidateBar {
               }
             }
           }.width(44).height(this.barHeight())
-          SymbolToggleItem({ buttonHeight: this.rowHeight() })
           EmojiToggleItem({ buttonHeight: this.rowHeight() })
+          SymbolToggleItem({ buttonHeight: this.rowHeight() })
           if (this.rows === 1 && this.compositionCursor.length > 0) {
             Text(this.compositionCursor).fontSize(14).maxLines(1).constraintSize({ maxWidth: 96 })
               .textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.candidate_accent')).id('composition_cursor')

@@ -18,23 +18,9 @@ export struct KeyboardToolbar {
 
   build() {
     Row() {
-      Stack() {
-        Stack() {
-        Image(this.submenuType === SubMenuType.NORMAL ? $r('app.media.ic_more') : $r('app.media.ic_keyboard'))
-          .width(20).height(20).fillColor($r('app.color.key_text'))
-        }.width(32).height(32).borderRadius(16)
-          .backgroundColor($r('app.color.key_item_normal'))
-      }
-      .width(40).height(this.toolbarHeight)
-      .backgroundColor(Color.Transparent)
-      .onClick(() => {
-        AppStorage.setOrCreate('kanonCandidatesExpanded', false);
-        this.submenuType = this.submenuType === SubMenuType.NORMAL ? SubMenuType.MENU : SubMenuType.NORMAL;
-      })
-      .accessibilityText(this.submenuType === SubMenuType.NORMAL ? 'キーボードメニュー' : 'キーボードに戻る')
-      .id('keyboardMenu')
-      SymbolToggleItem({ buttonHeight: this.toolbarHeight })
+      // Samsung Keyboard order: emoji, symbols, shortcuts, more, then hide.
       EmojiToggleItem({ buttonHeight: this.toolbarHeight })
+      SymbolToggleItem({ buttonHeight: this.toolbarHeight })
       KeyboardShortcuts().layoutWeight(1)
       if (this.submenuType === SubMenuType.NORMAL && this.needsRecovery) {
         Column() {
@@ -49,6 +35,21 @@ export struct KeyboardToolbar {
           .accessibilityText('英語の補完を取り消す').id('english_completion_undo')
         }.layoutWeight(0.7)
       }
+      Stack() {
+        Stack() {
+        Image(this.submenuType === SubMenuType.NORMAL ? $r('app.media.ic_more_horiz') : $r('app.media.ic_keyboard'))
+          .width(20).height(20).fillColor($r('app.color.key_text'))
+        }.width(32).height(32).borderRadius(16)
+          .backgroundColor(this.submenuType === SubMenuType.NORMAL ? Color.Transparent : $r('app.color.candidate_selected'))
+      }
+      .width(40).height(this.toolbarHeight)
+      .backgroundColor(Color.Transparent)
+      .onClick(() => {
+        AppStorage.setOrCreate('kanonCandidatesExpanded', false);
+        this.submenuType = this.submenuType === SubMenuType.NORMAL ? SubMenuType.MENU : SubMenuType.NORMAL;
+      })
+      .accessibilityText(this.submenuType === SubMenuType.NORMAL ? 'キーボードメニュー' : 'キーボードに戻る')
+      .id('keyboardMenu')
       Stack() {
         Image($rawfile('down.svg')).width(20).height(20).fillColor($r('app.color.key_text'))
       }
