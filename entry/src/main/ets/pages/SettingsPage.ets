@@ -15,7 +15,12 @@ struct SettingsPage {
 
   private leavePage(): void {
     if (this.page === SettingsPageId.Top) { this.close(); }
-    else { this.page = SettingsPageId.Top; }
+    else { this.showPage(SettingsPageId.Top); }
+  }
+
+  // Animate page changes; KeyboardSettings gives each page its slide.
+  private showPage(page: SettingsPageId): void {
+    this.getUIContext().animateTo({ duration: 300, curve: Curve.FastOutSlowIn }, () => { this.page = page; });
   }
 
   onBackPress(): boolean {
@@ -26,7 +31,7 @@ struct SettingsPage {
 
   build() {
     Column() {
-      KeyboardSettings({ page: this.page, onOpen: (page: SettingsPageId) => { this.page = page; },
+      KeyboardSettings({ page: this.page, onOpen: (page: SettingsPageId) => { this.showPage(page); },
         onClose: () => this.leavePage(),
         onBackgroundBackHandler: (handler: (() => void) | undefined) => { this.backgroundBack = handler; } })
         .width('100%').height('100%')
