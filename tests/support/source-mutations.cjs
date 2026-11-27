@@ -1,4 +1,33 @@
 const mutations = {
+  emojiDuringConversion: {
+    file: 'kanon/MozcEngine.ets',
+    before: "includeEmoji && this.phase === 'composing' && this.caretPosition(out) === out.preedit.length",
+    after: 'includeEmoji && this.caretPosition(out) === out.preedit.length'
+  },
+  emojiAtInteriorCaret: {
+    file: 'kanon/MozcEngine.ets',
+    before: "includeEmoji && this.phase === 'composing' && this.caretPosition(out) === out.preedit.length",
+    after: "includeEmoji && this.phase === 'composing'"
+  },
+  duplicateEmojiSuggestion: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'if (!ordered.some((c: Cand): boolean => c.value === emoji)) {',
+    after: 'if (true) {'
+  },
+  omitDeferredEmoji: {
+    file: 'kanon/MozcEngine.ets',
+    before: `if (out.preedit_len === 0) { this.phase = 'empty'; }
+    this.revision++;
+    return this.fromOut(sessionId, epoch, seq, out, []);`,
+    after: `if (out.preedit_len === 0) { this.phase = 'empty'; }
+    this.revision++;
+    return this.fromOut(sessionId, epoch, seq, out, [], false);`
+  },
+  commitEmojiOnFailedReset: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'if (emoji !== undefined && !parseOut(reset).ok) {',
+    after: 'if (false) {'
+  },
   suggestRomanOnlyWord: {
     file: 'kanon/MozcEngine.ets',
     before: 'endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)',

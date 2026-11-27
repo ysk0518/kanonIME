@@ -65,6 +65,31 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInp
   };
 }
 
+test('P53: a stale emoji tap is rejected and a current tap replaces the editor preview', async () => {
+  const r = rig({ mode: 'JP', origin: '前', steps: [
+    { operation: 'literal', text: 'すし', output: response('すし') },
+    { operation: 'literal', text: '！', output: response('すし！') },
+    { operation: 'backspace', output: response('すし') },
+    { operation: 'reset', text: '', candidateId: 0, output: response() }
+  ] });
+  const shown = await r.send({ kind: 'text', text: 'すし' });
+  const emoji = r.session.getCandidates()[0];
+  assert.deepEqual(emoji, { id: -1, label: '🍣' });
+  assert.equal(await r.session.deleteLearnedCandidate(emoji), 'not-learned');
+  await r.session.keyText('！');
+  const stale = await r.send({ kind: 'select', candidateId: emoji.id, expectedRevision: shown.revision });
+  assert.equal(stale.lastError, 'stale-revision');
+  assert.equal(r.editor.text, '前すし！');
+  await r.send({ kind: 'backspace' });
+  await r.session.selectCandidate(emoji.id);
+  assert.equal(r.editor.text, '前🍣');
+  assert.equal(r.editor.count('insert'), 1);
+  assert.equal(r.editor.preview, null);
+  assert.deepEqual(r.session.getCandidates(), []);
+  assert.deepEqual(r.bridge.calls.map(c => c.operation), ['literal', 'literal', 'backspace', 'reset']);
+  r.bridge.assertDone();
+});
+
 test('P45: toggling layout from number mode returns to Japanese QWERTY when enabled, otherwise English', async () => {
   for (const [order, layout, mode] of [
     ['en_flick,jp_flick', 'jp_qwerty', 'JP'],

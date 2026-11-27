@@ -398,3 +398,140 @@ test('P49: a caret moved inside the composition keeps suggestions with the key',
   assert.deepEqual(typed.candidates, [{ id: 3, label: '愛' }]);
   r.bridge.assertDone();
 });
+
+test('P53: emoji follow the first two Mozc candidates and skip duplicates anywhere in the list', async () => {
+  const reading = 'こんにちは';
+  const r = rig([{ operation: 'literal', text: reading, candidateId: 0, output: response(reading, {
+    candidates: [{ id: 0, value: '今日は' }, { id: 1, value: reading },
+      { id: 2, value: '✨' }, { id: 3, value: 'コンニチハ' }]
+  }) }]);
+  const shown = await r.send({ kind: 'text', text: reading });
+  assert.deepEqual(shown.candidates, [
+    { id: 1, label: reading }, { id: 0, label: '今日は' },
+    { id: -1, label: '😃' }, { id: -2, label: '❗' }, { id: 2, label: '✨' }, { id: 3, label: 'コンニチハ' }
+  ]);
+  assert.equal(shown.candidateCount, 6);
+  assert.equal(shown.candidateRevision, shown.revision);
+  r.bridge.assertDone();
+});
+
+test('P53: emoji append when there are fewer than two Mozc candidates', async () => {
+  const reading = 'こんにちは';
+  for (const candidates of [[], [{ id: 8, value: '今日は' }]]) {
+    const r = rig([{ operation: 'literal', text: reading, output: response(reading, { candidates }) }]);
+    const shown = await r.send({ kind: 'text', text: reading });
+    assert.deepEqual(shown.candidates, [
+      ...candidates.map(({ id, value }) => ({ id, label: value })),
+      { id: -1, label: '✨' }, { id: -2, label: '😃' }, { id: -3, label: '❗' }
+    ]);
+    assert.equal(shown.candidateCount, candidates.length + 3);
+    r.bridge.assertDone();
+  }
+});
+
+test('P53: converting, an interior caret and a nonmatching reading exclude emoji', async () => {
+  const candidates = [{ id: 4, value: '今日は' }];
+  const expected = [{ id: 4, label: '今日は' }];
+  const r = rig([
+    { operation: 'literal', text: 'こんにち', output: response('こんにち', { candidates }) },
+    { operation: 'literal', text: 'は', output: response('こんにちは', { caret_utf16: 5, candidates }) },
+    { operation: 'arrowLeft', output: response('こんにちは', { caret_utf16: 4, candidates }) },
+    { operation: 'space', output: response('こんにちは', { caret_utf16: 5, candidates, focused_id: 4 }) },
+    { operation: 'submitCandidate', candidateId: 4, output: response('', { result: '今日は' }) }
+  ]);
+  assert.deepEqual((await r.send({ kind: 'text', text: 'こんにち' })).candidates, expected);
+  assert.equal((await r.send({ kind: 'text', text: 'は' })).candidateCount, 4);
+  assert.deepEqual((await r.send({ kind: 'compositionArrow', text: 'left' })).candidates, expected);
+  const converting = await r.send({ kind: 'convert' });
+  assert.equal(converting.phase, 'converting');
+  assert.deepEqual(converting.candidates, expected);
+  assert.equal((await r.send({ kind: 'partial' })).effects[0].text, '今日は');
+  r.bridge.assertDone();
+});
+
+test('P53: deferred suggest inserts emoji while the keys keep only the previous stale candidates', async () => {
+  const r = deferredRig([
+    { operation: 'convert', text: 'konnichiha', candidateId: 1, output: response('こんにちは') },
+    { operation: 'suggest', text: '', candidateId: 5, output: response('こんにちは', {
+      candidates: [{ id: 0, value: 'こんにちは' }, { id: 1, value: '今日は' }, { id: 2, value: 'コンニチハ' }]
+    }) },
+    { operation: 'convert', text: 'yo', candidateId: 1, output: response('こんにちはよ') },
+    { operation: 'convert', text: 'x', candidateId: 1, output: response('こんにちはよ!') }
+  ]);
+  const typed = await r.send({ kind: 'text', text: 'konnichiha' });
+  assert.equal(typed.errorCode, 0);
+  assert.deepEqual(typed.candidates, []);
+  const shown = await r.send({ kind: 'suggest' });
+  assert.equal(shown.errorCode, 0);
+  assert.deepEqual(shown.candidates.map(c => c.label), ['こんにちは', '今日は', '✨', '😃', '❗', 'コンニチハ']);
+  assert.equal(shown.candidateRevision, shown.revision);
+  const next = await r.send({ kind: 'text', text: 'yo' });
+  assert.equal(next.errorCode, 0);
+  assert.deepEqual(next.candidates, shown.candidates);
+  assert.equal(next.candidateRevision, shown.revision);
+  assert.ok(next.revision > next.candidateRevision);
+  assert.equal(r.engine.needsSuggestion(), true);
+  const unmatchedTail = await r.send({ kind: 'text', text: 'x' });
+  assert.equal(unmatchedTail.errorCode, 0);
+  assert.deepEqual(unmatchedTail.candidates, []);
+  assert.equal(r.engine.needsSuggestion(), false);
+  r.bridge.assertDone();
+});
+
+test('P53: deleting an emoji reports no learning and selecting it resets before committing', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'neko', output: response('ねこ', { candidates: [{ id: -1, value: 'ネコ', deletable: true }] }) },
+    { operation: 'reset', text: '', candidateId: 0, output: response() },
+    { operation: 'convert', text: 'a', output: response('あ') }
+  ]);
+  const shown = await r.send({ kind: 'text', text: 'neko' });
+  const event = { candidateId: -1, expectedRevision: shown.candidateRevision };
+  const deletion = await r.engine.dispatch('test-session', 1, 2, { kind: 'deleteCandidate', ...event });
+  assert.equal(deletion.candidateNotLearned, true);
+  assert.deepEqual(r.bridge.calls.map(c => c.operation), ['convert']);
+  const committed = await r.send({ kind: 'select', ...event });
+  assert.equal(committed.phase, 'empty');
+  assert.equal(committed.hasPreedit, false);
+  assert.equal(r.engine.getPreedit(), '');
+  assert.deepEqual(committed.candidates, []);
+  assert.equal(committed.candidateCount, 0);
+  assert.equal(committed.revision, shown.revision + 1);
+  assert.equal(committed.candidateRevision, committed.revision);
+  assert.deepEqual(committed.effects.map(({ text, undoable }) => ({ text, undoable })), [{ text: '🐱', undoable: false }]);
+  assert.deepEqual((await r.send({ kind: 'suggest' })).candidates, []);
+  await r.send({ kind: 'text', text: 'a' });
+  assert.equal(r.engine.getPreedit(), 'あ');
+  r.bridge.assertDone();
+});
+
+test('P53: a colliding Mozc ID still submits its original candidate', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'neko', output: response('ねこ', {
+      candidates: [{ id: -1, value: 'ネコ' }, { id: -4, value: '猫' }]
+    }) },
+    { operation: 'submitCandidate', text: '', candidateId: -1, output: response('', { result: 'ネコ' }) }
+  ]);
+  const shown = await r.send({ kind: 'text', text: 'neko' });
+  assert.deepEqual(shown.candidates.map(c => c.id), [-5, -4, -1, -2, -3]);
+  const committed = await r.send({ kind: 'select', candidateId: -5, expectedRevision: shown.candidateRevision });
+  assert.equal(committed.effects[0].text, 'ネコ');
+  r.bridge.assertDone();
+});
+
+test('P53: failed reset leaves the emoji uncommitted and can be retried', async () => {
+  const r = deferredRig([
+    { operation: 'literal', text: 'すし', output: response('すし') },
+    { operation: 'reset', text: '', candidateId: 0, output: response('', { ok: false }) },
+    { operation: 'reset', text: '', candidateId: 0, output: response() }
+  ]);
+  const shown = await r.send({ kind: 'text', text: 'すし' });
+  const event = { kind: 'select', candidateId: -1, expectedRevision: shown.candidateRevision };
+  const failed = await r.send(event);
+  assert.notEqual(failed.errorCode, 0);
+  assert.deepEqual(failed.effects, []);
+  assert.equal(r.engine.getPreedit(), 'すし');
+  const committed = await r.send(event);
+  assert.equal(committed.errorCode, 0);
+  assert.equal(committed.effects[0].text, '🍣');
+  r.bridge.assertDone();
+});
