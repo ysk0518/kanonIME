@@ -1,4 +1,19 @@
 const mutations = {
+  settingsMenuThemeRoute: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'open(SettingsPageId.Theme), open(SettingsPageId.Size)',
+    after: 'open(SettingsPageId.Layout), open(SettingsPageId.Size)'
+  },
+  settingsMenuLastLanguage: {
+    file: 'common/SettingsMenuModel.ets',
+    before: ' || (!enabled && languages.length === 1)',
+    after: ''
+  },
+  settingsMenuResetHeight: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'heightPercent: defaults.heightPercent',
+    after: 'heightPercent: undefined'
+  },
   suggestRomanOnlyWord: {
     file: 'kanon/MozcEngine.ets',
     before: 'endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)',

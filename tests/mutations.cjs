@@ -92,7 +92,10 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['qwertyEntersNumberMode', 'P45', 'QWERTY cycles between Japanese and English'],
   ['playKeySoundWhenOff', 'P46', 'off never calls playback'],
   ['duplicateRecentEmoji', 'P47', 'recents move to the front'],
-  ['suggestRomanOnlyWord', 'P51', 'the first roman letters of a word are not suggested']]) {
+  ['suggestRomanOnlyWord', 'P51', 'the first roman letters of a word are not suggested'],
+  ['settingsMenuThemeRoute', 'P55', 'the menu groups route'],
+  ['settingsMenuLastLanguage', 'P55', 'language switches preserve'],
+  ['settingsMenuResetHeight', 'P55', 'confirmed reset restores']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

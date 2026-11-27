@@ -229,7 +229,7 @@ class KeyboardBackgroundStore {
     }
   }
 
-  async save(config: BackgroundConfig): Promise<boolean> {
+  async save(config: BackgroundConfig, waitForAck: boolean = true): Promise<boolean> {
     if (this.ready) { await this.ready; }
     const next: BackgroundConfig = normalized(config);
     debugLog.record('background', `save normalized format=${next.format} photoChars=${next.photo.length} dropped=${config.photo.length > 0 && next.photo.length === 0}`);
@@ -244,7 +244,11 @@ class KeyboardBackgroundStore {
       return false;
     }
     if (this.peerVersion >= next.version) { return true; }
-    return settingsReceipt.wait('background', next.version);
+    return waitForAck ? settingsReceipt.wait('background', next.version) : false;
+  }
+
+  async retrySync(): Promise<void> {
+    await this.broadcast();
   }
 
   async requestSync(): Promise<void> {

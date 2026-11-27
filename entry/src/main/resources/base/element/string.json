@@ -1,5 +1,28 @@
 {
   "string": [
+      { "name": "settings_app_name", "value": "Kanon IME" },
+      { "name": "settings_menu_languages", "value": "言語とタイプ" },
+      { "name": "settings_menu_japanese_input", "value": "日本語入力オプション" },
+      { "name": "settings_menu_style", "value": "スタイルとレイアウト" },
+      { "name": "settings_menu_theme", "value": "テーマ" },
+      { "name": "settings_menu_size", "value": "サイズ" },
+      { "name": "settings_menu_layout", "value": "レイアウト" },
+      { "name": "settings_menu_toolbar", "value": "ツールバーのボタン" },
+      { "name": "settings_menu_feedback", "value": "スワイプ、タッチ、フィードバック" },
+      { "name": "settings_menu_reset", "value": "初期設定にリセット" },
+      { "name": "settings_menu_about", "value": "Kanon IME について" },
+      { "name": "settings_summary_english", "value": "English" },
+      { "name": "settings_summary_separator", "value": "、" },
+      { "name": "settings_theme_standard", "value": "標準の背景" },
+      { "name": "settings_theme_image", "value": "背景画像あり" },
+      { "name": "settings_reset_confirm", "value": "使用する言語、配列、高さ、背景画像など、キーボードの設定をすべて初期値に戻します。" },
+      { "name": "settings_reset_cancel", "value": "キャンセル" },
+      { "name": "settings_reset_action", "value": "リセット" },
+      { "name": "settings_reset_background_failed", "value": "背景をリセットできませんでした。もう一度リセットしてください。" },
+      { "name": "settings_about_version", "value": "バージョン %s" },
+      { "name": "settings_sync_retry_failed", "value": "同期できませんでした。再度お試しください。" },
+      { "name": "settings_back_glyph", "value": "‹" },
+      { "name": "settings_forward_glyph", "value": "›" },
     { "name": "keyboard_show_emoji", "value": "絵文字パネルを表示" },
     { "name": "emoji_recent", "value": "最近使った" },
     { "name": "emoji_faces", "value": "顔" },
@@ -42,11 +65,9 @@
     { "name": "keyboard_segment_reading", "value": "変換対象：%s" },
     { "name": "settings_sync_waiting", "value": "設定は保存済みです。同期・反映の確認を待っています。" },
     { "name": "settings_sync_retry", "value": "同期を再試行" },
-    { "name": "settings_applied", "value": "保存してキーボードに反映しました。" },
-    { "name": "settings_saved_pending", "value": "保存しました。設定の同期・反映を待っています。" },
     { "name": "settings_flick_enabled", "value": "フリック入力" },
     { "name": "settings_toggle_input", "value": "ケータイ入力" },
-    { "name": "settings_flick_disabled_help", "value": "オフにするとQWERTYのみを使い、配列切り替えキーが記号キーになります。保存すると反映されます。" },
+    { "name": "settings_flick_disabled_help", "value": "オフにするとQWERTYのみを使い、配列切り替えキーが記号キーになります。" },
     { "name": "keyboard_show_symbols", "value": "記号キーボードを表示" },
     { "name": "keyboard_back_letters", "value": "文字キーボードに戻る" },
     { "name": "keyboard_switch_layout", "value": "12キーとQWERTYを切り替え" },
@@ -68,22 +89,6 @@
     {
       "name": "keyboard_space",
       "value": "空白"
-    },
-    {
-      "name": "settings_defaults_pending",
-      "value": "このタブの設定を初期値に戻しました。「保存」で反映します。"
-    },
-    {
-      "name": "settings_reset_input_scope",
-      "value": "配列・フリック入力・ケータイ入力・フリック感度・長押し時間を初期値に戻します。"
-    },
-    {
-      "name": "settings_reset_appearance_scope",
-      "value": "キー間隔と文字プレビューを初期値に戻します。背景画像と高さは、それぞれの編集画面で変更できます。"
-    },
-    {
-      "name": "settings_reset_feedback_scope",
-      "value": "振動、キー音、ショートカット配置を初期値に戻します。"
     },
     {
       "name": "clipboard_history_permission",
@@ -190,14 +195,6 @@
       "value": "英語"
     },
     {
-      "name": "settings_language_applied",
-      "value": "言語設定を適用しました"
-    },
-    {
-      "name": "settings_language_failed",
-      "value": "言語設定を適用できませんでした"
-    },
-    {
       "name": "settings_layout",
       "value": "デフォルトの配列"
     },
@@ -208,14 +205,6 @@
     {
       "name": "settings_size_help",
       "value": "高さはキーボード左上のメニュー →「サイズ」で変更できます。"
-    },
-    {
-      "name": "settings_background",
-      "value": "背景の変更"
-    },
-    {
-      "name": "settings_save_before_background",
-      "value": "背景画像を開く前に、変更した設定を保存してください。"
     },
     {
       "name": "settings_key_preview",
@@ -398,28 +387,12 @@
       "value": "非表示の機能も、左上のメニューから開けます。"
     },
     {
-      "name": "shortcut_reset",
-      "value": "初期配置"
-    },
-    {
       "name": "shortcut_clipboard",
       "value": "クリップボード"
     },
     {
       "name": "shortcut_edit",
       "value": "テキスト編集"
-    },
-    {
-      "name": "settings_tab_input",
-      "value": "入力"
-    },
-    {
-      "name": "settings_tab_appearance",
-      "value": "外観"
-    },
-    {
-      "name": "settings_tab_feedback",
-      "value": "操作感"
     },
     {
       "name": "settings_layout_flick",
@@ -436,14 +409,6 @@
     {
       "name": "settings_qwerty_selected",
       "value": "QWERTY、選択中"
-    },
-    {
-      "name": "settings_language_immediate",
-      "value": "言語のオン・オフはすぐに反映されます。"
-    },
-    {
-      "name": "settings_language_location",
-      "value": "使用する言語は、キーボード左上のメニュー →「使用する言語」で変更できます。"
     },
     {
       "name": "settings_long_press_seconds",

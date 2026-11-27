@@ -1,428 +1,506 @@
-import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
-  DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_KEY_SOUND_LEVEL,
-  layoutLanguage, languageLayouts, DEFAULT_FLICK_ENABLED } from '../common/KeyboardConfig';
-import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
+import common from '@ohos.app.ability.common';
+import bundleManager from '@ohos.bundle.bundleManager';
 import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 import { DebugConsole } from './DebugConsole';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
-import { DEFAULT_TOGGLE_INPUT_ENABLED, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
+import { applySettingsPatch, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
-import { DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
+import { BackgroundConfig, keyboardBackground } from '../common/KeyboardBackground';
+import { MIN_KEY_GAP, MAX_KEY_GAP } from '../common/KeyboardLayout';
+import { shortcutOrder } from '../common/ShortcutConfigValues';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
-import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from '../common/CandidateLayout';
+import { MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from '../common/CandidateLayout';
 import { CandidateAppearancePreview } from './CandidateAppearancePreview';
+import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, SettingsMenuGroup,
+  SettingsNumber, SettingsToggle, SettingsReset, settingsLanguages, settingsLanguageSummary, settingsThemeSummary,
+  settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
+  settingsShortcutPatch, settingsReset } from '../common/SettingsMenuModel';
+
+function pageTitle(page: SettingsPageId): Resource {
+  switch (page) {
+    case SettingsPageId.Top: return $r('app.string.settings_app_name');
+    case SettingsPageId.Languages: return $r('app.string.settings_menu_languages');
+    case SettingsPageId.JapaneseInput: return $r('app.string.settings_menu_japanese_input');
+    case SettingsPageId.Theme: return $r('app.string.settings_menu_theme');
+    case SettingsPageId.Size: return $r('app.string.settings_menu_size');
+    case SettingsPageId.Layout: return $r('app.string.settings_menu_layout');
+    case SettingsPageId.Toolbar: return $r('app.string.settings_menu_toolbar');
+    case SettingsPageId.Feedback: return $r('app.string.settings_menu_feedback');
+    case SettingsPageId.About: return $r('app.string.settings_menu_about');
+  }
+}
 
 @Component
 export struct KeyboardSettings {
-  @State private settingsTab: number = 0;
-  @State private backgroundOpen: boolean = false;
-  @State private selectedLayouts: string[] = [];
-  @State private selectedFlick: boolean = true;
-  @State private flickEnabled: boolean = DEFAULT_FLICK_ENABLED;
-  @State private toggleInputEnabled: boolean = DEFAULT_TOGGLE_INPUT_ENABLED;
-  @State private selectedShortcuts: string[] = [];
+  @Prop @Watch('pageChanged') page: SettingsPageId = SettingsPageId.Top;
+  @State private snapshot: KeyboardSettingsSnapshot = new KeyboardSettingsSnapshot();
   @State private saving: boolean = false;
+  @State private retrying: boolean = false;
   @State private message: ResourceStr = '';
-  @State private flickDistance: number = DEFAULT_FLICK_DISTANCE;
-  @State private longPressMs: number = DEFAULT_LONG_PRESS_MS;
-  @State private previewEnabled: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
-  @State private keyGap: number = DEFAULT_KEY_GAP;
-  @State private candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
-  @State private candidateRows: number = DEFAULT_CANDIDATE_ROWS;
+  @State private activeSlider: SettingsNumber | undefined = undefined;
+  @State private sliderDraft: number = 0;
   @State private spacingPreviewQwerty: boolean = false;
-  @State private hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
-  @State private keySoundLevel: number = DEFAULT_KEY_SOUND_LEVEL;
+  @State private version: string = '';
+  @State private hasBackground: boolean = false;
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
-  @StorageLink('kanonSettingsSyncState') @Watch('syncConfirmed') syncState: string = '';
-  @StorageLink('kanonSettingsRequestSyncState') @Watch('syncConfirmed') requestState: string = '';
-  private savedSnapshot: KeyboardSettingsSnapshot = new KeyboardSettingsSnapshot();
-  private waitingConfirmation: boolean = false;
-  private savedSettingsKey: string = '';
+  @StorageLink('kanonSettingsSyncState') syncState: string = '';
+  @StorageLink('kanonSettingsRequestSyncState') requestState: string = '';
+  @StorageLink('kanonBackgroundVersion') @Watch('backgroundChanged') backgroundVersion: number = 0;
+  @StorageLink('kanonBackgroundSyncState') backgroundSyncState: string = '';
   languageOnly: boolean = false;
+  onOpen: (page: SettingsPageId) => void = () => {};
   onClose: () => void = () => {};
+  onBackgroundBusy: (busy: boolean) => void = () => {};
 
   aboutToAppear(): void {
-    this.loadSaved();
-    this.spacingPreviewQwerty = !this.selectedFlick;
+    this.snapshot = readSettings();
     keyboardSettingsSync.request().catch(() => {});
+    if (!this.languageOnly) {
+      this.initializeBackground().catch(() => {});
+      this.loadVersion();
+    }
+  }
+
+  private async loadVersion(): Promise<void> {
+    try {
+      const info: bundleManager.BundleInfo =
+        await bundleManager.getBundleInfoForSelf(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
+      this.version = info.versionName;
+    } catch (error) {}
+  }
+
+  private async initializeBackground(): Promise<void> {
+    const context: common.Context = this.getUIContext().getHostContext() as common.Context;
+    await keyboardBackground.initialize(context);
+    this.backgroundChanged();
+  }
+
+  private backgroundChanged(): void {
+    this.hasBackground = keyboardBackground.get().photo.length > 0;
   }
 
   private settingsChanged(): void {
-    if (!this.saving && !this.hasChanges()) { this.loadSaved(); }
+    if (!this.saving) { this.snapshot = readSettings(); }
   }
 
-  private syncConfirmed(): void {
+  private pageChanged(): void { this.activeSlider = undefined; }
+
+  private syncPending(): boolean {
     const state: string = keyboardSettingsSync.isReplica() ? this.requestState : this.syncState;
-    if (this.waitingConfirmation && state === 'applied') {
-      this.waitingConfirmation = false;
-      this.message = $r('app.string.settings_applied');
+    return state === 'pending' || state === 'error';
+  }
+
+  private backgroundPending(): boolean {
+    return !this.languageOnly && (this.backgroundSyncState === 'pending' || this.backgroundSyncState === 'error');
+  }
+
+  private async retrySync(): Promise<void> {
+    if (this.retrying || this.saving) { return; }
+    this.retrying = true;
+    this.message = '';
+    const requests: Promise<void>[] = [];
+    if (this.syncPending()) { requests.push(keyboardSettingsSync.request()); }
+    if (this.backgroundPending()) { requests.push(keyboardBackground.retrySync()); }
+    try { await Promise.all(requests); }
+    catch (error) { this.message = $r('app.string.settings_sync_retry_failed'); }
+    finally { this.retrying = false; }
+  }
+
+  private async save(patch: KeyboardSettingsPatch | undefined, background?: BackgroundConfig): Promise<void> {
+    if (patch === undefined || this.saving) { return; }
+    this.saving = true;
+    this.message = '';
+    let settingsSaved: boolean = false;
+    try {
+      this.snapshot = applySettingsPatch(readSettings(), patch);
+      if (background !== undefined) { await this.initializeBackground(); }
+      await keyboardSettingsSync.save(patch, false);
+      settingsSaved = true;
+      if (background !== undefined) {
+        await keyboardBackground.save(background, false);
+      }
+    } catch (error) {
+      this.message = settingsSaved ? $r('app.string.settings_reset_background_failed') : $r('app.string.common_save_failed');
+    } finally {
+      this.activeSlider = undefined;
+      this.snapshot = readSettings();
+      this.saving = false;
     }
   }
 
-  private loadSaved(): void {
-    const snapshot: KeyboardSettingsSnapshot = readSettings();
-    const layouts: string[] = languageLayouts(snapshot.layoutOrder);
-    this.savedSnapshot = snapshot;
-    this.selectedShortcuts = shortcutOrder(snapshot.shortcutOrder);
-    this.flickEnabled = snapshot.flickEnabled;
-    this.toggleInputEnabled = snapshot.toggleInputEnabled;
-    this.selectedFlick = this.flickEnabled && layouts[0].endsWith('_flick');
-    this.selectedLayouts = layouts.map((id: string) => this.layoutForLanguage(layoutLanguage(id)));
-    this.flickDistance = snapshot.flickDistance;
-    this.longPressMs = snapshot.longPressMs;
-    this.previewEnabled = snapshot.keyPreview;
-    this.keyGap = snapshot.keyGap;
-    this.candidateFontSize = snapshot.candidateFontSize;
-    this.candidateRows = snapshot.candidateRows;
-    this.hapticLevel = snapshot.hapticLevel;
-    this.keySoundLevel = snapshot.keySoundLevel;
-    this.savedSettingsKey = this.currentSettingsKey();
+  private reset(): void {
+    const defaults: SettingsReset = settingsReset();
+    this.save(defaults.patch, defaults.background);
   }
 
-  private currentSettingsKey(): string {
-    return [this.selectedLayouts.join(','), this.selectedFlick ? '1' : '0', this.flickEnabled ? '1' : '0',
-      this.toggleInputEnabled ? '1' : '0', this.selectedShortcuts.join(','), this.flickDistance.toString(), this.longPressMs.toString(),
-      this.previewEnabled ? '1' : '0', this.keyGap.toString(), this.hapticLevel.toString(),
-      this.keySoundLevel.toString(),
-      this.candidateFontSize.toString(), this.candidateRows.toString()].join('|');
+  private confirmReset(): void {
+    const options: AlertDialogParamWithButtons = {
+      title: $r('app.string.settings_menu_reset'),
+      message: $r('app.string.settings_reset_confirm'),
+      primaryButton: { value: $r('app.string.settings_reset_cancel'), action: () => {} },
+      secondaryButton: { value: $r('app.string.settings_reset_action'), action: () => this.reset() }
+    };
+    this.getUIContext().showAlertDialog(options);
   }
 
-  private hasChanges(): boolean {
-    return this.savedSettingsKey.length > 0 && this.currentSettingsKey() !== this.savedSettingsKey;
+  private openRow(row: SettingsMenuRow): void {
+    if (row.action === SettingsMenuAction.Reset) {
+      this.confirmReset();
+      return;
+    }
+    if (row.page === SettingsPageId.Layout) { this.spacingPreviewQwerty = !settingsUseFlick(this.snapshot); }
+    this.onOpen(row.page);
+  }
+
+  private rowSummary(page: SettingsPageId): string {
+    const resources = this.getUIContext().getHostContext()?.resourceManager;
+    if (resources === undefined) { return ''; }
+    try {
+      if (page === SettingsPageId.Languages) {
+        return settingsLanguageSummary(this.snapshot.layoutOrder,
+          resources.getStringSync($r('app.string.settings_japanese').id),
+          resources.getStringSync($r('app.string.settings_summary_english').id),
+          resources.getStringSync($r('app.string.settings_summary_separator').id));
+      }
+      return settingsThemeSummary(this.hasBackground,
+        resources.getStringSync($r('app.string.settings_theme_standard').id),
+        resources.getStringSync($r('app.string.settings_theme_image').id));
+    } catch (error) { return ''; }
   }
 
   private hasLanguage(language: string): boolean {
-    return this.selectedLayouts.some((id: string) => layoutLanguage(id) === language);
+    return settingsLanguages(this.snapshot.layoutOrder).includes(language);
   }
 
-  private layoutForLanguage(language: string): string {
-    return `${language === 'EN' ? 'en' : 'jp'}_${this.selectedFlick ? 'flick' : 'qwerty'}`;
+  private toggleValue(setting: SettingsToggle): boolean {
+    switch (setting) {
+      case SettingsToggle.Flick: return this.snapshot.flickEnabled;
+      case SettingsToggle.MultiTap: return this.snapshot.toggleInputEnabled;
+      case SettingsToggle.KeyPreview: return this.snapshot.keyPreview;
+    }
   }
 
-  private async toggleLanguage(language: string, enable: boolean): Promise<void> {
+  private numberValue(setting: SettingsNumber): number {
+    switch (setting) {
+      case SettingsNumber.FlickDistance: return this.snapshot.flickDistance;
+      case SettingsNumber.LongPress: return this.snapshot.longPressMs;
+      case SettingsNumber.KeyGap: return this.snapshot.keyGap;
+      case SettingsNumber.CandidateFont: return this.snapshot.candidateFontSize;
+      case SettingsNumber.CandidateRows: return this.snapshot.candidateRows;
+      case SettingsNumber.Haptics: return this.snapshot.hapticLevel;
+      case SettingsNumber.KeySound: return this.snapshot.keySoundLevel;
+    }
+  }
+
+  private sliderValue(setting: SettingsNumber): number {
+    return this.activeSlider === setting ? this.sliderDraft : this.numberValue(setting);
+  }
+
+  private sliderTitle(setting: SettingsNumber): Resource {
+    switch (setting) {
+      case SettingsNumber.KeyGap: return $r('app.string.settings_key_gap', this.sliderValue(setting));
+      case SettingsNumber.CandidateFont: return $r('app.string.settings_candidate_font', this.sliderValue(setting));
+      case SettingsNumber.LongPress:
+        return $r('app.string.settings_long_press_seconds', (this.sliderValue(setting) / 1000).toFixed(2));
+      default: return $r('app.string.settings_flick_sensitivity');
+    }
+  }
+
+  private sliderChanged(setting: SettingsNumber, value: number, mode: SliderChangeMode): void {
     if (this.saving) { return; }
-    const previous: string[] = this.selectedLayouts;
-    if (enable && !this.hasLanguage(language)) {
-      this.selectedLayouts = this.selectedLayouts.concat([this.layoutForLanguage(language)]);
-    } else if (!enable && this.selectedLayouts.length > 1) {
-      this.selectedLayouts = this.selectedLayouts.filter((id: string) => layoutLanguage(id) !== language);
-    }
-    try {
-      this.saving = true;
-      const order: string = languageLayouts(this.selectedLayouts.join(',')).join(',');
-      const result = await keyboardSettingsSync.save({ layoutOrder: order });
-      this.loadSaved();
-      this.waitingConfirmation = !result.confirmed;
-      this.message = result.confirmed ? $r('app.string.settings_language_applied') : $r('app.string.settings_saved_pending');
-    } catch (e) {
-      this.selectedLayouts = previous;
-      this.message = $r('app.string.settings_language_failed');
-    } finally { this.saving = false; }
-  }
-
-  private chooseLayout(flick: boolean): void {
-    if (flick && !this.flickEnabled) { return; }
-    this.selectedFlick = flick;
-    this.selectedLayouts = this.selectedLayouts.map((item: string) => this.layoutForLanguage(layoutLanguage(item)));
-    this.message = '';
-  }
-
-  private tabDefaultsChanged(tab: number): boolean {
-    if (tab === 0) {
-      return this.selectedFlick !== DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick') ||
-        this.flickEnabled !== DEFAULT_FLICK_ENABLED || this.toggleInputEnabled !== DEFAULT_TOGGLE_INPUT_ENABLED ||
-        this.flickDistance !== DEFAULT_FLICK_DISTANCE || this.longPressMs !== DEFAULT_LONG_PRESS_MS;
-    }
-    if (tab === 1) { return this.previewEnabled !== DEFAULT_KEY_PREVIEW_ENABLED || this.keyGap !== DEFAULT_KEY_GAP ||
-      this.candidateFontSize !== DEFAULT_CANDIDATE_FONT_SIZE || this.candidateRows !== DEFAULT_CANDIDATE_ROWS; }
-    return this.hapticLevel !== DEFAULT_HAPTIC_LEVEL || this.keySoundLevel !== DEFAULT_KEY_SOUND_LEVEL ||
-      this.selectedShortcuts.join(',') !== DEFAULT_SHORTCUT_ORDER;
-  }
-
-  private restoreTabDefaults(tab: number): void {
-    if (this.saving || !this.tabDefaultsChanged(tab)) { return; }
-    if (tab === 0) {
-      this.flickEnabled = DEFAULT_FLICK_ENABLED;
-      this.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED;
-      this.chooseLayout(DEFAULT_LAYOUT_ORDER.split(',')[0].endsWith('_flick'));
-      this.flickDistance = DEFAULT_FLICK_DISTANCE;
-      this.longPressMs = DEFAULT_LONG_PRESS_MS;
-    } else if (tab === 1) {
-      this.previewEnabled = DEFAULT_KEY_PREVIEW_ENABLED;
-      this.keyGap = DEFAULT_KEY_GAP;
-      this.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE;
-      this.candidateRows = DEFAULT_CANDIDATE_ROWS;
+    if (mode === SliderChangeMode.End || mode === SliderChangeMode.Click) {
+      this.activeSlider = undefined;
+      if (value !== this.numberValue(setting)) { this.save(settingsNumberPatch(setting, value)); }
     } else {
-      this.hapticLevel = DEFAULT_HAPTIC_LEVEL;
-      this.keySoundLevel = DEFAULT_KEY_SOUND_LEVEL;
-      this.selectedShortcuts = DEFAULT_SHORTCUT_ORDER.split(',');
+      this.sliderDraft = value;
+      this.activeSlider = setting;
     }
-    this.message = $r('app.string.settings_defaults_pending');
+  }
+
+  private goBack(): void {
+    this.activeSlider = undefined;
+    this.onClose();
   }
 
   @Builder
-  tabResetButton(tab: number) {
-    Column({ space: 8 }) {
-      Divider().color($r('app.color.light_gray'))
-      Button($r('app.string.common_reset')).width('100%')
-        .enabled(!this.saving && this.tabDefaultsChanged(tab))
-        .onClick(() => this.restoreTabDefaults(tab)).id(`keyboard_config_reset_${tab}`)
-      Text(tab === 0 ? $r('app.string.settings_reset_input_scope') :
-        tab === 1 ? $r('app.string.settings_reset_appearance_scope') : $r('app.string.settings_reset_feedback_scope'))
-        .fontSize(12).fontColor($r('app.color.text_secondary')).width('100%')
-    }.width('100%')
-  }
-
-  private async save(): Promise<void> {
-    if (this.saving || !this.hasChanges()) { return; }
-    this.saving = true;
-    try {
-      const patch: KeyboardSettingsPatch = {};
-      const saved: KeyboardSettingsSnapshot = this.savedSnapshot;
-      if (this.selectedFlick !== saved.layoutOrder.split(',')[0].endsWith('_flick')) { patch.layoutKind = this.selectedFlick ? 'flick' : 'qwerty'; }
-      if (this.flickEnabled !== saved.flickEnabled) { patch.flickEnabled = this.flickEnabled; }
-      if (this.toggleInputEnabled !== saved.toggleInputEnabled) { patch.toggleInputEnabled = this.toggleInputEnabled; }
-      if (this.flickDistance !== saved.flickDistance) { patch.flickDistance = this.flickDistance; }
-      if (this.longPressMs !== saved.longPressMs) { patch.longPressMs = this.longPressMs; }
-      if (this.previewEnabled !== saved.keyPreview) { patch.keyPreview = this.previewEnabled; }
-      if (this.keyGap !== saved.keyGap) { patch.keyGap = this.keyGap; }
-      if (this.candidateFontSize !== saved.candidateFontSize) { patch.candidateFontSize = this.candidateFontSize; }
-      if (this.candidateRows !== saved.candidateRows) { patch.candidateRows = this.candidateRows; }
-      if (this.hapticLevel !== saved.hapticLevel) { patch.hapticLevel = this.hapticLevel; }
-      if (this.keySoundLevel !== saved.keySoundLevel) { patch.keySoundLevel = this.keySoundLevel; }
-      if (this.selectedShortcuts.join(',') !== saved.shortcutOrder) { patch.shortcutOrder = this.selectedShortcuts.join(','); }
-      const result = await keyboardSettingsSync.save(patch);
-      this.loadSaved();
-      this.waitingConfirmation = !result.confirmed;
-      this.message = result.confirmed ? $r('app.string.settings_applied') : $r('app.string.settings_saved_pending');
-    } catch (e) {
-      this.message = $r('app.string.common_save_failed');
-    } finally { this.saving = false; }
+  divider() {
+    Divider().strokeWidth(1).color($r('app.color.light_gray'))
   }
 
   @Builder
-  languageOptions() {
-    Column({ space: 8 }) {
-            Text($r('app.string.settings_languages')).fontSize(14).fontColor($r('app.color.text_secondary'))
-            ForEach(['JP', 'EN'], (language: string) => {
-              Row() {
-                Text(language === 'JP' ? $r('app.string.settings_japanese') : $r('app.string.settings_english'))
-                  .fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
-                Toggle({ type: ToggleType.Switch, isOn: this.hasLanguage(language) })
-                  .enabled(!this.saving && !(this.selectedLayouts.length === 1 && this.hasLanguage(language)))
-                  .onChange((value: boolean) => this.toggleLanguage(language, value))
-                  .accessibilityText(language === 'JP' ? $r('app.string.settings_use_japanese') : $r('app.string.settings_use_english'))
-                  .id(`keyboard_config_language_${language}`)
-              }
-              .width('100%')
-            })
-            Text($r('app.string.settings_language_immediate'))
-              .fontSize(12).fontColor($r('app.color.text_secondary'))
-
-    }.width('100%')
-  }
-
-  @Builder
-  inputOptions() {
-    Column({ space: 12 }) {
-      Text($r('app.string.settings_language_location'))
-        .fontSize(12).fontColor($r('app.color.text_secondary'))
-      Text($r('app.string.settings_layout')).fontSize(14).fontColor($r('app.color.text_secondary'))
-      Row({ space: 8 }) {
-        ForEach([true, false], (flick: boolean) => {
-          Button(flick ? $r('app.string.settings_layout_flick') : $r('app.string.settings_layout_qwerty'))
-            .layoutWeight(1).enabled(!this.saving && (!flick || this.flickEnabled))
-            .fontColor(this.selectedFlick === flick ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-            .backgroundColor(this.selectedFlick === flick ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-            .accessibilityText(flick ? (this.selectedFlick ? $r('app.string.settings_flick_selected') : $r('app.string.settings_layout_flick')) :
-              (this.selectedFlick ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_qwerty_selected')))
-            .onClick(() => this.chooseLayout(flick))
-            .id(flick ? 'keyboard_config_flick' : 'keyboard_config_qwerty')
-        })
-      }.width('100%')
-      Row() {
-        Text($r('app.string.settings_flick_enabled')).fontSize(15)
-          .fontColor($r('app.color.text_normal')).layoutWeight(1)
-        Toggle({ type: ToggleType.Switch, isOn: this.flickEnabled }).enabled(!this.saving)
-          .onChange((value: boolean) => {
-            this.flickEnabled = value;
-            if (!value) { this.chooseLayout(false); }
-          })
-          .accessibilityText($r('app.string.settings_flick_enabled')).id('keyboard_config_flick_enabled')
-      }.width('100%')
-      Row() {
-        Text($r('app.string.settings_toggle_input')).fontSize(15)
-          .fontColor($r('app.color.text_normal')).layoutWeight(1)
-        Toggle({ type: ToggleType.Switch, isOn: this.toggleInputEnabled }).enabled(!this.saving)
-          .onChange((value: boolean) => { this.toggleInputEnabled = value; })
-          .accessibilityText($r('app.string.settings_toggle_input')).id('keyboard_config_toggle_input')
-      }.width('100%')
-
-          Text($r('app.string.settings_flick_sensitivity'))
-            .fontSize(14).fontColor($r('app.color.text_normal'))
-          Slider({ value: this.flickDistance, min: 12, max: 30, step: 2 })
-            .enabled(!this.saving)
-            .onChange((value: number) => { this.flickDistance = value; })
-            .id('keyboard_config_flick_distance')
-          Text($r('app.string.settings_flick_help'))
-            .fontSize(12).fontColor($r('app.color.text_secondary'))
-          Text($r('app.string.settings_long_press_seconds', (this.longPressMs / 1000).toFixed(2)))
-            .fontSize(14).fontColor($r('app.color.text_normal'))
-          Slider({ value: this.longPressMs, min: 250, max: 650, step: 50 })
-            .enabled(!this.saving)
-            .onChange((value: number) => { this.longPressMs = value; })
-            .id('keyboard_config_long_press')
-      this.tabResetButton(0)
-    }.width('100%')
-  }
-
-  @Builder
-  appearanceOptions() {
-    Column({ space: 12 }) {
-          Text($r('app.string.settings_candidate_font', this.candidateFontSize))
-            .fontSize(15).fontColor($r('app.color.text_normal'))
-          Slider({ value: this.candidateFontSize, min: MIN_CANDIDATE_FONT_SIZE, max: MAX_CANDIDATE_FONT_SIZE, step: 1 })
-            .enabled(!this.saving).onChange((value: number) => { this.candidateFontSize = Math.round(value); })
-            .accessibilityText($r('app.string.settings_candidate_font', this.candidateFontSize)).id('keyboard_config_candidate_font')
-          Row({ space: 8 }) {
-            Text($r('app.string.settings_candidate_rows')).fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
-            ForEach([1, 2], (rows: number) => {
-              Button($r('app.string.settings_candidate_row_count', rows))
-                .backgroundColor(this.candidateRows === rows ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-                .fontColor($r('app.color.text_normal')).enabled(!this.saving)
-                .onClick(() => { this.candidateRows = rows; }).id(`keyboard_config_candidate_rows_${rows}`)
-            })
-          }.width('100%')
-          CandidateAppearancePreview({ fontSize: this.candidateFontSize, rows: this.candidateRows })
-          Text($r('app.string.settings_candidate_rows_help')).fontSize(12).fontColor($r('app.color.text_secondary'))
-          Text($r('app.string.settings_size_help'))
-            .fontSize(12).fontColor($r('app.color.text_secondary'))
-          Text($r('app.string.settings_key_gap', this.keyGap))
-            .fontSize(15).fontColor($r('app.color.text_normal'))
-          Slider({ value: this.keyGap, min: MIN_KEY_GAP, max: MAX_KEY_GAP, step: 1 })
-            .enabled(!this.saving)
-            .onChange((value: number) => { this.keyGap = keyboardKeyGap(value); })
-            .accessibilityText($r('app.string.settings_key_gap', this.keyGap))
-            .id('keyboard_config_key_gap')
-          Text($r('app.string.settings_key_gap_help'))
-            .fontSize(12).fontColor($r('app.color.text_secondary'))
-          KeyboardPreviewLayoutSwitch({ qwerty: this.spacingPreviewQwerty, disabled: this.saving,
-            idPrefix: 'keyboard_config_gap_preview',
-            onChange: (qwerty: boolean) => { this.spacingPreviewQwerty = qwerty; } })
-          Stack() {
-            BackgroundKeyPreview({ qwerty: this.spacingPreviewQwerty, gap: this.keyGap })
-          }.width('100%').height(152).borderRadius(8)
-            .backgroundColor($r('app.color.keyboard_background')).id('keyboard_config_key_gap_preview')
-          Button($r('app.string.settings_background')).width('100%').enabled(!this.saving && !this.hasChanges())
-            .onClick(() => { this.backgroundOpen = true; }).id('keyboard_config_background')
-          if (this.hasChanges()) {
-            Text($r('app.string.settings_save_before_background'))
-              .fontSize(12).fontColor($r('app.color.text_secondary'))
+  navigationRow(row: SettingsMenuRow) {
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 12 }) {
+        Column({ space: 4 }) {
+          Text(row.action === SettingsMenuAction.Reset ? $r('app.string.settings_menu_reset') : pageTitle(row.page))
+            .fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
+          if (row.page === SettingsPageId.Languages || row.page === SettingsPageId.Theme) {
+            Text(this.rowSummary(row.page)).fontSize(14)
+              .fontColor($r('app.color.settings_accent')).width('100%')
           }
-          Row() {
-            Text($r('app.string.settings_key_preview')).fontSize(15).fontColor($r('app.color.text_normal')).layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.previewEnabled })
-              .enabled(!this.saving)
-              .onChange((value: boolean) => { this.previewEnabled = value; })
-              .id('keyboard_config_preview')
-          }
-      this.tabResetButton(1)
-    }.width('100%')
-  }
-
-  @Builder
-  feedbackOptions() {
-    Column({ space: 12 }) {
-          Text($r('app.string.settings_haptics')).fontSize(15).fontColor($r('app.color.text_normal'))
-          Row({ space: 8 }) {
-            ForEach([0, 1, 2], (level: number) => {
-              Button(level === 0 ? $r('app.string.settings_haptics_off') : level === 1 ? $r('app.string.settings_haptics_weak') : $r('app.string.settings_haptics_strong'))
-                .layoutWeight(1).enabled(!this.saving)
-                .fontColor(this.hapticLevel === level ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-                .backgroundColor(this.hapticLevel === level ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-                .onClick(() => { this.hapticLevel = level; })
-                .id(`keyboard_config_haptic_${level}`)
-            })
-          }.width('100%')
-          Text($r('app.string.settings_haptics_help'))
-            .fontSize(12).fontColor($r('app.color.text_secondary'))
-          Text($r('app.string.settings_key_sound')).fontSize(15).fontColor($r('app.color.text_normal'))
-          Row({ space: 8 }) {
-            ForEach([0, 1, 2], (level: number) => {
-              Button(level === 0 ? $r('app.string.settings_key_sound_off') :
-                level === 1 ? $r('app.string.settings_key_sound_low') : $r('app.string.settings_key_sound_high'))
-                .layoutWeight(1).enabled(!this.saving)
-                .fontColor(this.keySoundLevel === level ? $r('app.color.candidate_accent') : $r('app.color.text_normal'))
-                .backgroundColor(this.keySoundLevel === level ? $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
-                .onClick(() => { this.keySoundLevel = level; })
-                .id(`keyboard_config_key_sound_${level}`)
-            })
-          }.width('100%')
-          Divider().color($r('app.color.light_gray'))
-          ShortcutEditor({ selectedShortcuts: $selectedShortcuts, disabled: this.saving })
-      this.tabResetButton(2)
-    }.width('100%')
-  }
-
-  build() {
-    Column({ space: 8 }) {
-      if (this.backgroundOpen) {
-        KeyboardBackgroundSettings({ onClose: () => { this.backgroundOpen = false; } })
-      } else {
-      Row() {
-        Button('‹')
-          .width(44).height(44).fontSize(28).maxFontScale(1)
-          .backgroundColor(Color.Transparent).fontColor($r('app.color.text_normal'))
-          .accessibilityText($r('app.string.common_back'))
-          .onClick(() => this.onClose())
-          .id('keyboard_config_close')
-        Text(this.languageOnly ? $r('app.string.settings_languages') : $r('app.string.settings_title')).fontSize(20).maxFontScale(1.3)
-          .fontColor($r('app.color.text_normal')).layoutWeight(1)
-        if (!this.languageOnly) {
-          Button(this.saving ? $r('app.string.common_saving') : $r('app.string.common_save'))
-            .fontSize(14).maxFontScale(1).height(40)
-            .enabled(!this.saving && this.hasChanges())
-            .opacity(this.saving || !this.hasChanges() ? 0.45 : 1)
-            .onClick(() => this.save())
-            .id('keyboard_config_save')
+        }.layoutWeight(1)
+        if (row.action === SettingsMenuAction.Open) {
+          Text($r('app.string.settings_forward_glyph')).fontSize(22)
+            .fontColor($r('app.color.settings_accent')).accessibilityLevel('no')
         }
+      }.width('100%').constraintSize({ minHeight: 58 }).padding({ top: 13, bottom: 13 })
+    }.width('100%').padding(0).backgroundColor(Color.Transparent).enabled(!this.saving)
+      .onClick(() => this.openRow(row)).id(row.action === SettingsMenuAction.Reset ? 'keyboard_config_reset' :
+        row.page === SettingsPageId.Theme ? 'keyboard_config_background' : `keyboard_settings_page_${row.page}`)
+  }
+
+  @Builder
+  menu() {
+    ForEach(SETTINGS_MENU, (group: SettingsMenuGroup) => {
+      Column({ space: 8 }) {
+        if (group.styleHeading) {
+          Text($r('app.string.settings_menu_style')).fontSize(14).fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text_secondary')).width('100%').padding({ left: 18 })
+        }
+        Column() {
+          ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
+            if (index > 0) { this.divider() }
+            this.navigationRow(row)
+          }, (row: SettingsMenuRow) => row.page.toString())
+        }.width('100%').padding({ left: 18, right: 18 })
+          .borderRadius(22).backgroundColor($r('app.color.settings_card'))
+      }.width('100%')
+    }, (group: SettingsMenuGroup) => group.rows[0].page.toString())
+  }
+
+  @Builder
+  languages() {
+    Column({ space: 8 }) {
+      if (!this.languageOnly) {
+        Text($r('app.string.settings_languages')).fontSize(14).fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.text_secondary')).width('100%').padding({ left: 18 })
       }
-      .width('100%').height(56)
+      Column() {
+        ForEach(['JP', 'EN'], (language: string, index: number) => {
+          if (index > 0) { this.divider() }
+          Row({ space: 12 }) {
+            Text(language === 'JP' ? $r('app.string.settings_japanese') : $r('app.string.settings_english'))
+              .fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.hasLanguage(language) })
+              .selectedColor($r('app.color.settings_accent'))
+              .enabled(!this.saving && !(settingsLanguages(this.snapshot.layoutOrder).length === 1 && this.hasLanguage(language)))
+              .onChange((enabled: boolean) => this.save(settingsLanguagePatch(this.snapshot, language, enabled)))
+              .accessibilityText(language === 'JP' ? $r('app.string.settings_use_japanese') : $r('app.string.settings_use_english'))
+              .id(`keyboard_config_language_${language}`)
+          }.width('100%').constraintSize({ minHeight: 56 })
+        }, (language: string) => language)
+      }.width('100%').padding({ left: 18, right: 18 })
+        .borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    }.width('100%')
+    if (!this.languageOnly) {
+      Column({ space: 10 }) {
+        this.label($r('app.string.settings_layout'))
+        Row({ space: 8 }) {
+          ForEach([true, false], (flick: boolean) => {
+            Button(flick ? $r('app.string.settings_layout_flick') : $r('app.string.settings_layout_qwerty'))
+              .layoutWeight(1).enabled(!this.saving && (!flick || this.snapshot.flickEnabled))
+              .fontColor($r('app.color.text_normal'))
+              .backgroundColor(settingsUseFlick(this.snapshot) === flick ?
+                $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+              .accessibilityText(flick ?
+                (settingsUseFlick(this.snapshot) ? $r('app.string.settings_flick_selected') : $r('app.string.settings_layout_flick')) :
+                (settingsUseFlick(this.snapshot) ? $r('app.string.settings_layout_qwerty') : $r('app.string.settings_qwerty_selected')))
+              .onClick(() => this.save(settingsLayoutPatch(this.snapshot, flick)))
+              .id(flick ? 'keyboard_config_flick' : 'keyboard_config_qwerty')
+          }, (flick: boolean) => flick.toString())
+        }.width('100%')
+        this.help($r('app.string.settings_layout_help'))
+      }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    }
+  }
 
-        if (this.languageOnly) {
-          Scroll() { this.languageOptions() }.layoutWeight(1).width('100%')
-        } else {
-          Tabs({ barPosition: BarPosition.End, index: this.settingsTab }) {
-            TabContent() {
-              Scroll() { this.inputOptions() }.width('100%').height('100%')
-            }.tabBar($r('app.string.settings_tab_input'))
-            TabContent() {
-              Scroll() { this.appearanceOptions() }.width('100%').height('100%')
-            }.tabBar($r('app.string.settings_tab_appearance'))
-            TabContent() {
-              Scroll() { this.feedbackOptions() }.width('100%').height('100%')
-            }.tabBar($r('app.string.settings_tab_feedback'))
-          }.layoutWeight(1).width('100%').barHeight(52).scrollable(false)
-            .onChange((index: number) => { this.settingsTab = index; })
-            .id('keyboard_settings_tabs')
+  @Builder
+  toggleRow(title: Resource, setting: SettingsToggle, id: string) {
+    Row({ space: 12 }) {
+      Text(title).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.toggleValue(setting) })
+        .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
+        .onChange((value: boolean) => {
+          if (value !== this.toggleValue(setting)) { this.save(settingsTogglePatch(setting, value)); }
+        }).accessibilityText(title).id(id)
+    }.width('100%').constraintSize({ minHeight: 56 })
+  }
+
+  @Builder
+  label(title: ResourceStr) {
+    Text(title).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
+  }
+
+  @Builder
+  help(text: ResourceStr) {
+    Text(text).fontSize(13).fontColor($r('app.color.text_secondary')).width('100%')
+  }
+
+  @Builder
+  slider(setting: SettingsNumber, min: number, max: number, step: number, id: string) {
+    Text(this.sliderTitle(setting)).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
+    Slider({ value: this.sliderValue(setting), min: min, max: max, step: step })
+      .sliderInteractionMode(SliderInteraction.SLIDE_AND_CLICK_UP)
+      .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
+      .onChange((value: number, mode: SliderChangeMode) => this.sliderChanged(setting, value, mode))
+      .accessibilityText(this.sliderTitle(setting)).id(id).width('100%')
+  }
+
+  @Builder
+  japaneseInput() {
+    Column() {
+      this.toggleRow($r('app.string.settings_flick_enabled'), SettingsToggle.Flick, 'keyboard_config_flick_enabled')
+      this.help($r('app.string.settings_flick_disabled_help'))
+      this.divider()
+      this.toggleRow($r('app.string.settings_toggle_input'), SettingsToggle.MultiTap, 'keyboard_config_toggle_input')
+      this.divider()
+      Column({ space: 4 }) {
+        this.slider(SettingsNumber.FlickDistance, 12, 30, 2, 'keyboard_config_flick_distance')
+        this.help($r('app.string.settings_flick_help'))
+      }.padding({ top: 14, bottom: 16 })
+    }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  private choiceLabel(setting: SettingsNumber, value: number): Resource {
+    if (setting === SettingsNumber.CandidateRows) { return $r('app.string.settings_candidate_row_count', value); }
+    if (setting === SettingsNumber.Haptics) {
+      return value === 0 ? $r('app.string.settings_haptics_off') :
+        value === 1 ? $r('app.string.settings_haptics_weak') : $r('app.string.settings_haptics_strong');
+    }
+    return value === 0 ? $r('app.string.settings_key_sound_off') :
+      value === 1 ? $r('app.string.settings_key_sound_low') : $r('app.string.settings_key_sound_high');
+  }
+
+  @Builder
+  choices(setting: SettingsNumber, values: number[], idPrefix: string) {
+    Row({ space: 8 }) {
+      ForEach(values, (value: number) => {
+        Button(this.choiceLabel(setting, value)).layoutWeight(1).enabled(!this.saving)
+          .fontColor($r('app.color.text_normal'))
+          .backgroundColor(this.numberValue(setting) === value ?
+            $r('app.color.candidate_selected') : $r('app.color.key_item_normal'))
+          .onClick(() => {
+            if (value !== this.numberValue(setting)) { this.save(settingsNumberPatch(setting, value)); }
+          }).id(`${idPrefix}_${value}`)
+      }, (value: number) => value.toString())
+    }.width('100%')
+  }
+
+  @Builder
+  layoutOptions() {
+    Column({ space: 10 }) {
+      this.slider(SettingsNumber.KeyGap, MIN_KEY_GAP, MAX_KEY_GAP, 1, 'keyboard_config_key_gap')
+      this.help($r('app.string.settings_key_gap_help'))
+      KeyboardPreviewLayoutSwitch({ qwerty: this.spacingPreviewQwerty, disabled: this.saving,
+        idPrefix: 'keyboard_config_gap_preview',
+        onChange: (qwerty: boolean) => { this.spacingPreviewQwerty = qwerty; } })
+      Stack() {
+        BackgroundKeyPreview({ qwerty: this.spacingPreviewQwerty, gap: this.sliderValue(SettingsNumber.KeyGap) })
+      }.width('100%').height(152).borderRadius(8)
+        .backgroundColor($r('app.color.keyboard_background')).id('keyboard_config_key_gap_preview')
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    Column({ space: 10 }) {
+      this.label($r('app.string.settings_candidate_rows'))
+      this.choices(SettingsNumber.CandidateRows, [1, 2], 'keyboard_config_candidate_rows')
+      this.divider()
+      this.slider(SettingsNumber.CandidateFont, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE, 1,
+        'keyboard_config_candidate_font')
+      CandidateAppearancePreview({ fontSize: this.sliderValue(SettingsNumber.CandidateFont), rows: this.snapshot.candidateRows })
+      this.help($r('app.string.settings_candidate_rows_help'))
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  feedback() {
+    Column({ space: 10 }) {
+      this.label($r('app.string.settings_haptics'))
+      this.choices(SettingsNumber.Haptics, [0, 1, 2], 'keyboard_config_haptic')
+      this.help($r('app.string.settings_haptics_help'))
+      this.divider()
+      this.label($r('app.string.settings_key_sound'))
+      this.choices(SettingsNumber.KeySound, [0, 1, 2], 'keyboard_config_key_sound')
+      this.divider()
+      this.toggleRow($r('app.string.settings_key_preview'), SettingsToggle.KeyPreview, 'keyboard_config_preview')
+      this.divider()
+      this.slider(SettingsNumber.LongPress, 250, 650, 50, 'keyboard_config_long_press')
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  content() {
+    if (this.languageOnly || this.page === SettingsPageId.Languages) {
+      this.languages()
+    } else if (this.page === SettingsPageId.Top) {
+      this.menu()
+    } else if (this.page === SettingsPageId.JapaneseInput) {
+      this.japaneseInput()
+    } else if (this.page === SettingsPageId.Size) {
+      Text($r('app.string.settings_size_help')).fontSize(16).fontColor($r('app.color.text_normal'))
+        .width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    } else if (this.page === SettingsPageId.Layout) {
+      this.layoutOptions()
+    } else if (this.page === SettingsPageId.Toolbar) {
+      ShortcutEditor({ selectedShortcuts: shortcutOrder(this.snapshot.shortcutOrder), disabled: this.saving,
+        onChange: (ids: string[]) => this.save(settingsShortcutPatch(ids)) })
+        .padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    } else if (this.page === SettingsPageId.Feedback) {
+      this.feedback()
+    } else if (this.page === SettingsPageId.About) {
+      Column({ space: 8 }) {
+        this.label($r('app.string.settings_app_name'))
+        if (this.version !== '') {
+          this.help($r('app.string.settings_about_version', this.version))
         }
-        if (this.message !== '') {
-          Text(this.message).fontSize(14).fontColor($r('app.color.text_normal')).width('100%')
+      }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+      DebugConsole().padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    }
+  }
+
+  @Builder
+  footer() {
+    if (this.saving || this.message !== '' || this.syncPending() || this.backgroundPending()) {
+      Column({ space: 4 }) {
+        if (this.saving || this.message !== '') {
+          Text(this.saving ? $r('app.string.common_saving') : this.message).fontSize(12)
+            .fontColor(this.saving ? $r('app.color.text_secondary') : $r('app.color.text_error')).width('100%')
         }
-        if ((keyboardSettingsSync.isReplica() ? this.requestState : this.syncState) === 'pending' ||
-          (keyboardSettingsSync.isReplica() ? this.requestState : this.syncState) === 'error') {
+        if (this.syncPending() || this.backgroundPending()) {
           Row({ space: 8 }) {
             Text($r('app.string.settings_sync_waiting')).fontSize(12)
               .fontColor($r('app.color.text_secondary')).layoutWeight(1)
-            Button($r('app.string.settings_sync_retry')).fontSize(12).height(32).enabled(!this.saving)
-              .onClick(() => { keyboardSettingsSync.request().catch(() => { this.message = $r('app.string.settings_saved_pending'); }); })
-              .id('keyboard_settings_sync_retry')
+            Button($r('app.string.settings_sync_retry')).fontSize(12).height(32).enabled(!this.saving && !this.retrying)
+              .onClick(() => this.retrySync()).id('keyboard_settings_sync_retry')
           }.width('100%')
         }
-        if (!this.languageOnly) { DebugConsole() }
+      }.width('100%').padding({ left: 16, right: 16, top: 4, bottom: 8 })
+    }
+  }
+
+  build() {
+    Column() {
+      if (!this.languageOnly && this.page === SettingsPageId.Theme) {
+        KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBusyChange: this.onBackgroundBusy })
+      } else {
+        Row({ space: 8 }) {
+          Button($r('app.string.settings_back_glyph')).width(44).height(44).fontSize(30).maxFontScale(1)
+            .backgroundColor(Color.Transparent).fontColor($r('app.color.settings_accent'))
+            .accessibilityText($r('app.string.common_back')).onClick(() => this.goBack()).id('keyboard_config_close')
+          Text(this.languageOnly ? $r('app.string.settings_languages') : pageTitle(this.page))
+            .fontSize(26).fontWeight(FontWeight.Bold).fontColor($r('app.color.text_normal')).layoutWeight(1)
+        }.width('100%').constraintSize({ minHeight: this.languageOnly ? 48 : 66 })
+          .padding({ left: 8, right: 16, top: 2, bottom: 2 })
+        ForEach([this.page], (page: SettingsPageId) => {
+          Scroll() {
+            Column({ space: 16 }) {
+              this.content()
+            }.width('100%').padding({ left: 16, right: 16, top: 6, bottom: 12 })
+          }.layoutWeight(1).width('100%').align(Alignment.Top)
+            .scrollBar(BarState.Auto).id(`keyboard_settings_scroll_${page}`)
+        }, (page: SettingsPageId) => page.toString())
+        this.footer()
       }
-    }.padding(12).width('100%').height('100%').backgroundColor($r('app.color.menu_background'))
+    }.width('100%').height('100%').backgroundColor($r('app.color.settings_background_surface'))
   }
 }

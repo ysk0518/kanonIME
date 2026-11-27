@@ -1,5 +1,8 @@
 {
     "color":  [
+                  { "name": "settings_background_surface", "value": "#EEF2F7" },
+                  { "name": "settings_card", "value": "#FFFFFF" },
+                  { "name": "settings_accent", "value": "#185EA8" },
                   {
                       "name":  "light_gray",
                       "value":  "#33000000"

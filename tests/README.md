@@ -72,6 +72,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | EnglishPrediction / EnglishEngine | 製品辞書と補完処理、Space・Enter・Delete、選択変更、Undo通知、Coordinatorへの接続 |
 | EnglishSelectionPolicy | 選択通知の位置による判定、内部編集中の保護、Undoと補完の破棄条件。通知の発生源やOSの未確定終了は推測しない |
 | KeyboardSettingsModel / KeyboardSettingsMigration | 既定値、検証、差分・合成、schema 1補完、保存JSON解析、旧設定の移行計算 |
+| `settings-menu.test.cjs` | P55のカード構成・遷移先、言語と背景の要約、即時保存の差分、全体リセット、IMEとの同期 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
