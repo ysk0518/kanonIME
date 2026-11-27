@@ -55,7 +55,13 @@ class GamingPresses {
   down(event: TouchEvent): void {
     if (this.listener === undefined || event.type !== TouchType.Down) { return; }
     const point: TouchObject | undefined = event.changedTouches[0];
-    if (point !== undefined) { this.listener(point.windowX, point.windowY); }
+    // Use the pressed key's layout position plus the touch inside it: the same
+    // coordinate space as the overlay's globalPosition. Window coordinates do
+    // not match it because the keyboard root is anchored to the window bottom.
+    if (point !== undefined) {
+      const origin: Position = event.target.area.globalPosition;
+      this.listener(Number(origin.x ?? 0) + point.x, Number(origin.y ?? 0) + point.y);
+    }
   }
 }
 
