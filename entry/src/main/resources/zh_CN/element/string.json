@@ -46,6 +46,7 @@
       { "name": "shortcut_move_down", "value": "下移%s" },
       { "name": "shortcut_remove", "value": "从快捷按钮中移除%s" },
       { "name": "shortcut_add", "value": "＋ %s" },
+      { "name": "shortcut_settings", "value": "设置" },
       { "name": "shortcut_clipboard", "value": "剪贴板" },
       { "name": "shortcut_edit", "value": "文本编辑" },
       { "name": "settings_title", "value": "键盘设置" },

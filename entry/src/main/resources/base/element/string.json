@@ -382,6 +382,10 @@
       "value": "ここに追加していない機能も、キーボード右側の「…」から開けます。"
     },
     {
+      "name": "shortcut_settings",
+      "value": "設定"
+    },
+    {
       "name": "shortcut_clipboard",
       "value": "クリップボード"
     },

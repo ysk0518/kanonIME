@@ -46,6 +46,7 @@
       { "name": "shortcut_move_down", "value": "Move %s down" },
       { "name": "shortcut_remove", "value": "Remove %s from shortcuts" },
       { "name": "shortcut_add", "value": "+ %s" },
+      { "name": "shortcut_settings", "value": "Settings" },
       { "name": "shortcut_clipboard", "value": "Clipboard" },
       { "name": "shortcut_edit", "value": "Text editing" },
       { "name": "settings_title", "value": "Keyboard settings" },
