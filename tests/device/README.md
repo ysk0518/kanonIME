@@ -91,7 +91,7 @@ powershell -NoProfile -File tools/test-input-field.ps1 -Target '<接続先>' -Fi
 `native-input-cases.json` のD01／D02／D04／D05／D06／D08／D13／D14／D15／D16／D17／D18を実行できます。
 D19／D20は同じプレビュー画面の下段`kanon_validation_direct_input`を`-FieldId`へ渡します。この欄はSDKの`enablePreviewText(false)`を指定しています。D19はJPから開始、D20はENから開始してください。
 D21は通常欄`kanon_validation_input`を使い、JPから開始します。D19の直接入力と、同じキー列で表示・復元経路を比較できます。
-開始時は日本語モード、D04には12キー有効、D08には英語有効が必要です。`PrepareQwerty` は配列だけを準備し、言語を変更しません。
+開始時は日本語モード、D04・D22には12キー有効、D08には英語有効が必要です。12キーが無効だとQWERTYに配列切替キー（`layoutItem`）が表示されないため、`layoutItem`を押すケースはキーを押す前に`environment-wait`で止まり、12キーを有効にするよう表示します。`PrepareQwerty` は配列だけを準備し、言語を変更しません。
 D08終了後は英語です。日本語と英語を有効にして `-Case SETUP_EN_TO_JP -PrepareQwerty` を実行すると、日本語に戻ります。P45ではQWERTYの「あA」が日英を直接切り替えるため、この補助手順とD35の最後は「あA」を1回だけ押します。
 D39は通常欄で日本語から開始し、`-Case D39 -PrepareQwerty` で実行します。
 D40は空の通常欄で `-Case D40` を実行します。既存の絵文字履歴がある場合も、顔・旗タブを明示して入力します。

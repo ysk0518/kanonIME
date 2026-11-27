@@ -149,6 +149,16 @@ try {
     Click-FixtureNode (Find-FixtureNode $snapshot 'layoutItem')
     Start-Sleep -Milliseconds 200
   }
+  # The layout key exists only while the 12-key layout is enabled in settings.
+  # Without it a case that switches layouts cannot run; report the setting,
+  # not a failed IME step.
+  if (@($caseData.steps | Where-Object { $_.id -ceq 'layoutItem' }).Count -gt 0) {
+    $snapshot=Read-Fixture
+    if (@($snapshot.nodes | Where-Object { $_.attributes.id -ceq 'layoutItem' }).Count -eq 0) {
+      $report.status='environment-wait'
+      throw 'This case switches layouts: enable the 12-key layout in the keyboard settings.'
+    }
+  }
   $repeats=1
   if ($null -ne $caseData.repeat) { $repeats=[int]$caseData.repeat }
   for ($iteration=0; $iteration -lt $repeats; $iteration++) {
