@@ -92,6 +92,11 @@ export struct KeyboardSettings {
     return state === 'pending' || state === 'error';
   }
 
+  private syncFailed(): boolean {
+    const state: string = keyboardSettingsSync.isReplica() ? this.requestState : this.syncState;
+    return state === 'error' || (!this.languageOnly && this.backgroundSyncState === 'error');
+  }
+
   private backgroundPending(): boolean {
     return !this.languageOnly && (this.backgroundSyncState === 'pending' || this.backgroundSyncState === 'error');
   }
@@ -460,13 +465,15 @@ export struct KeyboardSettings {
 
   @Builder
   footer() {
-    if (this.saving || this.message !== '' || this.syncPending() || this.backgroundPending()) {
+    // Changes save at once, like Samsung Keyboard: stay quiet while the
+    // keyboard has not confirmed them yet. The OS freezes a hidden keyboard,
+    // which then catches up when shown. Show only failures.
+    if (this.message !== '' || this.syncFailed()) {
       Column({ space: 4 }) {
-        if (this.saving || this.message !== '') {
-          Text(this.saving ? $r('app.string.common_saving') : this.message).fontSize(12)
-            .fontColor(this.saving ? $r('app.color.text_secondary') : $r('app.color.text_error')).width('100%')
+        if (this.message !== '') {
+          Text(this.message).fontSize(12).fontColor($r('app.color.text_error')).width('100%')
         }
-        if (this.syncPending() || this.backgroundPending()) {
+        if (this.syncFailed()) {
           Row({ space: 8 }) {
             Text($r('app.string.settings_sync_waiting')).fontSize(12)
               .fontColor($r('app.color.text_secondary')).layoutWeight(1)
