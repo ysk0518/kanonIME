@@ -456,6 +456,7 @@ export class ImeCoordinator {
     // 未確定なしのBackspaceは確定済み本文への直接削除（G-01: Backspace=deleteForward）。
     // 1回の打鍵につき1回だけ削除する。APIが返す成否を追加の文字数推測で上書きしない。
     if (event.kind === 'backspace' && this.preeditLen === 0) {
+      this.dropNextWordCandidates();
       const result: OpResult = await this.directDelete(epoch);
       if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }
       this.lastError = result.ok ? 'ok' : `edit-${result.code}`;
@@ -464,6 +465,7 @@ export class ImeCoordinator {
     }
     // 未確定なしのEnterは欄のアクション側へ返す。エンジンを空振りさせない。
     if ((event.kind === 'submit' || event.kind === 'enter') && this.preeditLen === 0) {
+      this.dropNextWordCandidates();
       this.lastError = 'empty-submit';
       return;
     }
@@ -504,6 +506,13 @@ export class ImeCoordinator {
     }
     await this.applyUpdate(epoch, seq, update, true, undo);
     if (event.kind === 'deleteCandidate' && this.lastError === 'ok') { this.forgetJapaneseCommit(); }
+  }
+
+  // Next-word predictions shown after a commit do not survive editing that
+  // bypasses the engine (deleting committed text, the field's Enter action).
+  private dropNextWordCandidates(): void {
+    this.candidateItems = [];
+    this.candidateCount = 0;
   }
 
   private async applyUpdate(epoch: number, seq: number, update: EngineUpdate,
