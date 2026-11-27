@@ -110,7 +110,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['ignoreDoubleSpacePeriodSetting', 'P56', 'disabling double-space periods'],
   ['shortcutMovePastEnd', 'P57', 'shortcut arrows disable'],
   ['settingsHeightIgnoresSlider', 'P57', 'size slider writes'],
-  ['themeDraftIgnoresHorizontalOffset', 'P57', 'theme drafts compare']]) {
+  ['themeDraftIgnoresHorizontalOffset', 'P57', 'theme drafts compare'],
+  ['keepNextWordOnCaretMove', 'P59', 'moving the caret away from a commit drops the next-word predictions']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
