@@ -1,4 +1,9 @@
 const mutations = {
+  suggestRomanOnlyWord: {
+    file: 'kanon/MozcEngine.ets',
+    before: 'endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)',
+    after: 'endsWithRomanKey(out.preedit, romanKey)'
+  },
   duplicateRecentEmoji: {
     file: 'common/EmojiHistory.ets',
     before: 'recent.filter((item: string) => item !== value)',

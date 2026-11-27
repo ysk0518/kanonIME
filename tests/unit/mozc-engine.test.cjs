@@ -315,13 +315,32 @@ test('P50: a pending roman letter is suggested by retyping it, not by moving the
 
 test('P50: a retype that changed the composition shows what Mozc holds', async () => {
   const r = deferredRig([
-    { operation: 'convert', text: 'k', candidateId: 1, output: response('ｋ') },
-    { operation: 'suggest', text: 'k', output: response('ｋｋ', { candidates: [{ id: 0, value: 'kk' }] }) }
+    { operation: 'convert', text: 'a', candidateId: 1, output: response('あ') },
+    { operation: 'convert', text: 'k', candidateId: 1, output: response('あｋ') },
+    { operation: 'suggest', text: 'k', output: response('あｋｋ', { candidates: [{ id: 0, value: 'あkk' }] }) }
   ]);
+  await r.send({ kind: 'text', text: 'a' });
   await r.send({ kind: 'text', text: 'k' });
   const s = await r.send({ kind: 'suggest' });
-  assert.equal(s.preeditLen, 2);
-  assert.deepEqual(s.candidates, [{ id: 0, label: 'kk' }]);
+  assert.equal(s.preeditLen, 3);
+  assert.deepEqual(s.candidates, [{ id: 0, label: 'あkk' }]);
+  r.bridge.assertDone();
+});
+
+test('P51: the first roman letters of a word are not suggested', async () => {
+  // Predicting from "s" or "sh" takes 100-300 ms on the device and delays the next key.
+  const r = deferredRig([
+    { operation: 'convert', text: 's', candidateId: 1, output: response('ｓ') },
+    { operation: 'convert', text: 'h', candidateId: 1, output: response('ｓｈ') },
+    { operation: 'convert', text: 'i', candidateId: 1, output: response('し') }
+  ]);
+  const s = await r.send({ kind: 'text', text: 's' });
+  assert.equal(r.engine.needsSuggestion(), false);
+  assert.deepEqual(s.candidates, []);
+  await r.send({ kind: 'text', text: 'h' });
+  assert.equal(r.engine.needsSuggestion(), false);
+  await r.send({ kind: 'text', text: 'i' });
+  assert.equal(r.engine.needsSuggestion(), true);
   r.bridge.assertDone();
 });
 

@@ -77,6 +77,14 @@ function endsWithKana(s: string): boolean {
   return (c >= 0x3041 && c <= 0x3096) || (c >= 0x30A1 && c <= 0x30FA) || c === 0x30FC;
 }
 
+/** Any hiragana, katakana or long vowel mark. */
+function hasKana(s: string): boolean {
+  for (let i: number = 0; i < s.length; i++) {
+    if (endsWithKana(s.charAt(i))) { return true; }
+  }
+  return false;
+}
+
 /** The preedit ends with the roman letter last typed, half or full width. */
 function endsWithRomanKey(s: string, key: string): boolean {
   if (s.length === 0 || key.length !== 1) { return false; }
@@ -246,6 +254,9 @@ export class MozcEngine implements EnginePort {
   // until "suggest" replaces them. A pending roman letter cannot be suggested
   // by moving the cursor without breaking the next key, so "suggest" deletes
   // and retypes that letter instead; any other tail shows no candidates.
+  // Neither does a composition of roman letters only (a word's first
+  // consonants): predicting from them takes 100-300 ms on the device and
+  // delays the next key, which usually follows within that time.
   private deferredUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut,
     romanKey: string): EngineUpdate {
     const previousLabels: CandidateLabel[] = this.lastLabels;
@@ -255,7 +266,7 @@ export class MozcEngine implements EnginePort {
     if (caret !== out.preedit.length) { return update; }
     if (endsWithKana(out.preedit)) {
       this.retypeKey = '';
-    } else if (romanKey.length > 0 && endsWithRomanKey(out.preedit, romanKey)) {
+    } else if (romanKey.length > 0 && endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)) {
       this.retypeKey = romanKey;
     } else {
       return update;
