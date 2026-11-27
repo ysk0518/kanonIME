@@ -399,7 +399,7 @@ test('P49: a caret moved inside the composition keeps suggestions with the key',
   r.bridge.assertDone();
 });
 
-test('P53: emoji follow the first two Mozc candidates and skip duplicates anywhere in the list', async () => {
+test('P53: emoji follow the first Mozc candidate and skip duplicates anywhere in the list', async () => {
   const reading = 'こんにちは';
   const r = rig([{ operation: 'literal', text: reading, candidateId: 0, output: response(reading, {
     candidates: [{ id: 0, value: '今日は' }, { id: 1, value: reading },
@@ -407,15 +407,15 @@ test('P53: emoji follow the first two Mozc candidates and skip duplicates anywhe
   }) }]);
   const shown = await r.send({ kind: 'text', text: reading });
   assert.deepEqual(shown.candidates, [
-    { id: 1, label: reading }, { id: 0, label: '今日は' },
-    { id: -1, label: '😃' }, { id: -2, label: '❗' }, { id: 2, label: '✨' }, { id: 3, label: 'コンニチハ' }
+    { id: 1, label: reading }, { id: -1, label: '😃' }, { id: -2, label: '❗' },
+    { id: 0, label: '今日は' }, { id: 2, label: '✨' }, { id: 3, label: 'コンニチハ' }
   ]);
   assert.equal(shown.candidateCount, 6);
   assert.equal(shown.candidateRevision, shown.revision);
   r.bridge.assertDone();
 });
 
-test('P53: emoji append when there are fewer than two Mozc candidates', async () => {
+test('P53: emoji append when there is at most one Mozc candidate', async () => {
   const reading = 'こんにちは';
   for (const candidates of [[], [{ id: 8, value: '今日は' }]]) {
     const r = rig([{ operation: 'literal', text: reading, output: response(reading, { candidates }) }]);
@@ -463,7 +463,7 @@ test('P53: deferred suggest inserts emoji while the keys keep only the previous 
   assert.deepEqual(typed.candidates, []);
   const shown = await r.send({ kind: 'suggest' });
   assert.equal(shown.errorCode, 0);
-  assert.deepEqual(shown.candidates.map(c => c.label), ['こんにちは', '今日は', '✨', '😃', '❗', 'コンニチハ']);
+  assert.deepEqual(shown.candidates.map(c => c.label), ['こんにちは', '✨', '😃', '❗', '今日は', 'コンニチハ']);
   assert.equal(shown.candidateRevision, shown.revision);
   const next = await r.send({ kind: 'text', text: 'yo' });
   assert.equal(next.errorCode, 0);
@@ -512,7 +512,7 @@ test('P53: a colliding Mozc ID still submits its original candidate', async () =
     { operation: 'submitCandidate', text: '', candidateId: -1, output: response('', { result: 'ネコ' }) }
   ]);
   const shown = await r.send({ kind: 'text', text: 'neko' });
-  assert.deepEqual(shown.candidates.map(c => c.id), [-5, -4, -1, -2, -3]);
+  assert.deepEqual(shown.candidates.map(c => c.id), [-5, -1, -2, -3, -4]);
   const committed = await r.send({ kind: 'select', candidateId: -5, expectedRevision: shown.candidateRevision });
   assert.equal(committed.effects[0].text, 'ネコ');
   r.bridge.assertDone();

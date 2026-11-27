@@ -248,7 +248,9 @@ export class MozcEngine implements EnginePort {
       }
       labels.push({ id: id, label: c.value ?? '' });
     }
-    const insertionIndex: number = Math.min(2, labels.length);
+    // Right after the top candidate: the bar's first row lists candidates in
+    // order, and a wide second candidate can push later ones off screen.
+    const insertionIndex: number = Math.min(1, labels.length);
     for (let i: number = 0; i < emojiLabels.length; i++) {
       labels.splice(insertionIndex + i, 0, emojiLabels[i]);
     }
