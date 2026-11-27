@@ -515,10 +515,21 @@ export struct KeyboardSettings {
     }
   }
 
+  // One UI style navigation: a sub-page slides in from the right and back out
+  // to the right; the top page moves aside to the left. The direction follows
+  // from the page itself because the menu has only two levels.
+  private slideTransition(page: SettingsPageId): TransitionEffect {
+    const top: boolean = page === SettingsPageId.Top;
+    return TransitionEffect.asymmetric(
+      TransitionEffect.translate({ x: top ? '-30%' : '100%' }).combine(TransitionEffect.opacity(top ? 0.6 : 1)),
+      TransitionEffect.translate({ x: top ? '-30%' : '100%' }).combine(TransitionEffect.opacity(top ? 0.6 : 1)));
+  }
+
   build() {
     Column() {
       if (!this.languageOnly && this.page === SettingsPageId.Theme) {
         KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBackHandlerChange: this.onBackgroundBackHandler })
+          .transition(this.slideTransition(SettingsPageId.Theme))
       } else {
         SettingsHeader({ title: this.languageOnly ? $r('app.string.settings_languages') : pageTitle(this.page),
           compact: this.languageOnly, onBack: () => this.goBack() })
@@ -529,9 +540,12 @@ export struct KeyboardSettings {
             }.width('100%').padding({ left: 16, right: 16, top: 6, bottom: 12 })
           }.layoutWeight(1).width('100%').align(Alignment.Top)
             .scrollBar(BarState.Auto).id(`keyboard_settings_scroll_${page}`)
+            // Opaque, so the page underneath does not show through while sliding.
+            .backgroundColor($r('app.color.settings_background_surface'))
+            .transition(this.slideTransition(page))
         }, (page: SettingsPageId) => page.toString())
         this.footer()
       }
-    }.width('100%').height('100%').backgroundColor($r('app.color.settings_background_surface'))
+    }.width('100%').height('100%').clip(true).backgroundColor($r('app.color.settings_background_surface'))
   }
 }
