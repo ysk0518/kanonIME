@@ -16,6 +16,7 @@ import { MozcBridgePort } from './MozcBridgePort';
 import { MozcEditState } from './MozcEditState';
 import { compositionCaretPath } from './CompositionCursorSync';
 import { emojiForReading } from './EmojiSuggestions';
+import { DEFAULT_EMOJI_SUGGESTIONS } from '../common/KeyboardConfigValues';
 
 class Cand {
   id: number = -1;
@@ -115,6 +116,8 @@ function isRomanLower(s: string): boolean {
   return true;
 }
 
+function defaultEmojiSuggestionsEnabled(): boolean { return DEFAULT_EMOJI_SUGGESTIONS; }
+
 export class MozcEngine implements EnginePort {
   private bridge: MozcBridgePort;
   private buffer: string = '';
@@ -143,9 +146,13 @@ export class MozcEngine implements EnginePort {
   /** Replay ownership and candidate commit scope are independent editing policies. */
   private editing: MozcEditState = new MozcEditState();
 
-  constructor(bridge: MozcBridgePort, deferSuggestions: boolean = false) {
+  private emojiSuggestionsEnabled: () => boolean;
+
+  constructor(bridge: MozcBridgePort, deferSuggestions: boolean = false,
+    emojiSuggestionsEnabled: () => boolean = defaultEmojiSuggestionsEnabled) {
     this.bridge = bridge;
     this.deferSuggestions = deferSuggestions;
+    this.emojiSuggestionsEnabled = emojiSuggestionsEnabled;
   }
 
   /** True when the shown preedit is newer than its candidates; see suggestLater. */
@@ -227,7 +234,8 @@ export class MozcEngine implements EnginePort {
       }
     }
     const emojiLabels: CandidateLabel[] = [];
-    if (includeEmoji && this.phase === 'composing' && this.caretPosition(out) === out.preedit.length) {
+    if (includeEmoji && this.phase === 'composing' && this.caretPosition(out) === out.preedit.length &&
+      this.emojiSuggestionsEnabled()) {
       for (const emoji of emojiForReading(out.preedit)) {
         if (!ordered.some((c: Cand): boolean => c.value === emoji)) {
           emojiLabels.push({ id: -(emojiLabels.length + 1), label: emoji });
@@ -286,7 +294,8 @@ export class MozcEngine implements EnginePort {
   // delays the next key, which usually follows within that time.
   private deferredUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut,
     romanKey: string): EngineUpdate {
-    const previousLabels: CandidateLabel[] = this.lastLabels;
+    const previousLabels: CandidateLabel[] = this.visibleLabels();
+    const previousEmojiLabels: CandidateLabel[] = this.lastEmojiLabels;
     const previousRevision: number = this.lastCandidateRevision;
     const update: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, [], false);
     const caret: number = this.caretPosition(out);
@@ -301,6 +310,7 @@ export class MozcEngine implements EnginePort {
     this.suggestPending = true;
     this.lastIds = [];
     this.lastLabels = previousLabels;
+    this.lastEmojiLabels = previousEmojiLabels;
     this.lastCandidateRevision = previousRevision;
     update.candidates = previousLabels;
     update.candidateCount = previousLabels.length;
@@ -363,16 +373,22 @@ export class MozcEngine implements EnginePort {
     return this.fromOut(sessionId, epoch, seq, out, []);
   }
 
+  private visibleLabels(): CandidateLabel[] {
+    if (this.lastEmojiLabels.length === 0 || this.emojiSuggestionsEnabled()) { return this.lastLabels; }
+    return this.lastLabels.filter((candidate: CandidateLabel): boolean => !this.lastEmojiLabels.includes(candidate));
+  }
+
   // The state as last shown, for a suggestion that no longer applies.
   private currentUpdate(sessionId: string, epoch: number, seq: number): EngineUpdate {
+    const labels: CandidateLabel[] = this.visibleLabels();
     const hasPre: boolean = this.phase !== 'empty' && this.lastPreedit.length > 0;
     return {
       sessionId: sessionId, editorEpoch: epoch, sequence: seq, revision: this.revision,
       consumed: true, phase: hasPre ? this.phase : 'empty', hasPreedit: hasPre,
       preeditLen: hasPre ? this.lastPreedit.length : 0, caretUtf16: hasPre ? this.caretPosition(this.lastOut) : 0,
       segCount: hasPre ? (this.lastOut.segcount > 0 ? this.lastOut.segcount : 1) : 0,
-      candidateCount: this.lastLabels.length, candidateRevision: this.lastCandidateRevision,
-      candidates: this.lastLabels, effects: [], errorCode: 0, errorRecoverable: true
+      candidateCount: labels.length, candidateRevision: this.lastCandidateRevision,
+      candidates: labels, effects: [], errorCode: 0, errorRecoverable: true
     };
   }
 
@@ -543,6 +559,7 @@ export class MozcEngine implements EnginePort {
     const emoji: CandidateLabel | undefined =
       kind === 'select' && this.phase === 'composing' && this.lastIds.includes(candidateId) ?
         this.lastEmojiLabels.find((c: CandidateLabel): boolean => c.id === candidateId) : undefined;
+    if (emoji !== undefined && !this.emojiSuggestionsEnabled()) { return this.currentUpdate(sessionId, epoch, seq); }
     if (kind === 'reset' || kind === 'cancel' || emoji !== undefined) {
       try {
         const reset: string = await api.executeAsync('reset', '', 0);

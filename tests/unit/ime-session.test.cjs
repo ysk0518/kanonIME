@@ -34,7 +34,7 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInp
     store.set(key, value);
   };
   const bindings = new ImeRuntimeBindings({
-    readString: key => store.get(key), readNumber: key => store.get(key),
+    readString: key => store.get(key), readNumber: key => store.get(key), readBoolean: key => store.get(key),
     string: write, number: write, boolean: write, flickEnabled: () => true, toggleInputEnabled: () => toggleInput,
     saveLayoutOrder: async order => write('kanonLayoutOrder', order),
     getEpoch: () => editor.epoch, queryCursor: () => editor.queryCursor()
@@ -1344,6 +1344,56 @@ test('P52: the shift keys follow sentence starts in English text fields', async 
   await r.session.keyDelete();
   await settle();
   assert.equal(r.store.get('kanonSentenceStart'), false);
+});
+
+test('P56: disabling automatic capitals suppresses sentence Shift on the running session', async () => {
+  const r = rig();
+  await r.session.keySpace();
+  await r.session.keyDelete();
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), true);
+
+  r.store.set('kanonAutoCapitalize', false);
+  r.session.selectionChanged(0, 0);
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), false);
+
+  r.store.set('kanonAutoCapitalize', true);
+  r.session.selectionChanged(0, 0);
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), true);
+});
+
+test('P56: disabling automatic capitals also suppresses a pending sentence-start read', async () => {
+  const r = rig();
+  await r.session.keySpace();
+  await r.session.keyDelete();
+  await settle();
+
+  const before = deferred();
+  r.editor.queryBeforeResult = () => before.promise;
+  r.session.selectionChanged(0, 0);
+  r.store.set('kanonAutoCapitalize', false);
+  before.resolve({ ok: true, code: 0, value: '' });
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), false);
+});
+
+test('P56: disabling double-space periods preserves both spaces on the running session', async () => {
+  const r = rig();
+  await typeEnglish(r, 'xqz');
+  await r.session.keySpace();
+  r.store.set('kanonDoubleSpacePeriod', false);
+  r.advance(100);
+  await r.session.keySpace();
+  assert.equal(r.editor.text, 'xqz  ');
+
+  r.store.set('kanonDoubleSpacePeriod', true);
+  await typeEnglish(r, 'xqz');
+  await r.session.keySpace();
+  r.advance(100);
+  await r.session.keySpace();
+  assert.equal(r.editor.text, 'xqz  xqz. ');
 });
 
 test('P54: deleting committed text drops the next-word predictions', async () => {

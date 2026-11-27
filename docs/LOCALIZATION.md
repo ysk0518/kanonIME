@@ -33,7 +33,7 @@
 可変部分は `%s`（文字列）や `%d`（整数）の引数として渡します。
 翻訳でも引数の型・数・順序を維持してください。
 例: `background_gif_original_defaults` は解像度、FPS上限の順に整数を2つ受け取ります。
-`shortcut_move_left` はショートカット名を1つ受け取ります。
+`shortcut_move_up` と `shortcut_move_down` はショートカット名を1つ受け取ります。
 翻訳対象の文をコード内で連結せず、文全体をリソースに置きます。
 
 背景処理の例外は `BackgroundPhotoError.displayMessage` に表示用リソースを持ちます。

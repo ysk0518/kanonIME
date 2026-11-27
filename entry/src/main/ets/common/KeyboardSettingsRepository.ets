@@ -2,7 +2,8 @@ import {
   KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_DISTANCE, KANON_FLICK_ENABLED,
   KANON_FLICK_PREVIEW_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEY_GAP, KANON_KEY_SOUND_LEVEL,
   KANON_LAYOUT_ORDER, KANON_LONG_PRESS_MS, KANON_SETTINGS_GENERATION, KANON_SETTINGS_PENDING_COUNT,
-  KANON_SETTINGS_REVISION, KANON_SHORTCUT_ORDER
+  KANON_SETTINGS_REVISION, KANON_SHORTCUT_ORDER, KANON_EMOJI_SUGGESTIONS, KANON_AUTO_CAPITALIZE,
+  KANON_DOUBLE_SPACE_PERIOD, KANON_SENTENCE_START
 } from './AppStorageKeys';
 import common from '@ohos.app.ability.common';
 import preferences from '@ohos.data.preferences';
@@ -97,6 +98,10 @@ function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   setValue(KANON_FLICK_DISTANCE, snapshot.flickDistance);
   setValue(KANON_LONG_PRESS_MS, snapshot.longPressMs);
   setValue(KANON_FLICK_PREVIEW_ENABLED, snapshot.keyPreview);
+  setValue(KANON_EMOJI_SUGGESTIONS, snapshot.emojiSuggestions);
+  setValue(KANON_AUTO_CAPITALIZE, snapshot.autoCapitalize);
+  setValue(KANON_DOUBLE_SPACE_PERIOD, snapshot.doubleSpacePeriod);
+  if (!snapshot.autoCapitalize) { setValue(KANON_SENTENCE_START, false); }
   setValue(KANON_KEY_GAP, snapshot.keyGap);
   setValue(KANON_CANDIDATE_FONT_SIZE, snapshot.candidateFontSize);
   setValue(KANON_CANDIDATE_ROWS, snapshot.candidateRows);

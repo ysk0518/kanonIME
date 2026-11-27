@@ -609,14 +609,16 @@ export class ImeSession {
   private async englishSpace(request: UiEvent, requestEpoch: number): Promise<ImeSnapshot> {
     const previous: number = this.lastEnglishSpace;
     this.lastEnglishSpace = -1;
-    if (previous >= 0 && this.now() - previous <= DOUBLE_SPACE_MS && await this.periodForDoubleSpace(requestEpoch)) {
+    const periodEnabled: boolean = this.ports.bindings.doubleSpacePeriodEnabled();
+    if (periodEnabled && previous >= 0 && this.now() - previous <= DOUBLE_SPACE_MS &&
+      await this.periodForDoubleSpace(requestEpoch)) {
       const snapshot: ImeSnapshot = this.coord.getSnapshot();
       this.publish(snapshot, requestEpoch);
       return snapshot;
     }
     const result: ImeSnapshot = this.isDirectEnglish() ? await this.convertDirectEnglish(requestEpoch) :
       await this.dispatchNormal(request, requestEpoch);
-    if (requestEpoch === this.ports.editor.getEpoch()) { this.lastEnglishSpace = this.now(); }
+    if (periodEnabled && requestEpoch === this.ports.editor.getEpoch()) { this.lastEnglishSpace = this.now(); }
     return result;
   }
 
@@ -627,7 +629,7 @@ export class ImeSession {
     let before: TextReadResult;
     try { before = await this.ports.editor.queryBeforeResult(2); } catch (error) { return false; }
     if (epoch !== this.ports.editor.getEpoch() || !before.ok || before.value === undefined ||
-      !doubleSpacePeriod(before.value)) { return false; }
+      !doubleSpacePeriod(before.value) || !this.ports.bindings.doubleSpacePeriodEnabled()) { return false; }
     // HarmonyOS deleteForward removes text before the caret.
     const removed: OpResult = await this.ports.editor.deleteForward(1);
     if (!removed.ok || epoch !== this.ports.editor.getEpoch()) { return false; }
@@ -651,7 +653,8 @@ export class ImeSession {
     }
     this.ports.editor.queryBeforeResult(8).then((before: TextReadResult): void => {
       if (read !== this.sentenceRead || epoch !== this.ports.editor.getEpoch()) { return; }
-      this.ports.bindings.setSentenceStart(before.ok && before.value !== undefined && sentenceStart(before.value));
+      this.ports.bindings.setSentenceStart(this.ports.bindings.autoCapitalAllowed() && before.ok &&
+        before.value !== undefined && sentenceStart(before.value));
     }).catch((): void => {
       if (read === this.sentenceRead) { this.ports.bindings.setSentenceStart(false); }
     });

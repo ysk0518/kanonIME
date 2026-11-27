@@ -1,4 +1,34 @@
 const mutations = {
+  shortcutMovePastEnd: {
+    file: 'common/ShortcutConfigValues.ets',
+    before: 'next >= 0 && next < order.length;',
+    after: 'next >= 0 && next <= order.length;'
+  },
+  settingsHeightIgnoresSlider: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(value) };',
+    after: 'case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(100) };'
+  },
+  themeDraftIgnoresHorizontalOffset: {
+    file: 'common/BackgroundAppearance.ets',
+    before: 'draft.zoom !== saved.zoom || draft.x !== saved.x || draft.y !== saved.y ||',
+    after: 'draft.zoom !== saved.zoom || draft.y !== saved.y ||'
+  },
+  ignoreEmojiSuggestionsSetting: {
+    file: 'kanon/MozcEngine.ets',
+    before: ' &&\n      this.emojiSuggestionsEnabled()) {',
+    after: ') {'
+  },
+  ignoreAutoCapitalizeSetting: {
+    file: 'kanon/ImeRuntimeBindings.ets',
+    before: '(this.port.readBoolean(KANON_AUTO_CAPITALIZE) ?? DEFAULT_AUTO_CAPITALIZE) &&\n      ',
+    after: ''
+  },
+  ignoreDoubleSpacePeriodSetting: {
+    file: 'kanon/ImeRuntimeBindings.ets',
+    before: 'this.port.readBoolean(KANON_DOUBLE_SPACE_PERIOD) ?? DEFAULT_DOUBLE_SPACE_PERIOD',
+    after: 'true'
+  },
   settingsMenuThemeRoute: {
     file: 'common/SettingsMenuModel.ets',
     before: 'open(SettingsPageId.Theme), open(SettingsPageId.Size)',

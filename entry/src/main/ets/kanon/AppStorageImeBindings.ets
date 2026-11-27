@@ -8,6 +8,7 @@ import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 const port: ImeRuntimeBindingsPort = {
   readString: (key: string): string | undefined => AppStorage.get<string>(key),
   readNumber: (key: string): number | undefined => AppStorage.get<number>(key),
+  readBoolean: (key: string): boolean | undefined => AppStorage.get<boolean>(key),
   string: (key: string, value: string): void => appStorageImeView.string(key, value),
   number: (key: string, value: number): void => appStorageImeView.number(key, value),
   boolean: (key: string, value: boolean): void => appStorageImeView.boolean(key, value),

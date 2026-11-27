@@ -5,7 +5,7 @@ import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
 export { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 
 export function shortcutName(id: string): Resource {
-  return id === 'settings' ? $r('app.string.settings_title') : id === 'clipboard' ? $r('app.string.shortcut_clipboard') : $r('app.string.shortcut_edit');
+  return id === 'settings' ? $r('app.string.shortcut_settings') : id === 'clipboard' ? $r('app.string.shortcut_clipboard') : $r('app.string.shortcut_edit');
 }
 
 export function shortcutIcon(id: string): Resource {

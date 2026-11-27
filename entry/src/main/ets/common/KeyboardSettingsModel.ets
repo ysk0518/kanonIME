@@ -1,6 +1,6 @@
 import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS,
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_HAPTIC_LEVEL, DEFAULT_KEY_SOUND_LEVEL, KEYBOARD_LAYOUTS,
-  languageLayouts } from './KeyboardConfigValues';
+  DEFAULT_EMOJI_SUGGESTIONS, DEFAULT_AUTO_CAPITALIZE, DEFAULT_DOUBLE_SPACE_PERIOD, languageLayouts } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
@@ -17,6 +17,9 @@ export class KeyboardSettingsSnapshot {
   flickDistance: number = DEFAULT_FLICK_DISTANCE;
   longPressMs: number = DEFAULT_LONG_PRESS_MS;
   keyPreview: boolean = DEFAULT_KEY_PREVIEW_ENABLED;
+  emojiSuggestions: boolean = DEFAULT_EMOJI_SUGGESTIONS;
+  autoCapitalize: boolean = DEFAULT_AUTO_CAPITALIZE;
+  doubleSpacePeriod: boolean = DEFAULT_DOUBLE_SPACE_PERIOD;
   keyGap: number = DEFAULT_KEY_GAP;
   candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
   candidateRows: number = DEFAULT_CANDIDATE_ROWS;
@@ -35,6 +38,9 @@ export interface KeyboardSettingsPatch {
   flickDistance?: number;
   longPressMs?: number;
   keyPreview?: boolean;
+  emojiSuggestions?: boolean;
+  autoCapitalize?: boolean;
+  doubleSpacePeriod?: boolean;
   keyGap?: number;
   candidateFontSize?: number;
   candidateRows?: number;
@@ -94,6 +100,9 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
     (patch.flickDistance === undefined || inRange(patch.flickDistance, 12, 30)) &&
     (patch.longPressMs === undefined || inRange(patch.longPressMs, 250, 650)) &&
     (patch.keyPreview === undefined || typeof patch.keyPreview === 'boolean') &&
+    (patch.emojiSuggestions === undefined || typeof patch.emojiSuggestions === 'boolean') &&
+    (patch.autoCapitalize === undefined || typeof patch.autoCapitalize === 'boolean') &&
+    (patch.doubleSpacePeriod === undefined || typeof patch.doubleSpacePeriod === 'boolean') &&
     (patch.keyGap === undefined || inRange(patch.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
     (patch.candidateFontSize === undefined || Number.isInteger(patch.candidateFontSize) && inRange(patch.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
     (patch.candidateRows === undefined || patch.candidateRows === 1 || patch.candidateRows === 2) &&
@@ -109,6 +118,9 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
     (snapshot.toggleInputEnabled === undefined || typeof snapshot.toggleInputEnabled === 'boolean') &&
     inRange(snapshot.flickDistance, 12, 30) && inRange(snapshot.longPressMs, 250, 650) &&
     typeof snapshot.keyPreview === 'boolean' &&
+    (snapshot.emojiSuggestions === undefined || typeof snapshot.emojiSuggestions === 'boolean') &&
+    (snapshot.autoCapitalize === undefined || typeof snapshot.autoCapitalize === 'boolean') &&
+    (snapshot.doubleSpacePeriod === undefined || typeof snapshot.doubleSpacePeriod === 'boolean') &&
     (snapshot.keyGap === undefined || inRange(snapshot.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
     (snapshot.candidateFontSize === undefined || Number.isInteger(snapshot.candidateFontSize) && inRange(snapshot.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
     (snapshot.candidateRows === undefined || snapshot.candidateRows === 1 || snapshot.candidateRows === 2) &&
@@ -121,6 +133,9 @@ export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boole
 export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettingsSnapshot {
   const copy: KeyboardSettingsSnapshot = JSON.parse(JSON.stringify(snapshot)) as KeyboardSettingsSnapshot;
   // Schema 1 records from older versions may omit newer settings.
+  if (copy.emojiSuggestions === undefined) { copy.emojiSuggestions = DEFAULT_EMOJI_SUGGESTIONS; }
+  if (copy.autoCapitalize === undefined) { copy.autoCapitalize = DEFAULT_AUTO_CAPITALIZE; }
+  if (copy.doubleSpacePeriod === undefined) { copy.doubleSpacePeriod = DEFAULT_DOUBLE_SPACE_PERIOD; }
   if (copy.toggleInputEnabled === undefined) { copy.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED; }
   if (copy.keyGap === undefined) { copy.keyGap = DEFAULT_KEY_GAP; }
   if (copy.candidateFontSize === undefined) { copy.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE; }
@@ -138,6 +153,9 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.flickDistance !== undefined) { next.flickDistance = patch.flickDistance; }
   if (patch.longPressMs !== undefined) { next.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { next.keyPreview = patch.keyPreview; }
+  if (patch.emojiSuggestions !== undefined) { next.emojiSuggestions = patch.emojiSuggestions; }
+  if (patch.autoCapitalize !== undefined) { next.autoCapitalize = patch.autoCapitalize; }
+  if (patch.doubleSpacePeriod !== undefined) { next.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { next.keyGap = Math.round(patch.keyGap); }
   if (patch.candidateFontSize !== undefined) { next.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { next.candidateRows = patch.candidateRows; }
@@ -160,6 +178,9 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.flickDistance !== undefined) { merged.flickDistance = patch.flickDistance; }
   if (patch.longPressMs !== undefined) { merged.longPressMs = patch.longPressMs; }
   if (patch.keyPreview !== undefined) { merged.keyPreview = patch.keyPreview; }
+  if (patch.emojiSuggestions !== undefined) { merged.emojiSuggestions = patch.emojiSuggestions; }
+  if (patch.autoCapitalize !== undefined) { merged.autoCapitalize = patch.autoCapitalize; }
+  if (patch.doubleSpacePeriod !== undefined) { merged.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { merged.keyGap = patch.keyGap; }
   if (patch.candidateFontSize !== undefined) { merged.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { merged.candidateRows = patch.candidateRows; }

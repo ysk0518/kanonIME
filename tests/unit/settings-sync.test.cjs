@@ -4,6 +4,22 @@ const { REQUEST, UPDATE, CHANGE, ACK } = require('../../entry/src/main/ets/commo
 const { pair } = require('../support/settings-sync-rig.cjs');
 const { deferred } = require('../support/fakes.cjs');
 
+test('P56: successive smart input edits and reset sync to the running IME', async () => {
+  const r = await pair();
+  const off = { emojiSuggestions: false, autoCapitalize: false, doubleSpacePeriod: false };
+  for (const [field, value] of Object.entries(off)) {
+    await r.app.core.save({ [field]: value }, false);
+  }
+  await r.pump();
+  const read = () => r.ime.state.applied.at(-1).snapshot;
+  for (const field of Object.keys(off)) { assert.equal(read()[field], false); }
+
+  const { settingsReset } = require('../../entry/src/main/ets/common/SettingsMenuModel.ets');
+  await r.app.core.save(settingsReset().patch, false);
+  await r.pump();
+  for (const field of Object.keys(off)) { assert.equal(read()[field], true); }
+});
+
 test('P46: key sound syncs from settings to the IME and back', async () => {
   const r = await pair();
   await r.app.core.save({ keySoundLevel: 1 }, false);

@@ -12,6 +12,11 @@
       { "name": "settings_menu_reset", "value": "初期設定にリセット" },
       { "name": "settings_menu_about", "value": "Kanon IME について" },
       { "name": "settings_summary_english", "value": "English" },
+      { "name": "settings_menu_smart_input", "value": "スマート入力" },
+      { "name": "settings_summary_japanese", "value": "日本語" },
+      { "name": "settings_emoji_suggestions", "value": "絵文字の候補を表示" },
+      { "name": "settings_auto_capitalize", "value": "文頭を自動で大文字にする" },
+      { "name": "settings_double_space_period", "value": "スペース2回でピリオドを入力" },
       { "name": "settings_summary_separator", "value": "、" },
       { "name": "settings_theme_standard", "value": "標準の背景" },
       { "name": "settings_theme_image", "value": "背景画像あり" },
@@ -21,6 +26,10 @@
       { "name": "settings_reset_background_failed", "value": "背景をリセットできませんでした。もう一度リセットしてください。" },
       { "name": "settings_about_version", "value": "バージョン %s" },
       { "name": "settings_sync_retry_failed", "value": "同期できませんでした。再度お試しください。" },
+      { "name": "settings_keyboard_height", "value": "キーボードの高さ：%s" },
+      { "name": "background_unsaved_title", "value": "テーマを保存しますか？" },
+      { "name": "background_unsaved_message", "value": "テーマの変更が保存されていません。" },
+      { "name": "background_discard", "value": "破棄" },
       { "name": "settings_back_glyph", "value": "‹" },
       { "name": "settings_forward_glyph", "value": "›" },
     { "name": "keyboard_show_emoji", "value": "絵文字パネルを表示" },
@@ -73,11 +82,9 @@
     { "name": "keyboard_switch_layout", "value": "12キーとQWERTYを切り替え" },
     { "name": "keyboard_switch_qwerty_letters", "value": "QWERTYの文字入力に切り替え" },
     { "name": "debug_mode", "value": "デバッグログ" },
-    { "name": "debug_off", "value": "オフ" },
-    { "name": "debug_on", "value": "オン" },
     { "name": "debug_clear", "value": "消去" },
     { "name": "debug_help", "value": "最新160件・15分で自動オフ。長押しでコピーできます。" },
-    { "name": "debug_empty", "value": "ログ取得中です。背景を変更して保存してください。" },
+    { "name": "debug_empty", "value": "ログを取得中です。記録したい操作を行ってください。" },
     {
       "name": "keyboard_convert",
       "value": "変換"
@@ -204,7 +211,7 @@
     },
     {
       "name": "settings_size_help",
-      "value": "高さはキーボード左上のメニュー →「サイズ」で変更できます。"
+      "value": "キーボードの「…」→「サイズ」でも、キーボードを見ながら調整できます。"
     },
     {
       "name": "settings_key_preview",
@@ -288,11 +295,7 @@
     },
     {
       "name": "background_sync_failed",
-      "value": "反映できませんでした。もう一度保存してください"
-    },
-    {
-      "name": "background_title",
-      "value": "キーボードの背景"
+      "value": "テーマを保存できませんでした。もう一度お試しください。"
     },
     {
       "name": "background_gesture_help",
@@ -304,7 +307,7 @@
     },
     {
       "name": "background_live_help",
-      "value": "確認用キーボードにも調整中の値が反映されます。「保存」で確定します。"
+      "value": "確認用キーボードにも調整中の値が一時的に反映されます。画面下の「保存」で確定します。"
     },
     {
       "name": "background_processing",
@@ -312,7 +315,7 @@
     },
     {
       "name": "background_pick",
-      "value": "画像選択"
+      "value": "画像を選択"
     },
     {
       "name": "background_animate",
@@ -371,20 +374,16 @@
       "value": "キーの不透明度"
     },
     {
-      "name": "shortcut_title",
-      "value": "上部ショートカット"
-    },
-    {
       "name": "shortcut_order_help",
-      "value": "上から順に、キーボードの左から表示します。変更後は「保存」を押してください。"
-    },
-    {
-      "name": "shortcut_delete",
-      "value": "削除"
+      "value": "絵文字・!?#・「…」・閉じるは固定です。中央のショートカットは上から順に左へ並び、変更はすぐに保存されます。"
     },
     {
       "name": "shortcut_hidden_help",
-      "value": "非表示の機能も、左上のメニューから開けます。"
+      "value": "ここに追加していない機能も、キーボード右側の「…」から開けます。"
+    },
+    {
+      "name": "shortcut_settings",
+      "value": "設定"
     },
     {
       "name": "shortcut_clipboard",
@@ -435,12 +434,12 @@
       "value": "初期値：元GIFの長辺%dpx・FPS上限%d・再生ON"
     },
     {
-      "name": "shortcut_move_left",
-      "value": "%sを左へ移動"
+      "name": "shortcut_move_up",
+      "value": "%sを上へ移動"
     },
     {
-      "name": "shortcut_move_right",
-      "value": "%sを右へ移動"
+      "name": "shortcut_move_down",
+      "value": "%sを下へ移動"
     },
     {
       "name": "shortcut_remove",

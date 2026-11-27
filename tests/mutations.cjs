@@ -104,7 +104,13 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['omitDeferredEmoji', 'P53', 'deferred suggest inserts emoji'],
   ['commitEmojiOnFailedReset', 'P53', 'failed reset leaves the emoji uncommitted'],
   ['forgetNextWord', 'P54', 'a selected candidate commits and shows Mozc next-word predictions'],
-  ['keepNextWordAfterDelete', 'P54', 'deleting committed text drops the next-word predictions']]) {
+  ['keepNextWordAfterDelete', 'P54', 'deleting committed text drops the next-word predictions'],
+  ['ignoreEmojiSuggestionsSetting', 'P56', 'disabling emoji'],
+  ['ignoreAutoCapitalizeSetting', 'P56', 'disabling automatic capitals'],
+  ['ignoreDoubleSpacePeriodSetting', 'P56', 'disabling double-space periods'],
+  ['shortcutMovePastEnd', 'P57', 'shortcut arrows disable'],
+  ['settingsHeightIgnoresSlider', 'P57', 'size slider writes'],
+  ['themeDraftIgnoresHorizontalOffset', 'P57', 'theme drafts compare']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

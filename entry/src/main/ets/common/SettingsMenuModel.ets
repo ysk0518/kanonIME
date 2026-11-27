@@ -1,7 +1,7 @@
 import { BackgroundConfig } from './BackgroundAppearance';
 import { languageLayouts, layoutLanguage } from './KeyboardConfigValues';
 import { KeyboardSettingsPatch, KeyboardSettingsSnapshot } from './KeyboardSettingsModel';
-import { keyboardKeyGap } from './KeyboardLayout';
+import { keyboardHeightPercent, keyboardKeyGap } from './KeyboardLayout';
 import { shortcutOrder } from './ShortcutConfigValues';
 
 export enum SettingsPageId {
@@ -17,9 +17,14 @@ export interface SettingsMenuRow {
   page: SettingsPageId;
 }
 
+export enum SettingsToggle {
+  Flick, MultiTap, KeyPreview, EmojiSuggestions, AutoCapitalize, DoubleSpacePeriod
+}
+
 export interface SettingsMenuGroup {
   styleHeading: boolean;
   rows: SettingsMenuRow[];
+  smartInput?: SettingsToggle[];
 }
 
 function open(page: SettingsPageId): SettingsMenuRow {
@@ -29,6 +34,9 @@ function open(page: SettingsPageId): SettingsMenuRow {
 export const SETTINGS_MENU: SettingsMenuGroup[] = [
   { styleHeading: false, rows: [open(SettingsPageId.Languages)] },
   { styleHeading: false, rows: [open(SettingsPageId.JapaneseInput)] },
+  { styleHeading: false, rows: [], smartInput: [
+    SettingsToggle.EmojiSuggestions, SettingsToggle.AutoCapitalize, SettingsToggle.DoubleSpacePeriod
+  ] },
   { styleHeading: true, rows: [
     open(SettingsPageId.Theme), open(SettingsPageId.Size), open(SettingsPageId.Layout), open(SettingsPageId.Toolbar)
   ] },
@@ -71,20 +79,19 @@ export function settingsLayoutPatch(snapshot: KeyboardSettingsSnapshot, flick: b
   return { layoutKind: flick ? 'flick' : 'qwerty' };
 }
 
-export enum SettingsToggle {
-  Flick, MultiTap, KeyPreview
-}
-
 export function settingsTogglePatch(setting: SettingsToggle, value: boolean): KeyboardSettingsPatch {
   switch (setting) {
     case SettingsToggle.Flick: return { flickEnabled: value };
     case SettingsToggle.MultiTap: return { toggleInputEnabled: value };
     case SettingsToggle.KeyPreview: return { keyPreview: value };
+    case SettingsToggle.EmojiSuggestions: return { emojiSuggestions: value };
+    case SettingsToggle.AutoCapitalize: return { autoCapitalize: value };
+    case SettingsToggle.DoubleSpacePeriod: return { doubleSpacePeriod: value };
   }
 }
 
 export enum SettingsNumber {
-  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound
+  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height
 }
 
 export function settingsNumberPatch(setting: SettingsNumber, value: number): KeyboardSettingsPatch {
@@ -96,6 +103,7 @@ export function settingsNumberPatch(setting: SettingsNumber, value: number): Key
     case SettingsNumber.CandidateRows: return { candidateRows: value };
     case SettingsNumber.Haptics: return { hapticLevel: value };
     case SettingsNumber.KeySound: return { keySoundLevel: value };
+    case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(value) };
   }
 }
 
@@ -113,7 +121,8 @@ export function settingsReset(): SettingsReset {
   const patch: KeyboardSettingsPatch = {
     layoutOrder: defaults.layoutOrder, flickEnabled: defaults.flickEnabled, toggleInputEnabled: defaults.toggleInputEnabled,
     flickDistance: defaults.flickDistance, longPressMs: defaults.longPressMs, keyPreview: defaults.keyPreview,
-    keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
+    emojiSuggestions: defaults.emojiSuggestions, autoCapitalize: defaults.autoCapitalize,
+    doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
     heightPercent: defaults.heightPercent
   };

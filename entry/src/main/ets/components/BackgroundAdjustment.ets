@@ -13,11 +13,11 @@ export struct BackgroundAdjustment {
   build() {
     Column({ space: 8 }) {
       Row({ space: 8 }) {
-        Text(this.label).layoutWeight(1).fontSize(14).fontColor($r('app.color.text_normal'))
+        Text(this.label).layoutWeight(1).fontSize(18).fontColor($r('app.color.text_normal'))
         Text(`${Math.round(this.value)}${this.suffix}`).fontSize(14).fontColor($r('app.color.text_normal'))
       }.width('100%').constraintSize({ minHeight: 24 })
       Slider({ value: this.value, min: this.minimum, max: this.maximum, step: 1 })
-        .width('100%').enabled(this.available)
+        .width('100%').selectedColor($r('app.color.settings_accent')).enabled(this.available)
         .onChange((value: number) => this.onChange(value))
         .accessibilityText(this.label).id(this.sliderId)
     }.width('100%')

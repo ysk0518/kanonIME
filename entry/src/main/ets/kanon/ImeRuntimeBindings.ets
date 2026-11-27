@@ -1,8 +1,10 @@
 import {
   INPUT_PATTERN, KANON_CANDIDATES_EXPANDED, KANON_CURSOR, KANON_LAST_LAYOUT, KANON_LAYOUT,
-  KANON_LAYOUT_ORDER, KANON_MODE, KANON_SENTENCE_START
+  KANON_LAYOUT_ORDER, KANON_MODE, KANON_SENTENCE_START, KANON_EMOJI_SUGGESTIONS, KANON_AUTO_CAPITALIZE,
+  KANON_DOUBLE_SPACE_PERIOD
 } from '../common/AppStorageKeys';
-import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfigValues';
+import { DEFAULT_LAYOUT_ORDER, DEFAULT_EMOJI_SUGGESTIONS, DEFAULT_AUTO_CAPITALIZE,
+  DEFAULT_DOUBLE_SPACE_PERIOD } from '../common/KeyboardConfigValues';
 import { autoCapitalField } from './SentenceInput';
 
 export interface ImeInputPatterns {
@@ -15,6 +17,7 @@ export interface ImeInputPatterns {
 export interface ImeRuntimeBindingsPort {
   readString: (key: string) => string | undefined;
   readNumber: (key: string) => number | undefined;
+  readBoolean: (key: string) => boolean | undefined;
   string: (key: string, value: string) => void;
   number: (key: string, value: number) => void;
   boolean: (key: string, value: boolean) => void;
@@ -45,13 +48,20 @@ export class ImeRuntimeBindings {
   displayedMode(fallback: string): string { return this.port.readString(KANON_MODE) ?? fallback; }
   flickEnabled(): boolean { return this.port.flickEnabled(); }
   toggleInputEnabled(): boolean { return this.port.toggleInputEnabled(); }
+  emojiSuggestionsEnabled(): boolean {
+    return this.port.readBoolean(KANON_EMOJI_SUGGESTIONS) ?? DEFAULT_EMOJI_SUGGESTIONS;
+  }
+  doubleSpacePeriodEnabled(): boolean {
+    return this.port.readBoolean(KANON_DOUBLE_SPACE_PERIOD) ?? DEFAULT_DOUBLE_SPACE_PERIOD;
+  }
   predictionAllowed(): boolean {
     const pattern: number = this.port.readNumber(INPUT_PATTERN) ?? this.normal;
     return pattern !== this.password && pattern !== this.numberPassword && pattern !== this.newPassword;
   }
   /** English fields that hold sentences, where the first letter of a sentence is capitalized. */
   autoCapitalAllowed(): boolean {
-    return autoCapitalField(this.port.readNumber(INPUT_PATTERN) ?? this.normal);
+    return (this.port.readBoolean(KANON_AUTO_CAPITALIZE) ?? DEFAULT_AUTO_CAPITALIZE) &&
+      autoCapitalField(this.port.readNumber(INPUT_PATTERN) ?? this.normal);
   }
   /** The shift keys show one capital while the next letter starts a sentence. */
   setSentenceStart(value: boolean): void { this.port.boolean(KANON_SENTENCE_START, value); }

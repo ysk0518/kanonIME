@@ -2,12 +2,13 @@ import common from '@ohos.app.ability.common';
 import bundleManager from '@ohos.bundle.bundleManager';
 import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
+import { SettingsHeader } from './SettingsHeader';
 import { DebugConsole } from './DebugConsole';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { applySettingsPatch, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
 import { BackgroundConfig, keyboardBackground } from '../common/KeyboardBackground';
-import { MIN_KEY_GAP, MAX_KEY_GAP } from '../common/KeyboardLayout';
+import { MIN_KEY_GAP, MAX_KEY_GAP, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT } from '../common/KeyboardLayout';
 import { shortcutOrder } from '../common/ShortcutConfigValues';
 import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
@@ -52,7 +53,7 @@ export struct KeyboardSettings {
   languageOnly: boolean = false;
   onOpen: (page: SettingsPageId) => void = () => {};
   onClose: () => void = () => {};
-  onBackgroundBusy: (busy: boolean) => void = () => {};
+  onBackgroundBackHandler: (handler: (() => void) | undefined) => void = () => {};
 
   aboutToAppear(): void {
     this.snapshot = readSettings();
@@ -184,6 +185,9 @@ export struct KeyboardSettings {
       case SettingsToggle.Flick: return this.snapshot.flickEnabled;
       case SettingsToggle.MultiTap: return this.snapshot.toggleInputEnabled;
       case SettingsToggle.KeyPreview: return this.snapshot.keyPreview;
+      case SettingsToggle.EmojiSuggestions: return this.snapshot.emojiSuggestions;
+      case SettingsToggle.AutoCapitalize: return this.snapshot.autoCapitalize;
+      case SettingsToggle.DoubleSpacePeriod: return this.snapshot.doubleSpacePeriod;
     }
   }
 
@@ -196,6 +200,7 @@ export struct KeyboardSettings {
       case SettingsNumber.CandidateRows: return this.snapshot.candidateRows;
       case SettingsNumber.Haptics: return this.snapshot.hapticLevel;
       case SettingsNumber.KeySound: return this.snapshot.keySoundLevel;
+      case SettingsNumber.Height: return this.snapshot.heightPercent;
     }
   }
 
@@ -207,6 +212,7 @@ export struct KeyboardSettings {
     switch (setting) {
       case SettingsNumber.KeyGap: return $r('app.string.settings_key_gap', this.sliderValue(setting));
       case SettingsNumber.CandidateFont: return $r('app.string.settings_candidate_font', this.sliderValue(setting));
+      case SettingsNumber.Height: return $r('app.string.settings_keyboard_height', `${this.sliderValue(setting)}%`);
       case SettingsNumber.LongPress:
         return $r('app.string.settings_long_press_seconds', (this.sliderValue(setting) / 1000).toFixed(2));
       default: return $r('app.string.settings_flick_sensitivity');
@@ -256,23 +262,40 @@ export struct KeyboardSettings {
         row.page === SettingsPageId.Theme ? 'keyboard_config_background' : `keyboard_settings_page_${row.page}`)
   }
 
+  private smartInputTitle(setting: SettingsToggle): Resource {
+    switch (setting) {
+      case SettingsToggle.EmojiSuggestions: return $r('app.string.settings_emoji_suggestions');
+      case SettingsToggle.AutoCapitalize: return $r('app.string.settings_auto_capitalize');
+      default: return $r('app.string.settings_double_space_period');
+    }
+  }
+
   @Builder
   menu() {
     ForEach(SETTINGS_MENU, (group: SettingsMenuGroup) => {
       Column({ space: 8 }) {
-        if (group.styleHeading) {
-          Text($r('app.string.settings_menu_style')).fontSize(14).fontWeight(FontWeight.Medium)
+        if (group.styleHeading || group.smartInput !== undefined) {
+          Text(group.styleHeading ? $r('app.string.settings_menu_style') : $r('app.string.settings_menu_smart_input')).fontSize(14).fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_secondary')).width('100%').padding({ left: 18 })
         }
         Column() {
-          ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
-            if (index > 0) { this.divider() }
-            this.navigationRow(row)
-          }, (row: SettingsMenuRow) => row.page.toString())
+          if (group.smartInput !== undefined) {
+            ForEach(group.smartInput, (setting: SettingsToggle, index: number) => {
+              if (index > 0) { this.divider() }
+              this.toggleRow(this.smartInputTitle(setting), setting, `keyboard_config_smart_input_${setting}`,
+                setting === SettingsToggle.EmojiSuggestions ? $r('app.string.settings_summary_japanese') :
+                  $r('app.string.settings_summary_english'))
+            }, (setting: SettingsToggle) => setting.toString())
+          } else {
+            ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
+              if (index > 0) { this.divider() }
+              this.navigationRow(row)
+            }, (row: SettingsMenuRow) => row.page.toString())
+          }
         }.width('100%').padding({ left: 18, right: 18 })
           .borderRadius(22).backgroundColor($r('app.color.settings_card'))
       }.width('100%')
-    }, (group: SettingsMenuGroup) => group.rows[0].page.toString())
+    }, (group: SettingsMenuGroup) => group.smartInput !== undefined ? 'smartInput' : group.rows[0].page.toString())
   }
 
   @Builder
@@ -322,9 +345,14 @@ export struct KeyboardSettings {
   }
 
   @Builder
-  toggleRow(title: Resource, setting: SettingsToggle, id: string) {
+  toggleRow(title: Resource, setting: SettingsToggle, id: string, summary: Resource | undefined = undefined) {
     Row({ space: 12 }) {
-      Text(title).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+      Column({ space: 4 }) {
+        Text(title).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
+        if (summary !== undefined) {
+          Text(summary).fontSize(14).fontColor($r('app.color.settings_accent')).width('100%')
+        }
+      }.layoutWeight(1)
       Toggle({ type: ToggleType.Switch, isOn: this.toggleValue(setting) })
         .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
         .onChange((value: boolean) => {
@@ -442,14 +470,16 @@ export struct KeyboardSettings {
     } else if (this.page === SettingsPageId.JapaneseInput) {
       this.japaneseInput()
     } else if (this.page === SettingsPageId.Size) {
-      Text($r('app.string.settings_size_help')).fontSize(16).fontColor($r('app.color.text_normal'))
-        .width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+      Column({ space: 8 }) {
+        this.slider(SettingsNumber.Height, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT, 1,
+          'keyboard_config_height')
+        this.help($r('app.string.settings_size_help'))
+      }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
     } else if (this.page === SettingsPageId.Layout) {
       this.layoutOptions()
     } else if (this.page === SettingsPageId.Toolbar) {
       ShortcutEditor({ selectedShortcuts: shortcutOrder(this.snapshot.shortcutOrder), disabled: this.saving,
         onChange: (ids: string[]) => this.save(settingsShortcutPatch(ids)) })
-        .padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
     } else if (this.page === SettingsPageId.Feedback) {
       this.feedback()
     } else if (this.page === SettingsPageId.About) {
@@ -488,16 +518,10 @@ export struct KeyboardSettings {
   build() {
     Column() {
       if (!this.languageOnly && this.page === SettingsPageId.Theme) {
-        KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBusyChange: this.onBackgroundBusy })
+        KeyboardBackgroundSettings({ onClose: () => this.goBack(), onBackHandlerChange: this.onBackgroundBackHandler })
       } else {
-        Row({ space: 8 }) {
-          Button($r('app.string.settings_back_glyph')).width(44).height(44).fontSize(30).maxFontScale(1)
-            .backgroundColor(Color.Transparent).fontColor($r('app.color.settings_accent'))
-            .accessibilityText($r('app.string.common_back')).onClick(() => this.goBack()).id('keyboard_config_close')
-          Text(this.languageOnly ? $r('app.string.settings_languages') : pageTitle(this.page))
-            .fontSize(26).fontWeight(FontWeight.Bold).fontColor($r('app.color.text_normal')).layoutWeight(1)
-        }.width('100%').constraintSize({ minHeight: this.languageOnly ? 48 : 66 })
-          .padding({ left: 8, right: 16, top: 2, bottom: 2 })
+        SettingsHeader({ title: this.languageOnly ? $r('app.string.settings_languages') : pageTitle(this.page),
+          compact: this.languageOnly, onBack: () => this.goBack() })
         ForEach([this.page], (page: SettingsPageId) => {
           Scroll() {
             Column({ space: 16 }) {
