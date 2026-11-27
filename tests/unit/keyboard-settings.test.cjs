@@ -4,6 +4,43 @@ const { KeyboardSettingsSnapshot, KeyboardSettingsRecord, validSettingsPatch, va
   validSettingsRecord, copySettings, applySettingsPatch, mergeSettingsPatch, decodeSettingsRecord
 } = require('../../entry/src/main/ets/common/KeyboardSettingsModel.ets');
 const { LegacyKeyboardSettings, migrateLegacySettings } = require('../../entry/src/main/ets/common/KeyboardSettingsMigration.ets');
+
+const smartInputFields = ['emojiSuggestions', 'autoCapitalize', 'doubleSpacePeriod'];
+
+test('P56: smart input defaults are on and only boolean patches are accepted', () => {
+  const defaults = new KeyboardSettingsSnapshot();
+  for (const field of smartInputFields) {
+    assert.equal(defaults[field], true);
+    const patch = { [field]: false };
+    assert.equal(validSettingsPatch(patch), true);
+    assert.deepEqual(applySettingsPatch(defaults, patch), { ...defaults, ...patch });
+    assert.equal(validSettingsSnapshot({ ...defaults, ...patch }), true);
+    for (const value of [0, 'false', null]) {
+      const invalid = { [field]: value };
+      assert.equal(validSettingsPatch(invalid), false);
+      assert.equal(validSettingsSnapshot({ ...defaults, ...invalid }), false);
+      assert.throws(() => applySettingsPatch(defaults, invalid));
+    }
+  }
+  assert.deepEqual(mergeSettingsPatch({ emojiSuggestions: true, autoCapitalize: false },
+    { emojiSuggestions: false, doubleSpacePeriod: false }),
+  { emojiSuggestions: false, autoCapitalize: false, doubleSpacePeriod: false });
+});
+
+test('P56: old settings fill missing smart input fields while retaining saved values', () => {
+  const record = new KeyboardSettingsRecord();
+  for (const field of smartInputFields) { delete record.snapshot[field]; }
+  record.snapshot.keyPreview = false;
+  const migrated = migrateLegacySettings(new LegacyKeyboardSettings()).snapshot;
+  const loaded = decodeSettingsRecord(JSON.stringify(record));
+  assert.equal(loaded.snapshot.keyPreview, false);
+  for (const field of smartInputFields) {
+    assert.equal(migrated[field], true);
+    assert.equal(loaded.snapshot[field], true);
+    loaded.snapshot[field] = false;
+  }
+  assert.deepEqual(decodeSettingsRecord(JSON.stringify(loaded)).snapshot, loaded.snapshot);
+});
 const { shortcutOrder } = require('../../entry/src/main/ets/common/ShortcutConfigValues.ets');
 const { committedSettingsRecord } = require('../../entry/src/main/ets/common/SettingsRecordPolicy.ets');
 const { saveSettingsRecord } = require('../../entry/src/main/ets/common/SettingsPersistence.ets');

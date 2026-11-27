@@ -74,6 +74,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | EnglishSelectionPolicy | 選択通知の位置による判定、内部編集中の保護、Undoと補完の破棄条件。通知の発生源やOSの未確定終了は推測しない |
 | KeyboardSettingsModel / KeyboardSettingsMigration | 既定値、検証、差分・合成、schema 1補完、保存JSON解析、旧設定の移行計算 |
 | `settings-menu.test.cjs` | P55のカード構成・遷移先、言語と背景の要約、即時保存の差分、全体リセット、IMEとの同期 |
+| `keyboard-settings.test.cjs` / `settings-menu.test.cjs` / `settings-sync.test.cjs` / `mozc-engine.test.cjs` / `ime-session.test.cjs` | P56のスマート入力の既定値・検証・旧データ補完、カードとリセット、IMEへの同期、設定を変更した後の絵文字候補・自動大文字・ピリオド入力 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
@@ -159,6 +160,7 @@ Node 24以降のテストには30秒の期限を付け、故意に処理を壊�
 | P36 | 直接英語の候補選択中Deleteを本文削除へ流す |
 | P37 | 地域指示記号を1個ずつ削除する／本文や英語未確定の削除幅を1単位に固定する |
 | P38 | 不明な起点を位置0で補う／起点が不明でも表示更新へ進む |
+| P56 | 絵文字候補・自動大文字・スペース2回でのピリオド入力のオフ設定をそれぞれ無視する |
 
 ## 別に確認すること
 

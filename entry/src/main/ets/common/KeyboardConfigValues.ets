@@ -6,6 +6,9 @@ export const DEFAULT_KEY_SOUND_LEVEL: number = 0;
 export const DEFAULT_FLICK_DISTANCE: number = 18;
 export const DEFAULT_LONG_PRESS_MS: number = 400;
 export const DEFAULT_KEY_PREVIEW_ENABLED: boolean = true;
+export const DEFAULT_EMOJI_SUGGESTIONS: boolean = true;
+export const DEFAULT_AUTO_CAPITALIZE: boolean = true;
+export const DEFAULT_DOUBLE_SPACE_PERIOD: boolean = true;
 
 export function layoutOrder(value: string): string[] {
   const result: string[] = [];

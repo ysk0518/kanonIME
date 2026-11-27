@@ -1,4 +1,19 @@
 const mutations = {
+  ignoreEmojiSuggestionsSetting: {
+    file: 'kanon/MozcEngine.ets',
+    before: ' &&\n      this.emojiSuggestionsEnabled()) {',
+    after: ') {'
+  },
+  ignoreAutoCapitalizeSetting: {
+    file: 'kanon/ImeRuntimeBindings.ets',
+    before: '(this.port.readBoolean(KANON_AUTO_CAPITALIZE) ?? DEFAULT_AUTO_CAPITALIZE) &&\n      ',
+    after: ''
+  },
+  ignoreDoubleSpacePeriodSetting: {
+    file: 'kanon/ImeRuntimeBindings.ets',
+    before: 'this.port.readBoolean(KANON_DOUBLE_SPACE_PERIOD) ?? DEFAULT_DOUBLE_SPACE_PERIOD',
+    after: 'true'
+  },
   settingsMenuThemeRoute: {
     file: 'common/SettingsMenuModel.ets',
     before: 'open(SettingsPageId.Theme), open(SettingsPageId.Size)',

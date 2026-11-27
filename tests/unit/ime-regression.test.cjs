@@ -25,7 +25,7 @@ async function rig({mode='EN',supported=true,origin='',steps=[]}={}){
   const store=new Map([['kanonLayout',mode==='EN'?'en_qwerty':'jp_qwerty'],['kanonLayoutOrder','jp_qwerty,en_qwerty']]);
   const writes=[],hooks={},pasteDispatches=[];
   const write=(key,value)=>{writes.push([key,value]);store.set(key,value);};
-  const bindings=new ImeRuntimeBindings({readString:key=>store.get(key),readNumber:key=>store.get(key),
+  const bindings=new ImeRuntimeBindings({readString:key=>store.get(key),readNumber:key=>store.get(key),readBoolean:key=>store.get(key),
     string:write,number:write,boolean:write,flickEnabled:()=>true,
     saveLayoutOrder:async order=>{if(hooks.save){await hooks.save(order);}store.set('kanonLayoutOrder',order);},
     getEpoch:()=>editor.epoch,queryCursor:()=>editor.queryCursor()},

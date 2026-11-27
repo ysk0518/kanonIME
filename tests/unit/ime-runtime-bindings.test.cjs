@@ -10,7 +10,7 @@ const {FakeEditor,deferred}=require('../support/fakes.cjs');
 
 function rig(patterns={normal:0,password:8,numberPassword:9,newPassword:11}) {
   const store=new Map(),calls=[],hooks={};const state={epoch:1,flick:true,cursor:3};
-  const port={readString:key=>store.get(key),readNumber:key=>store.get(key),
+  const port={readString:key=>store.get(key),readNumber:key=>store.get(key),readBoolean:key=>store.get(key),
     string:(key,value)=>{calls.push(['string',key,value]);store.set(key,value);},
     number:(key,value)=>{calls.push(['number',key,value]);store.set(key,value);},
     boolean:(key,value)=>{calls.push(['boolean',key,value]);store.set(key,value);},

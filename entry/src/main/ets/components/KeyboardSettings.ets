@@ -184,6 +184,9 @@ export struct KeyboardSettings {
       case SettingsToggle.Flick: return this.snapshot.flickEnabled;
       case SettingsToggle.MultiTap: return this.snapshot.toggleInputEnabled;
       case SettingsToggle.KeyPreview: return this.snapshot.keyPreview;
+      case SettingsToggle.EmojiSuggestions: return this.snapshot.emojiSuggestions;
+      case SettingsToggle.AutoCapitalize: return this.snapshot.autoCapitalize;
+      case SettingsToggle.DoubleSpacePeriod: return this.snapshot.doubleSpacePeriod;
     }
   }
 
@@ -256,23 +259,40 @@ export struct KeyboardSettings {
         row.page === SettingsPageId.Theme ? 'keyboard_config_background' : `keyboard_settings_page_${row.page}`)
   }
 
+  private smartInputTitle(setting: SettingsToggle): Resource {
+    switch (setting) {
+      case SettingsToggle.EmojiSuggestions: return $r('app.string.settings_emoji_suggestions');
+      case SettingsToggle.AutoCapitalize: return $r('app.string.settings_auto_capitalize');
+      default: return $r('app.string.settings_double_space_period');
+    }
+  }
+
   @Builder
   menu() {
     ForEach(SETTINGS_MENU, (group: SettingsMenuGroup) => {
       Column({ space: 8 }) {
-        if (group.styleHeading) {
-          Text($r('app.string.settings_menu_style')).fontSize(14).fontWeight(FontWeight.Medium)
+        if (group.styleHeading || group.smartInput !== undefined) {
+          Text(group.styleHeading ? $r('app.string.settings_menu_style') : $r('app.string.settings_menu_smart_input')).fontSize(14).fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.text_secondary')).width('100%').padding({ left: 18 })
         }
         Column() {
-          ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
-            if (index > 0) { this.divider() }
-            this.navigationRow(row)
-          }, (row: SettingsMenuRow) => row.page.toString())
+          if (group.smartInput !== undefined) {
+            ForEach(group.smartInput, (setting: SettingsToggle, index: number) => {
+              if (index > 0) { this.divider() }
+              this.toggleRow(this.smartInputTitle(setting), setting, `keyboard_config_smart_input_${setting}`,
+                setting === SettingsToggle.EmojiSuggestions ? $r('app.string.settings_summary_japanese') :
+                  $r('app.string.settings_summary_english'))
+            }, (setting: SettingsToggle) => setting.toString())
+          } else {
+            ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
+              if (index > 0) { this.divider() }
+              this.navigationRow(row)
+            }, (row: SettingsMenuRow) => row.page.toString())
+          }
         }.width('100%').padding({ left: 18, right: 18 })
           .borderRadius(22).backgroundColor($r('app.color.settings_card'))
       }.width('100%')
-    }, (group: SettingsMenuGroup) => group.rows[0].page.toString())
+    }, (group: SettingsMenuGroup) => group.smartInput !== undefined ? 'smartInput' : group.rows[0].page.toString())
   }
 
   @Builder
@@ -322,9 +342,14 @@ export struct KeyboardSettings {
   }
 
   @Builder
-  toggleRow(title: Resource, setting: SettingsToggle, id: string) {
+  toggleRow(title: Resource, setting: SettingsToggle, id: string, summary: Resource | undefined = undefined) {
     Row({ space: 12 }) {
-      Text(title).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+      Column({ space: 4 }) {
+        Text(title).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
+        if (summary !== undefined) {
+          Text(summary).fontSize(14).fontColor($r('app.color.settings_accent')).width('100%')
+        }
+      }.layoutWeight(1)
       Toggle({ type: ToggleType.Switch, isOn: this.toggleValue(setting) })
         .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
         .onChange((value: boolean) => {

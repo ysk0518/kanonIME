@@ -264,9 +264,9 @@ test('unavailable bridge preparation is reported without executing commands', as
   assert.deepEqual(bridge.calls, []);
 });
 
-function deferredRig(steps) {
+function deferredRig(steps, emojiSuggestionsEnabled) {
   const bridge = new ScriptedBridge(steps);
-  const engine = new MozcEngine(bridge, true);
+  const engine = new MozcEngine(bridge, true, emojiSuggestionsEnabled);
   let sequence = 0;
   return { bridge, engine, send: event => engine.dispatch('test-session', 1, ++sequence, event) };
 }
@@ -475,6 +475,33 @@ test('P53: deferred suggest inserts emoji while the keys keep only the previous 
   assert.equal(unmatchedTail.errorCode, 0);
   assert.deepEqual(unmatchedTail.candidates, []);
   assert.equal(r.engine.needsSuggestion(), false);
+  r.bridge.assertDone();
+});
+
+test('P56: disabling emoji removes injected candidates from deferred predictions', async () => {
+  const reading = 'こんにちは';
+  const candidates = [{ id: 0, value: reading }, { id: -1, value: '今日は' }];
+  const expected = candidates.map(({ id, value }) => ({ id, label: value }));
+  let enabled = false;
+  const r = deferredRig([
+    { operation: 'convert', text: 'konnichiha', output: response(reading) },
+    { operation: 'suggest', output: response(reading, { candidates }) },
+    { operation: 'convert', text: 'x', output: response(reading) },
+    { operation: 'suggest', output: response(reading, { candidates }) },
+    { operation: 'convert', text: 'yo', output: response(reading + 'よ') },
+    { operation: 'suggest', output: response(reading + 'よ') }
+  ], () => enabled);
+  await r.send({ kind: 'text', text: 'konnichiha' });
+  assert.deepEqual((await r.send({ kind: 'suggest' })).candidates, expected);
+  enabled = true;
+  await r.send({ kind: 'text', text: 'x' });
+  const active = await r.send({ kind: 'suggest' });
+  assert.equal(active.candidateCount, 5);
+
+  enabled = false;
+  const stale = await r.send({ kind: 'text', text: 'yo' });
+  assert.deepEqual(stale.candidates.map(c => c.label), [reading, '今日は']);
+  assert.deepEqual((await r.send({ kind: 'suggest' })).candidates, []);
   r.bridge.assertDone();
 });
 

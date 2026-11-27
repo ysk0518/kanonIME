@@ -40,7 +40,7 @@ class KanonIme {
     bindings: imeRuntimeBindings,
     prediction: englishPrediction,
     viewPublisher: new ImeViewPublisher(appStorageImeView),
-    engine: new MozcEngine(this.nativeBridge, true),
+    engine: new MozcEngine(this.nativeBridge, true, (): boolean => imeRuntimeBindings.emojiSuggestionsEnabled()),
     enterKeyAction: (epoch: number): Promise<void> => sendEnterAction(epoch),
     log: (tag: string, message: string): void => { Log.showInfo(tag, message); }
   };

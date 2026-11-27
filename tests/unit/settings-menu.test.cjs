@@ -14,12 +14,29 @@ const { pair } = require('../support/settings-sync-rig.cjs');
 const text = Object.fromEntries(strings.map(({ name, value }) => [name, value]));
 
 test('P55: the menu groups route to their dedicated pages in order', () => {
-  assert.deepEqual(SETTINGS_MENU.map(group => group.styleHeading), [false, false, true, false, false]);
+  assert.deepEqual(SETTINGS_MENU.map(group => group.styleHeading), [false, false, false, true, false, false]);
   assert.deepEqual(SETTINGS_MENU.map(group => group.rows.map(row => [row.action, row.page])), [
-    [[Action.Open, Page.Languages]], [[Action.Open, Page.JapaneseInput]],
+    [[Action.Open, Page.Languages]], [[Action.Open, Page.JapaneseInput]], [],
     [[Action.Open, Page.Theme], [Action.Open, Page.Size], [Action.Open, Page.Layout], [Action.Open, Page.Toolbar]],
     [[Action.Open, Page.Feedback]], [[Action.Reset, Page.Top], [Action.Open, Page.About]]
   ]);
+});
+
+test('P56: the smart input card exposes three independent switches and reset restores them', () => {
+  const group = SETTINGS_MENU[2];
+  assert.deepEqual(group.smartInput, [Toggle.EmojiSuggestions, Toggle.AutoCapitalize, Toggle.DoubleSpacePeriod]);
+  assert.deepEqual(SETTINGS_MENU[1].rows.map(row => row.page), [Page.JapaneseInput]);
+  assert.equal(SETTINGS_MENU[3].styleHeading, true);
+  const fields = ['emojiSuggestions', 'autoCapitalize', 'doubleSpacePeriod'];
+  let snapshot = new KeyboardSettingsSnapshot();
+  for (const [index, toggle] of group.smartInput.entries()) {
+    const patch = settingsTogglePatch(toggle, false);
+    assert.deepEqual(patch, { [fields[index]]: false });
+    assert.deepEqual(settingsTogglePatch(toggle, true), { [fields[index]]: true });
+    snapshot = applySettingsPatch(snapshot, patch);
+  }
+  const reset = applySettingsPatch(snapshot, settingsReset().patch);
+  for (const field of fields) { assert.equal(reset[field], true); }
 });
 
 test('P55: summaries use the enabled language order and saved background state', () => {
