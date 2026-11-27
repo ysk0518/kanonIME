@@ -74,14 +74,14 @@ test('P05: empty Japanese composition clears cursor guidance', () => {
   assert.equal(view.compositionCursor, '');
 });
 
-test('P05: display candidates are capped at twenty while count remains untruncated', () => {
-  const items = Array.from({ length: 25 }, (_, i) => ({ id: i + 100, label: `candidate-${i}` }));
-  const view = createImeViewModel(snapshot({ candidateCount: 25 }), source({ candidates: items }), 1);
-  assert.equal(view.candidateCount, 25);
-  assert.equal(view.labels.length, 20);
-  assert.equal(view.ids.length, 20);
-  assert.equal(view.ids[19], 119);
-  assert.equal(items.length, 25);
+test('P05: display candidates are capped at two hundred while count remains untruncated', () => {
+  const items = Array.from({ length: 205 }, (_, i) => ({ id: i + 100, label: `candidate-${i}` }));
+  const view = createImeViewModel(snapshot({ candidateCount: 205 }), source({ candidates: items }), 1);
+  assert.equal(view.candidateCount, 205);
+  assert.equal(view.labels.length, 200);
+  assert.equal(view.ids.length, 200);
+  assert.equal(view.ids[199], 299);
+  assert.equal(items.length, 205);
 });
 
 test('P05: published candidate arrays do not alias the engine input arrays', () => {

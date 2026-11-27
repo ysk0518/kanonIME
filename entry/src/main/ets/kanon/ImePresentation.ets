@@ -1,6 +1,6 @@
 import { CandidateLabel, ImeSnapshot } from './ImeCoordinator';
 import { EnglishPrediction } from './EnglishPrediction';
-import { ImeViewSource } from './ImeViewModel';
+import { MAX_DISPLAY_CANDIDATES, ImeViewSource } from './ImeViewModel';
 import { ImeViewPublisher } from './ImeViewPublisher';
 
 export interface ImeCandidateSource {
@@ -63,7 +63,7 @@ export class ImePresentation {
     catch (error) { return -1; }
   }
   getCandidateSlotCount(): number {
-    try { return Math.min(this.coordinator.getCandidateView().length, 20); }
+    try { return Math.min(this.coordinator.getCandidateView().length, MAX_DISPLAY_CANDIDATES); }
     catch (error) { return 0; }
   }
   getCandidateIds(): string {

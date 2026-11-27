@@ -35,11 +35,14 @@ export interface ImeViewModel {
   selectedIndex: number;
 }
 
+/** Candidates published to the bar and the full list; Mozc sends every candidate it holds. */
+export const MAX_DISPLAY_CANDIDATES: number = 200;
+
 export function createImeViewModel(snapshot: ImeSnapshot, source: ImeViewSource, tick: number): ImeViewModel {
   const directEnglish: boolean = snapshot.mode === 'EN' && !source.englishComposition;
   const labels: string[] = [];
   const ids: number[] = [];
-  for (let i: number = 0; i < source.candidates.length && i < 20; i++) {
+  for (let i: number = 0; i < source.candidates.length && i < MAX_DISPLAY_CANDIDATES; i++) {
     labels.push(source.candidates[i].label);
     ids.push(source.candidates[i].id);
   }

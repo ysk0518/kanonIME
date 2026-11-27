@@ -49,8 +49,11 @@ export struct CandidateBar {
   private columns(): CandidateColumn[] {
     const result: CandidateColumn[] = [];
     const count: number = this.columnCount();
-    for (let index: number = 0; index < count; index++) {
-      const secondIndex: number = this.rows === 2 && index + count < this.candList.length ? index + count : -1;
+    // Fill each column top then bottom, so the best candidates stay in the
+    // visible left columns however many candidates Mozc returns.
+    for (let column: number = 0; column < count; column++) {
+      const index: number = column * this.rows;
+      const secondIndex: number = this.rows === 2 && index + 1 < this.candList.length ? index + 1 : -1;
       const firstLabel: string = this.candList[index];
       const secondLabel: string = secondIndex >= 0 ? this.candList[secondIndex] : '';
       // Equal column counts do not mean equal candidates. Include the displayed
@@ -70,7 +73,7 @@ export struct CandidateBar {
   private selectionChanged(): void {
     if (this.sel < 0 || this.sel >= this.candList.length) { return; }
     if (this.expanded) { this.revealExpandedSelection(); }
-    else { this.stripScroller.scrollToIndex(this.sel % this.columnCount(), true, ScrollAlign.CENTER); }
+    else { this.stripScroller.scrollToIndex(Math.floor(this.sel / this.rows), true, ScrollAlign.CENTER); }
   }
   private revealExpandedSelection(): void {
     const position: ExpandedCandidatePosition | undefined = this.expandedPositions.get(this.sel);

@@ -63,10 +63,10 @@ test('P27: compatibility candidate access retains empty, negative and signed ID 
   assert.equal(r.presentation.getCandidateLabelAt(0),'');assert.equal(r.presentation.getCandidateLabelAt(1),'a');
 });
 
-test('P27: compatibility slots cap at twenty while diagnostic IDs and lengths retain all candidates',()=>{
-  const r=rig();r.state.candidates=Array.from({length:25},(_,i)=>({id:i,label:'😀'}));
-  assert.equal(r.presentation.getCandidateSlotCount(),20);assert.equal(r.presentation.getCandidateIds(),Array.from({length:25},(_,i)=>i).join(','));
-  assert.equal(r.presentation.getCandidateLens2(),'25:'+Array(25).fill('2').join(','));
+test('P27: compatibility slots cap at two hundred while diagnostic IDs and lengths retain all candidates',()=>{
+  const r=rig();r.state.candidates=Array.from({length:205},(_,i)=>({id:i,label:'😀'}));
+  assert.equal(r.presentation.getCandidateSlotCount(),200);assert.equal(r.presentation.getCandidateIds(),Array.from({length:205},(_,i)=>i).join(','));
+  assert.equal(r.presentation.getCandidateLens2(),'205:'+Array(205).fill('2').join(','));
   r.state.candidates=[];assert.equal(r.presentation.getCandidateSlotCount(),0);assert.equal(r.presentation.getCandidateIds(),'');
   assert.equal(r.presentation.getCandidateLens2(),'0:');
 });

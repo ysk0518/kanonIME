@@ -717,7 +717,7 @@ const mutations = {
   },
   displayLimit: {
     file: 'kanon/ImeViewModel.ets',
-    before: 'i < source.candidates.length && i < 20',
+    before: 'i < source.candidates.length && i < MAX_DISPLAY_CANDIDATES',
     after: 'i < source.candidates.length'
   },
   reviveHistory: {

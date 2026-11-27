@@ -156,25 +156,40 @@ std::string OutputToJson(bool ok, const mozc::commands::Output& output) {
     json += ",\"focused_id\":" + std::to_string(
         all_candidates.candidates(all_candidates.focused_index()).id());
   }
-  json += ",\"ncand\":" +
-          std::to_string(output.candidate_window().candidate_size());
+  json += ",\"ncand\":" + std::to_string(all_candidates.candidates_size() > 0 ?
+      all_candidates.candidates_size() : output.candidate_window().candidate_size());
   json += ",\"candidates\":[";
   bool first = true;
   std::string candlens = ",\"candlens\":[";
   bool firstlen = true;
+  // Send every candidate Mozc holds, not only the 20-candidate window page,
+  // so the full list can show them all. Fall back to the window when Mozc
+  // gives no full list.
   const auto& words = all_candidates.candidates();
+  std::vector<const mozc::commands::CandidateWord*> listed;
+  if (words.size() > 0) {
+    for (const auto& word : words) listed.push_back(&word);
+  }
   for (const auto& cand : output.candidate_window().candidate()) {
+    if (words.size() > 0) break;
     if (!first) json += ",";
     first = false;
-    const bool deletable = std::any_of(words.begin(), words.end(), [&](const auto& word) {
-      return cand.has_id() && word.has_id() && word.id() == cand.id() && IsDeletable(word);
-    });
+    const bool deletable = false;
     json += "{\"id\":" + std::to_string(cand.id()) + ",\"value\":\"" +
             EscapeJson(cand.value()) + "\",\"deletable\":" + (deletable ? "true" : "false") + "}";
     // REQ-07: 値ではなく長さ（バイト）のみを診断用に付ける。
     if (!firstlen) candlens += ",";
     firstlen = false;
     candlens += std::to_string(cand.value().size());
+  }
+  for (const auto* word : listed) {
+    if (!first) json += ",";
+    first = false;
+    json += "{\"id\":" + std::to_string(word->id()) + ",\"value\":\"" +
+            EscapeJson(word->value()) + "\",\"deletable\":" + (IsDeletable(*word) ? "true" : "false") + "}";
+    if (!firstlen) candlens += ",";
+    firstlen = false;
+    candlens += std::to_string(word->value().size());
   }
   json += "]";
   json += candlens + "]";
