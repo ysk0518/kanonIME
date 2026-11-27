@@ -93,6 +93,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['playKeySoundWhenOff', 'P46', 'off never calls playback'],
   ['duplicateRecentEmoji', 'P47', 'recents move to the front'],
   ['suggestRomanOnlyWord', 'P51', 'the first roman letters of a word are not suggested'],
+  ['periodWithoutWord', 'P52', 'a word and one space end with a period on the second space'],
+  ['noSentenceStart', 'P52', 'the shift keys follow sentence starts in English text fields'],
   ['settingsMenuThemeRoute', 'P55', 'the menu groups route'],
   ['settingsMenuLastLanguage', 'P55', 'language switches preserve'],
   ['settingsMenuResetHeight', 'P55', 'confirmed reset restores']]) {
