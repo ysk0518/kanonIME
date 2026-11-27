@@ -106,8 +106,10 @@ struct Index {
     // On short windows retain enough height for the keys; typing never changes this choice.
     const rows: number = panelHeight - candidateAreaHeight(this.toolbarHeight, this.candidateFontSize, 2, this.fontScale) >= 160 ? this.candidateRows : 1;
     if (AppStorage.get<number>(KANON_CANDIDATE_DISPLAY_ROWS) !== rows) { AppStorage.setOrCreate(KANON_CANDIDATE_DISPLAY_ROWS, rows); }
-    const barHeight: number = this.submenuType === SubMenuType.NORMAL || this.submenuType === SubMenuType.EMOJI ?
-      this.candidateHeight(rows) : this.toolbarHeight;
+    // Every panel keeps the candidate bar's height, so the toolbar stays put
+    // when the emoji, clipboard or menu panels open. Size adjustment previews
+    // the keyboard itself and keeps the bare toolbar.
+    const barHeight: number = this.submenuType === SubMenuType.SIZE ? this.toolbarHeight : this.candidateHeight(rows);
     const height: number = Math.max(1, panelHeight - barHeight);
     if (Math.abs(this.inputStyle.subMenuWidth - width) > 0.5 || Math.abs(this.inputStyle.keyboardHeight - height) > 0.5 ||
       this.inputStyle.keyGap !== effectiveKeyGap(width, height, this.keyGap)) {
@@ -134,15 +136,17 @@ struct Index {
       Column() {
         if (this.submenuType === SubMenuType.NORMAL) {
           CandidateBar()
-        } else if (this.submenuType === SubMenuType.EMOJI) {
+        } else if (this.submenuType === SubMenuType.SIZE) {
+          TopMenu()
+        } else {
+          // Centered like the toolbar inside the candidate bar.
           Column() {
             TopMenu()
           }
           .width('100%')
           .height(this.candidateHeight(this.displayRows))
+          .justifyContent(FlexAlign.Center)
           .backgroundColor($r('app.color.candidate_background'))
-        } else {
-          TopMenu()
         }
         Column() {
           if (this.submenuType > SubMenuType.NORMAL && this.submenuType !== SubMenuType.SIZE) {
