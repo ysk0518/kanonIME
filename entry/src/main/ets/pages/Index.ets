@@ -72,6 +72,10 @@ struct Index {
 
   onBackPress(): boolean {
     Log.showInfo(TAG, 'kikaInput onBackPress');
+    if (this.submenuType === SubMenuType.SETTINGS) {
+      this.submenuType = SubMenuType.NORMAL;
+      return true;
+    }
     this.submenuType = SubMenuType.NORMAL;
     InputHandler.getInstance().hideKeyboardSelf();
     return true;

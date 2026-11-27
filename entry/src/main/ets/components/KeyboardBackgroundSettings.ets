@@ -22,7 +22,7 @@ export struct KeyboardBackgroundSettings {
   @StorageLink('kanonSettingsForeground') @Watch('foregroundChanged') foreground: boolean = true;
   @State private synced: boolean = true;
   @State private draft: BackgroundConfig = new BackgroundConfig();
-  @State private busy: boolean = false;
+  @State @Watch('busyChanged') private busy: boolean = false;
   @State private message: ResourceStr = '';
   @State private loaded: boolean = false;
   @State private showGestureHint: boolean = true;
@@ -44,6 +44,9 @@ export struct KeyboardBackgroundSettings {
   private dragging: boolean = false;
   private pinchZoom: number = 100;
   onClose: () => void = () => {};
+  onBusyChange: (busy: boolean) => void = () => {};
+
+  private busyChanged(): void { this.onBusyChange(this.busy); }
 
   async aboutToAppear(): Promise<void> {
     this.alive = true;
