@@ -2,8 +2,6 @@ import { StyleConfiguration, KeyStyle } from '../common/StyleConfiguration';
 import { kanonIme } from '../kanon/KanonIme';
 import { SubMenuType } from '../model/KeyboardKeyData';
 import { KeyboardToolbar } from './KeyboardToolbar';
-import { SymbolToggleItem } from './SymbolToggleItem';
-import { EmojiToggleItem } from './EmojiToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
 import { candidateAreaHeight, candidateRowHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 import { DEFAULT_LONG_PRESS_MS } from '../common/KeyboardConfigValues';
@@ -201,12 +199,11 @@ export struct CandidateBar {
         if (this.candList.length === 0 && !(this.mode === 'JP' && this.japaneseComposing)) {
           KeyboardToolbar()
         } else {
-          Column() {
-            Stack() { Image($r('app.media.ic_more_horiz')).width(20).height(20).fillColor($r('app.color.key_text')) }
-              .width(40).height(this.rowHeight())
-              .onClick(() => { this.submenuType = SubMenuType.MENU; })
-              .accessibilityText($r('app.string.candidate_menu')).id('candidate_keyboard_menu')
-            if (this.rows === 2 && (this.compositionCursor.length > 0 || this.conversionReading.length > 0)) {
+          // While composing, candidates use the whole bar like Samsung Keyboard;
+          // the toolbar returns once the composition ends. Only the cursor or
+          // segment reading keeps a narrow column on the left when present.
+          if (this.rows === 2 && (this.compositionCursor.length > 0 || this.conversionReading.length > 0)) {
+            Column() {
               if (this.compositionCursor.length > 0) {
                 Text(this.compositionCursor).fontSize(12).maxLines(1).width(40)
                   .textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.text_secondary')).id('composition_cursor_compact')
@@ -214,10 +211,8 @@ export struct CandidateBar {
                 Text(this.conversionReading).fontSize(12).maxLines(1).width(40)
                   .textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.text_secondary')).id('segment_reading_compact')
               }
-            }
-          }.width(44).height(this.barHeight())
-          EmojiToggleItem({ buttonHeight: this.rowHeight() })
-          SymbolToggleItem({ buttonHeight: this.rowHeight() })
+            }.width(44).height(this.barHeight()).justifyContent(FlexAlign.Center)
+          }
           if (this.rows === 1 && this.compositionCursor.length > 0) {
             Text(this.compositionCursor).fontSize(14).maxLines(1).constraintSize({ maxWidth: 96 })
               .textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor($r('app.color.candidate_accent')).id('composition_cursor')
