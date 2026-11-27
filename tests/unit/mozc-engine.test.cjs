@@ -398,3 +398,70 @@ test('P49: a caret moved inside the composition keeps suggestions with the key',
   assert.deepEqual(typed.candidates, [{ id: 3, label: '愛' }]);
   r.bridge.assertDone();
 });
+
+const nextWords = [{ id: 0, value: 'いい' }, { id: 1, value: 'は' }];
+
+test('P54: a selected candidate commits and shows Mozc next-word predictions', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitCandidate', candidateId: 2, output: response('', { result: '亜', candidates: nextWords }) },
+    { operation: 'submitCandidate', candidateId: 1, output: response('', { result: 'は', candidates: [{ id: 0, value: 'いい' }] }) }
+  ]);
+  await r.send({ kind: 'text', text: 'a' });
+  const committed = await r.send({ kind: 'select', candidateId: 2 });
+  assert.deepEqual(committed.effects.map(effect => effect.text), ['亜']);
+  assert.equal(committed.hasPreedit, false);
+  assert.deepEqual(committed.candidates, [{ id: 0, label: 'いい' }, { id: 1, label: 'は' }]);
+  // A next-word prediction commits through Mozc and predicts again.
+  const next = await r.send({ kind: 'select', candidateId: 1 });
+  assert.deepEqual(next.effects.map(effect => effect.text), ['は']);
+  assert.equal(next.effects[0].undoable, true);
+  assert.deepEqual(next.candidates, [{ id: 0, label: 'いい' }]);
+  r.bridge.assertDone();
+});
+
+test('P54: typing after a commit drops the next-word predictions', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitCandidate', candidateId: 2, output: response('', { result: '亜', candidates: nextWords }) },
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 0, value: 'あ' }] }) },
+    { operation: 'submitReading', output: response('', { result: 'あ' }) }
+  ]);
+  await r.send({ kind: 'text', text: 'a' });
+  await r.send({ kind: 'select', candidateId: 2 });
+  const typed = await r.send({ kind: 'text', text: 'a' });
+  assert.deepEqual(typed.candidates, [{ id: 0, label: 'あ' }]);
+  const done = await r.send({ kind: 'submit' });
+  assert.deepEqual(done.candidates, []);
+  // No composition and no predictions: a stale tap never reaches Mozc.
+  const stale = await r.engine.dispatch('test-session', 1, 99, { kind: 'select', candidateId: 0 });
+  assert.notEqual(stale.errorCode, 0);
+  r.bridge.assertDone();
+});
+
+test('P54: a failed next-word commit clears the predictions', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitCandidate', candidateId: 2, output: response('', { result: '亜', candidates: nextWords }) },
+    { operation: 'submitCandidate', candidateId: 0, output: response('', { ok: false }) }
+  ]);
+  await r.send({ kind: 'text', text: 'a' });
+  await r.send({ kind: 'select', candidateId: 2 });
+  const failed = await r.send({ kind: 'select', candidateId: 0 });
+  assert.equal(failed.errorCode, 0);
+  assert.deepEqual(failed.effects, []);
+  assert.deepEqual(failed.candidates, []);
+  r.bridge.assertDone();
+});
+
+test('P54: Enter on a reading also shows the next-word predictions', async () => {
+  const r = rig([
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitReading', output: response('', { result: 'あ', candidates: nextWords }) }
+  ]);
+  await r.send({ kind: 'text', text: 'a' });
+  const done = await r.send({ kind: 'submit' });
+  assert.deepEqual(done.effects.map(effect => effect.text), ['あ']);
+  assert.deepEqual(done.candidates, [{ id: 0, label: 'いい' }, { id: 1, label: 'は' }]);
+  r.bridge.assertDone();
+});

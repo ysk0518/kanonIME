@@ -1264,3 +1264,19 @@ test('P49: candidates are fetched once no newer key is queued, never between que
   assert.deepEqual(r.session.getCandidates(), [{ id: 0, label: '愛' }]);
   r.bridge.assertDone();
 });
+
+test('P54: deleting committed text drops the next-word predictions', async () => {
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitCandidate', candidateId: 2, output: response('', { result: '亜',
+      candidates: [{ id: 0, value: 'いい' }, { id: 1, value: 'は' }] }) }
+  ] });
+  await r.session.keyText('a');
+  await r.session.selectCandidate(2);
+  assert.equal(r.editor.text, '亜');
+  assert.deepEqual(r.session.getCandidates().map(item => item.label), ['いい', 'は']);
+  await r.session.keyDelete();
+  assert.equal(r.editor.text, '');
+  assert.deepEqual(r.session.getCandidates(), []);
+  r.bridge.assertDone();
+});

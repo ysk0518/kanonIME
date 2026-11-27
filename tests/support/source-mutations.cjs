@@ -1,4 +1,14 @@
 const mutations = {
+  forgetNextWord: {
+    file: 'kanon/MozcEngine.ets',
+    before: "    this.nextWord = true;\n",
+    after: ''
+  },
+  keepNextWordAfterDelete: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "    this.candidateItems = [];\n    this.candidateCount = 0;\n  }\n\n  private async applyUpdate(",
+    after: "  }\n\n  private async applyUpdate("
+  },
   suggestRomanOnlyWord: {
     file: 'kanon/MozcEngine.ets',
     before: 'endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)',
