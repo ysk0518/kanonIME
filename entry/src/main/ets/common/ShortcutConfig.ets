@@ -9,7 +9,7 @@ export function shortcutName(id: string): Resource {
 }
 
 export function shortcutIcon(id: string): Resource {
-  return id === 'settings' ? $r('app.media.ic_settings') :
+  return id === 'settings' ? $r('app.media.ic_gear') :
     id === 'clipboard' ? $r('app.media.ic_clipboard') : $r('app.media.ic_edit');
 }
 

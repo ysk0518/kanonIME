@@ -13,9 +13,12 @@ export struct EmojiToggleItem {
 
   build() {
     Stack() {
-      Text('😊').fontSize(18).maxFontScale(1.25).maxLines(1)
-        .width(32).height(32).textAlign(TextAlign.Center).borderRadius(16)
-        .backgroundColor(this.submenuType === SubMenuType.EMOJI ? $r('app.color.candidate_selected') : Color.Transparent)
+      // A monochrome icon like the other toolbar buttons; a color emoji stood out.
+      Stack() {
+        Image($r('app.media.ic_emoji')).width(20).height(20).fillColor($r('app.color.key_text'))
+      }
+      .width(32).height(32).borderRadius(16)
+      .backgroundColor(this.submenuType === SubMenuType.EMOJI ? $r('app.color.candidate_selected') : Color.Transparent)
     }
     .width(40).height(this.buttonHeight)
     .enabled(this.enabledForField()).opacity(this.enabledForField() ? 1 : 0.4)

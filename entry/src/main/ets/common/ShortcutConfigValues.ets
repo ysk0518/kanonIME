@@ -1,4 +1,5 @@
-export const DEFAULT_SHORTCUT_ORDER: string = 'settings,clipboard';
+// Samsung Keyboard's toolbar shows the clipboard before the settings.
+export const DEFAULT_SHORTCUT_ORDER: string = 'clipboard,settings';
 export const SHORTCUT_IDS: string[] = ['settings', 'clipboard', 'edit'];
 
 export function shortcutOrder(value: string): string[] {
