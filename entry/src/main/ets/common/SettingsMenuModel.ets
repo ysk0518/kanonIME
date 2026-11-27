@@ -52,11 +52,13 @@ export function settingsMenuRows(group: SettingsMenuGroup, gamingUnlocked: boole
   return group.rows;
 }
 
-export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string, wave: string = off): string {
+export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string, wave: string = off,
+  pachinko: string = off): string {
   switch (gamingEffect(effect)) {
     case 'flow': return flow;
     case 'wave': return wave;
     case 'ripple': return ripple;
+    case 'pachinko': return pachinko;
     default: return off;
   }
 }

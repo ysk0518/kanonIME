@@ -19,13 +19,14 @@ import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, Set
   settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
   settingsShortcutPatch, settingsReset, settingsMenuRows, settingsGamingSummary } from '../common/SettingsMenuModel';
 import { GAMING_EFFECTS, MAX_GAMING_SPEED, MIN_GAMING_SPEED, GamingEffect, GamingTapResult,
-  GamingUnlockTaps } from '../common/GamingEffectModel';
+  GamingUnlockTaps, gamingSpeedEnabled } from '../common/GamingEffectModel';
 
 function gamingEffectTitle(effect: GamingEffect): Resource {
   switch (effect) {
     case 'flow': return $r('app.string.settings_gaming_flow');
     case 'wave': return $r('app.string.settings_gaming_wave');
     case 'ripple': return $r('app.string.settings_gaming_ripple');
+    case 'pachinko': return $r('app.string.settings_gaming_pachinko');
     default: return $r('app.string.settings_gaming_off');
   }
 }
@@ -214,7 +215,8 @@ export struct KeyboardSettings {
           resources.getStringSync(gamingEffectTitle('off').id),
           resources.getStringSync(gamingEffectTitle('flow').id),
           resources.getStringSync(gamingEffectTitle('ripple').id),
-          resources.getStringSync(gamingEffectTitle('wave').id));
+          resources.getStringSync(gamingEffectTitle('wave').id),
+          resources.getStringSync(gamingEffectTitle('pachinko').id));
       }
       return settingsThemeSummary(this.hasBackground,
         resources.getStringSync($r('app.string.settings_theme_standard').id),
@@ -268,7 +270,7 @@ export struct KeyboardSettings {
   }
 
   private sliderEnabled(setting: SettingsNumber): boolean {
-    return !this.saving && (setting !== SettingsNumber.GamingSpeed || this.snapshot.gamingEffect !== 'off');
+    return !this.saving && (setting !== SettingsNumber.GamingSpeed || gamingSpeedEnabled(this.snapshot.gamingEffect));
   }
 
   private sliderChanged(setting: SettingsNumber, value: number, mode: SliderChangeMode): void {
@@ -536,7 +538,7 @@ export struct KeyboardSettings {
       Column({ space: 4 }) {
         this.slider(SettingsNumber.GamingSpeed, MIN_GAMING_SPEED, MAX_GAMING_SPEED, 1, 'keyboard_config_gaming_speed')
       }.padding({ top: 14, bottom: 16 })
-        .opacity(this.snapshot.gamingEffect === 'off' ? 0.5 : 1)
+        .opacity(gamingSpeedEnabled(this.snapshot.gamingEffect) ? 1 : 0.5)
     }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
   }
 

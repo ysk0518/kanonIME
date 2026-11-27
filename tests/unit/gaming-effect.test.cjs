@@ -186,7 +186,7 @@ test('P58b: speed validates integer levels and old settings default to level thr
 });
 
 test('P58b: wave is accepted and the gaming summary uses the selected label', () => {
-  assert.deepEqual(GAMING_EFFECTS, ['off', 'flow', 'wave', 'ripple']);
+  assert.deepEqual(GAMING_EFFECTS.slice(0, 4), ['off', 'flow', 'wave', 'ripple']);
   const labels = ['off', 'flow', 'ripple', 'wave'].map(effect =>
     strings.find(entry => entry.name === `settings_gaming_${effect}`).value);
   assert.equal(settingsGamingSummary('wave', ...labels), 'キーが波紋で光る');

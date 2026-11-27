@@ -1,23 +1,28 @@
-export type GamingEffect = 'off' | 'flow' | 'wave' | 'ripple';
+export type GamingEffect = 'off' | 'flow' | 'wave' | 'ripple' | 'pachinko';
 
 export const DEFAULT_GAMING_UNLOCKED: boolean = false;
 export const DEFAULT_GAMING_EFFECT: GamingEffect = 'off';
-export const GAMING_EFFECTS: GamingEffect[] = ['off', 'flow', 'wave', 'ripple'];
+export const GAMING_EFFECTS: GamingEffect[] = ['off', 'flow', 'wave', 'ripple', 'pachinko'];
 export const MIN_GAMING_SPEED: number = 1;
 export const MAX_GAMING_SPEED: number = 5;
 export const DEFAULT_GAMING_SPEED: number = 3;
 export const GAMING_FLOW_STEPS: number = 36;
+export const GAMING_GOLD_PHASE: number = -2;
 export const GAMING_WAVE_TICK_MS: number = 50;
 export const GAMING_RIPPLE_MS: number = 400;
 const FLOW_PERIODS_MS: number[] = [7200, 5400, 3600, 2400, 1600];
 
 export function gamingEffect(value: string): GamingEffect {
-  if (value === 'flow' || value === 'wave' || value === 'ripple') { return value; }
+  if (value === 'flow' || value === 'wave' || value === 'ripple' || value === 'pachinko') { return value; }
   return DEFAULT_GAMING_EFFECT;
 }
 
 export function validGamingSpeed(value: number): boolean {
   return Number.isInteger(value) && value >= MIN_GAMING_SPEED && value <= MAX_GAMING_SPEED;
+}
+
+export function gamingSpeedEnabled(effect: GamingEffect): boolean {
+  return effect === 'flow' || effect === 'wave' || effect === 'ripple';
 }
 
 export function gamingFlowPeriodMs(speed: number): number {

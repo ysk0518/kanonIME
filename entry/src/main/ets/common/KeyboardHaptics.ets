@@ -10,6 +10,7 @@ class KeyboardHaptics {
   private supportedSoft: boolean | undefined = undefined;
   private supportedHard: boolean | undefined = undefined;
   private lastPulse: number = 0;
+  private celebrationUntil: number = 0;
   private pressedAt: number = -1;
 
   // Character keys give feedback when the finger lands, as Samsung and Gboard do,
@@ -29,6 +30,31 @@ class KeyboardHaptics {
     this.fire();
   }
 
+  celebrationPulse(duration: number): void {
+    if ((AppStorage.get<number>(KANON_HAPTIC_LEVEL) ?? 1) === 0) { return; }
+    try {
+      if (!this.vibrationAllowed()) { return; }
+      const effect: vibrator.VibrateEffect = { type: 'time', duration: duration };
+      this.lastPulse = Date.now();
+      this.celebrationUntil = this.lastPulse + duration;
+      vibrator.startVibration(effect, { usage: 'touch' }).catch(() => {});
+    } catch (error) {}
+  }
+
+  stopCelebration(): void {
+    if (Date.now() >= this.celebrationUntil) { return; }
+    this.celebrationUntil = 0;
+    try {
+      if (!this.vibrationAllowed()) { return; }
+      vibrator.stopVibration(vibrator.VibratorStopMode.VIBRATOR_STOP_MODE_TIME).catch(() => {});
+    } catch (error) {}
+  }
+
+  private vibrationAllowed(): boolean {
+    // BASIC_MODE does not permit vibrator access from an input method.
+    return inputMethodEngine.getInputMethodAbility().getSecurityMode() === inputMethodEngine.SecurityMode.FULL;
+  }
+
   private fire(): void {
     // BASIC can attempt playback of the same local click. It uses no protected
     // vibrator API or editor contents, and any playback failure is ignored.
@@ -36,12 +62,9 @@ class KeyboardHaptics {
     const level: number = AppStorage.get<number>(KANON_HAPTIC_LEVEL) ?? 1;
     if (level === 0) { return; }
     const now: number = Date.now();
-    if (now - this.lastPulse < 45) { return; }
+    if (now < this.celebrationUntil || now - this.lastPulse < 45) { return; }
     try {
-      // BASIC_MODE does not permit vibrator access from an input method.
-      if (inputMethodEngine.getInputMethodAbility().getSecurityMode() !== inputMethodEngine.SecurityMode.FULL) {
-        return;
-      }
+      if (!this.vibrationAllowed()) { return; }
       if (this.supportedSoft === undefined) {
         this.supportedSoft = vibrator.isSupportEffectSync(vibrator.HapticFeedback.EFFECT_SOFT);
       }

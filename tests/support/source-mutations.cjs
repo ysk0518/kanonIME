@@ -1,4 +1,19 @@
 const mutations = {
+  pachinkoReachBeforeJackpot: {
+    file: 'common/PachinkoModel.ets',
+    before: 'if (roll < 1 / 64) { return PachinkoResult.Jackpot; }',
+    after: 'if (roll < 1 / 64) { return PachinkoResult.Reach; }'
+  },
+  pachinkoCooldownTooShort: {
+    file: 'common/PachinkoModel.ets',
+    before: 'this.remaining = 3;',
+    after: 'this.remaining = 2;'
+  },
+  pachinkoCommitSignalMissing: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'if (ef.text.length > 0) { imeCommitNotifications.emit(); }',
+    after: ''
+  },
   gamingWaveNoRadiusLimit: {
     file: 'common/GamingEffectModel.ets',
     before: 'if (distance >= frame.maxRadius) { continue; }',

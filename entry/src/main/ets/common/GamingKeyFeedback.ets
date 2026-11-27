@@ -1,6 +1,7 @@
 import { ColorMetrics } from '@ohos.arkui.node';
 import { KANON_GAMING_WAVE_TIME } from './AppStorageKeys';
-import { GAMING_FLOW_STEPS, GamingPoint, GamingWaveFrame, GamingWaveSample, gamingWaveSample } from './GamingEffectModel';
+import { GAMING_FLOW_STEPS, GAMING_GOLD_PHASE, GamingPoint, GamingWaveFrame, GamingWaveSample,
+  gamingWaveSample } from './GamingEffectModel';
 
 const RAINBOW_WIDTH: number = 420;
 
@@ -37,6 +38,12 @@ export function publishGamingWave(frame: GamingWaveFrame | undefined): void {
 
 export function gamingKeyColor(phase: number, now: number, center: GamingPoint | undefined,
   fallback: ResourceColor, pressed: boolean = false): ResourceColor {
+  if (phase === GAMING_GOLD_PHASE) {
+    try {
+      const base: ColorMetrics = ColorMetrics.resourceColor(fallback);
+      return base.red + base.green + base.blue > 384 ? '#ffe078' : '#885400';
+    } catch (error) { return fallback; }
+  }
   const wave: GamingWaveSample = waveSample(now, center);
   if (wave.intensity > 0) {
     try {
@@ -77,6 +84,7 @@ function mixChannel(first: number, second: number, mix: number, glow: number): n
 
 export function gamingKeyOutline(phase: number, now: number, center: GamingPoint | undefined,
   radius: number, pressed: boolean = false): OutlineOptions {
+  if (phase === GAMING_GOLD_PHASE) { return { width: 2, color: '#e7ab29', radius: radius }; }
   const wave: GamingWaveSample = waveSample(now, center);
   if (wave.intensity > 0) {
     return { width: 2, color: waveColor(wave, 255), radius: radius };

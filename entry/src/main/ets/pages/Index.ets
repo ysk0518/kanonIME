@@ -37,6 +37,7 @@ import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../common/KeyboardLayout';
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
 import { GamingFlowClock, GamingRippleOverlay, GamingWaveClock } from '../components/GamingEffects';
+import { PachinkoOverlay } from '../components/PachinkoOverlay';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
@@ -204,6 +205,10 @@ struct Index {
       if (this.submenuType === SubMenuType.NORMAL) { FlickPreview() }
       if (this.submenuType === SubMenuType.SIZE) {
         KeyboardSizeSettings({ onClose: () => { this.submenuType = SubMenuType.NORMAL; } })
+      }
+      if (this.gamingUnlocked && this.keyboardVisible && this.submenuType === SubMenuType.NORMAL &&
+        this.gamingEffect === 'pachinko') {
+        PachinkoOverlay()
       }
     }
     .height('100%')
