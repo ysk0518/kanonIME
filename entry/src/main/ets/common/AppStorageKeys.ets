@@ -72,6 +72,7 @@ export const KANON_PANEL_WIDTH_PX: string = 'kanonPanelWidthPx';
 export const KANON_REV: string = 'kanonRev';
 export const KANON_SEG: string = 'kanonSeg';
 export const KANON_SEL: string = 'kanonSel';
+export const KANON_SENTENCE_START: string = 'kanonSentenceStart';
 export const KANON_SETTINGS_APPLIED_REVISION: string = 'kanonSettingsAppliedRevision';
 export const KANON_SETTINGS_FOREGROUND: string = 'kanonSettingsForeground';
 export const KANON_SETTINGS_GENERATION: string = 'kanonSettingsGeneration';
