@@ -413,15 +413,29 @@ std::string ExecuteOperation(const AsyncOperation& task) {
   }
   if (task.operation == "convert") {
     ok = true;
+    // candidate_id 1 defers all suggestions: the caller shows the preedit at
+    // once and asks for candidates with "suggest" when no newer key is queued.
+    const bool deferSuggestion = task.candidate_id == 1;
     for (size_t i = 0; i < task.text.size() && ok; ++i) {
       mozc::commands::Input input;
       input.set_type(mozc::commands::Input::SEND_KEY);
       input.mutable_key()->set_key_code(task.text[i]);
       // A flick/replay can contain several roman characters. Only compute
       // candidates after the last character; intermediate output is not shown.
-      input.set_request_suggestion(i + 1 == task.text.size());
+      input.set_request_suggestion(!deferSuggestion && i + 1 == task.text.size());
       ok = Call(input, &output);
     }
+  } else if (task.operation == "suggest") {
+    // Recompute candidates for the current composition without a key. Moving
+    // the cursor to where it already is runs Mozc's suggestion for the
+    // composition. It also starts a new composer chunk, so the caller sends it
+    // only when the text before the cursor is complete kana, never a pending
+    // roman consonant. candidate_id is the cursor in Unicode characters.
+    mozc::commands::Input input;
+    input.set_type(mozc::commands::Input::SEND_COMMAND);
+    input.mutable_command()->set_type(mozc::commands::SessionCommand::MOVE_CURSOR);
+    input.mutable_command()->set_cursor_position(static_cast<uint32_t>(task.candidate_id));
+    ok = Call(input, &output) && output.consumed();
   } else if (task.operation == "literal") {
     // Whole UTF-8 text, not one SEND_KEY per byte. AS_IS retains punctuation
     // and other literal characters in the composition instead of committing.
@@ -536,7 +550,7 @@ napi_value BridgeExecuteAsync(napi_env env, napi_callback_info info) {
       operation != "selectCandidate" && operation != "submitCandidate" &&
       operation != "deleteCandidate" &&
       operation != "highlightCandidate" && operation != "arrowLeft" &&
-      operation != "arrowRight") {
+      operation != "arrowRight" && operation != "suggest") {
     napi_throw_range_error(env, nullptr, "Unknown native operation");
     return nullptr;
   }

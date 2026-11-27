@@ -15,7 +15,7 @@ const { MenuType } = require('../../entry/src/main/ets/model/KeyboardKeyData.ets
 const { keyboardMenuType } = require('../../entry/src/main/ets/model/KeyboardModes.ets');
 
 function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInput = false,
-  editor = new FakeEditor(origin) } = {}) {
+  editor = new FakeEditor(origin), deferSuggestions = false } = {}) {
   editor.supported = supported;
   const bridge = new ScriptedBridge(steps);
   const trace = [];
@@ -50,7 +50,7 @@ function rig({ mode = 'EN', supported = true, origin = '', steps = [], toggleInp
   const session = new ImeSession({
     editor, queryEmpty: () => hooks.queryEmpty(),
     cancelPreview: () => cancelEditorPreview(editor),
-    bindings, prediction, viewPublisher: view, engine: new MozcEngine(bridge),
+    bindings, prediction, viewPublisher: view, engine: new MozcEngine(bridge, deferSuggestions),
     enterKeyAction: async epoch => {
       trace.push(['enter', epoch]);
       await hooks.enterKeyAction();
@@ -1243,5 +1243,24 @@ test('P48: a key after another kind of request is not merged across it', async (
   first.resolve(response('ｋ'));
   await Promise.all(typing);
   assert.equal(r.editor.text, 'い');
+  r.bridge.assertDone();
+});
+
+test('P49: candidates are fetched once no newer key is queued, never between queued keys', async () => {
+  const first = deferred();
+  const r = rig({ mode: 'JP', deferSuggestions: true, steps: [
+    { operation: 'convert', text: 'a', candidateId: 1, output: () => first.promise },
+    { operation: 'convert', text: 'i', candidateId: 1, output: response('あい') },
+    { operation: 'suggest', candidateId: 2, output: response('あい', { candidates: [{ id: 0, value: '愛' }] }) }
+  ] });
+  const typing = [r.session.keyText('a')];
+  await new Promise(resolve => setImmediate(resolve));
+  typing.push(r.session.keyText('i'));
+  first.resolve(response('あ'));
+  await Promise.all(typing);
+  // The script fails if a suggestion runs between the keys. It is queued after the last key.
+  for (let i = 0; i < 20 && r.bridge.steps.length > 0; i++) { await new Promise(resolve => setImmediate(resolve)); }
+  assert.equal(r.editor.text, 'あい');
+  assert.deepEqual(r.session.getCandidates(), [{ id: 0, label: '愛' }]);
   r.bridge.assertDone();
 });

@@ -391,16 +391,22 @@ export class ImeSession {
 
   private async postSerial(request: ImeRequest, generation: number = this.compositionGeneration): Promise<ImeSnapshot> {
     const requestEpoch: number = this.ports.editor.getEpoch();
+    // A newer queued key replaces the composition; it schedules its own suggestion.
+    if (request.kind === 'suggest' && (this.inputQueue.unfinished() > 1 || !this.engine.needsSuggestion())) {
+      return this.coord.getSnapshot();
+    }
     try {
       const admission: ImeAdmission = await this.admit(request, generation, requestEpoch);
       if (admission.kind === 'stop') { this.toggleRun = undefined; return admission.snapshot; }
       // Validate the epoch after both synchronization and the admission await.
       if (requestEpoch !== this.ports.editor.getEpoch()) { return this.coord.getSnapshot(); }
       if (request.kind !== 'toggleTap' && request.kind !== 'toggleRight' && request.kind !== 'toggleBack' &&
-        request.kind !== 'deleteLearnedCandidate') {
+        request.kind !== 'deleteLearnedCandidate' && request.kind !== 'suggest') {
         this.toggleRun = undefined;
       }
-      return await this.routeRequest(request, requestEpoch);
+      const result: ImeSnapshot = await this.routeRequest(request, requestEpoch);
+      this.suggestWhenIdle();
+      return result;
     } catch (e) {
       this.toggleRun = undefined;
       const s: ImeSnapshot = this.coord.getSnapshot();
@@ -428,6 +434,13 @@ export class ImeSession {
       !await this.synchronizeCompositionCursor()) { return this.stopAdmission(); }
     const admission: ImeAdmissionContinue = { kind: 'continue' };
     return admission;
+  }
+
+  // Keys update only the preedit (see MozcEngine deferSuggestions). Ask for the
+  // candidates once no other input is queued, so typing never waits for them.
+  private suggestWhenIdle(): void {
+    if (this.mode !== 'JP' || !this.engine.needsSuggestion() || this.inputQueue.unfinished() !== 1) { return; }
+    this.postRequest(createInputEvent('suggest')).catch((): ImeSnapshot => this.coord.getSnapshot());
   }
 
   private stopAdmission(): ImeAdmissionStopped {
