@@ -15,6 +15,7 @@ import { CompositionInput, literalInputs } from './CompositionInput';
 import { MozcBridgePort } from './MozcBridgePort';
 import { MozcEditState } from './MozcEditState';
 import { compositionCaretPath } from './CompositionCursorSync';
+import { emojiForReading } from './EmojiSuggestions';
 
 class Cand {
   id: number = -1;
@@ -131,6 +132,8 @@ export class MozcEngine implements EnginePort {
   private lastCandidateRevision: number = 0;
   private revision: number = 0;
   private lastIds: number[] = [];
+  private lastEmojiLabels: CandidateLabel[] = [];
+  private remappedMozcIds: Map<number, number> = new Map<number, number>();
   private selIdx: number = 0;
   private lastPreedit: string = '';
   private lastOut: ConvOut = new ConvOut();
@@ -210,7 +213,7 @@ export class MozcEngine implements EnginePort {
   }
 
   private fromOut(sessionId: string, epoch: number, seq: number, out: ConvOut,
-    effects: CommitEffect[]): EngineUpdate {
+    effects: CommitEffect[], includeEmoji: boolean = true): EngineUpdate {
     if (!out.ok) {
       return this.errUpdate(sessionId, epoch, seq, true);
     }
@@ -223,15 +226,37 @@ export class MozcEngine implements EnginePort {
         ordered.unshift(raw);
       }
     }
+    const emojiLabels: CandidateLabel[] = [];
+    if (includeEmoji && this.phase === 'composing' && this.caretPosition(out) === out.preedit.length) {
+      for (const emoji of emojiForReading(out.preedit)) {
+        if (!ordered.some((c: Cand): boolean => c.value === emoji)) {
+          emojiLabels.push({ id: -(emojiLabels.length + 1), label: emoji });
+        }
+      }
+    }
+    this.lastEmojiLabels = emojiLabels;
+    this.remappedMozcIds.clear();
     const labels: CandidateLabel[] = [];
+    let spareId: number = -4;
     for (let i: number = 0; i < ordered.length; i++) {
       const c: Cand = ordered[i];
-      labels.push({ id: c.id, label: c.value ?? '' });
+      let id: number = c.id;
+      // Mozc can expose negative IDs for alternate forms. Reserve the IDs
+      // used by emoji in this list and translate a collision on dispatch.
+      if (id < 0 && id >= -emojiLabels.length) {
+        while (ordered.some((native: Cand): boolean => native.id === spareId)) { spareId--; }
+        id = spareId--;
+        this.remappedMozcIds.set(id, c.id);
+      }
+      labels.push({ id: id, label: c.value ?? '' });
     }
-    this.lastIds = [];
-    for (let i: number = 0; i < ordered.length; i++) {
-      this.lastIds.push(ordered[i].id);
+    // Right after the top candidate: the bar's first row lists candidates in
+    // order, and a wide second candidate can push later ones off screen.
+    const insertionIndex: number = Math.min(1, labels.length);
+    for (let i: number = 0; i < emojiLabels.length; i++) {
+      labels.splice(insertionIndex + i, 0, emojiLabels[i]);
     }
+    this.lastIds = labels.map((c: CandidateLabel): number => c.id);
     if (this.phase === 'converting' && out.focused_id !== undefined) {
       const selected: number = this.lastIds.indexOf(out.focused_id);
       this.selIdx = selected >= 0 ? selected : 0;
@@ -246,7 +271,7 @@ export class MozcEngine implements EnginePort {
       consumed: true, phase: hasPre ? this.phase : 'empty', hasPreedit: hasPre, preeditLen: hasPre ? out.preedit.length : 0,
       caretUtf16: hasPre ? this.caretPosition(out) : 0,
       segCount: hasPre ? (out.segcount > 0 ? out.segcount : 1) : 0,
-      candidateCount: out.ncand, candidateRevision: this.revision, candidates: labels,
+      candidateCount: out.ncand + emojiLabels.length, candidateRevision: this.revision, candidates: labels,
       effects: effects, errorCode: 0, errorRecoverable: true
     };
   }
@@ -263,7 +288,7 @@ export class MozcEngine implements EnginePort {
     romanKey: string): EngineUpdate {
     const previousLabels: CandidateLabel[] = this.lastLabels;
     const previousRevision: number = this.lastCandidateRevision;
-    const update: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, []);
+    const update: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, [], false);
     const caret: number = this.caretPosition(out);
     if (caret !== out.preedit.length) { return update; }
     if (endsWithKana(out.preedit)) {
@@ -514,10 +539,18 @@ export class MozcEngine implements EnginePort {
       restored.deletionLength = out.deletion_length;
       return restored;
     }
-    if (kind === 'reset' || kind === 'cancel') {
+    const candidateId: number = kind === 'select' ? (event as CandidateInputEvent).candidateId : 0;
+    const emoji: CandidateLabel | undefined =
+      kind === 'select' && this.phase === 'composing' && this.lastIds.includes(candidateId) ?
+        this.lastEmojiLabels.find((c: CandidateLabel): boolean => c.id === candidateId) : undefined;
+    if (kind === 'reset' || kind === 'cancel' || emoji !== undefined) {
       try {
-        await api.executeAsync('reset', '', 0);
+        const reset: string = await api.executeAsync('reset', '', 0);
+        if (emoji !== undefined && !parseOut(reset).ok) {
+          return this.errUpdate(sessionId, epoch, seq, true);
+        }
       } catch (e) {
+        if (emoji !== undefined) { return this.errUpdate(sessionId, epoch, seq, true); }
       }
       this.buffer = '';
       this.inputUnits = [];
@@ -532,7 +565,15 @@ export class MozcEngine implements EnginePort {
         this.revision++;
       }
       this.phase = 'empty';
-      return this.emptyUpdate(sessionId, epoch, seq);
+      this.lastLabels = [];
+      this.lastEmojiLabels = [];
+      this.lastCandidateRevision = this.revision;
+      this.remappedMozcIds.clear();
+      const update: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
+      if (emoji !== undefined) {
+        update.effects.push({ effectId: `s${this.revision}`, text: emoji.label, undoable: false });
+      }
+      return update;
     }
     if (kind === 'replaceToggle') {
       const out: ConvOut = await this.replaceToggle(event as ReplaceToggleEvent);
@@ -642,13 +683,15 @@ export class MozcEngine implements EnginePort {
       return this.deferredUpdate(sessionId, epoch, seq, out, kind === 'text' ? unit.charAt(unit.length - 1) : '');
     }
     if (kind === 'deleteCandidate') {
-      const id: number = (event as CandidateInputEvent).candidateId;
-      if (this.phase === 'empty' || !this.lastIds.includes(id)) {
+      const displayedId: number = (event as CandidateInputEvent).candidateId;
+      if (this.phase === 'empty' || !this.lastIds.includes(displayedId)) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }
+      const id: number = this.remappedMozcIds.get(displayedId) ?? displayedId;
       // Mozc clears conversion learning for the segment's top candidate (id 0) whichever id is sent,
       // so only the top candidate or a learned prediction may be deleted without touching another word.
-      const target: Cand | undefined = this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
+      const target: Cand | undefined = this.lastEmojiLabels.some((c: CandidateLabel): boolean => c.id === displayedId) ?
+        undefined : this.lastOut.candidates.find((c: Cand): boolean => c.id === id);
       if (id !== 0 && target?.deletable !== true) {
         const skipped: EngineUpdate = this.errUpdate(sessionId, epoch, seq, true);
         skipped.candidateNotLearned = true;
@@ -761,7 +804,7 @@ export class MozcEngine implements EnginePort {
     // the native state to conversion and loses the partial-suggestion contract.
     const scopedSelection: boolean = kind === 'select' && this.editing.scopesCandidate(this.phase);
     if (kind === 'select' && !scopedSelection) {
-      let id: number = (event as CandidateInputEvent).candidateId;
+      let id: number = candidateId;
       if (id < 0 && this.phase === 'converting' && this.selIdx < this.lastIds.length) {
         // Enter相当：強調中の候補を確定する。
         id = this.lastIds[this.selIdx];
@@ -813,14 +856,14 @@ export class MozcEngine implements EnginePort {
         return this.emptyUpdate(sessionId, epoch, seq);
       }
       const id: number = scopedSelection ?
-        (event as CandidateInputEvent).candidateId : this.lastIds[this.selIdx];
+        candidateId : this.lastIds[this.selIdx];
       if (this.lastIds.indexOf(id) < 0) {
         return this.errUpdate(sessionId, epoch, seq, true);
       }
       let part: ConvOut = new ConvOut();
       part.ok = false;
       try {
-        part = parseOut(await api.executeAsync('submitCandidate', '', id));
+        part = parseOut(await api.executeAsync('submitCandidate', '', this.remappedMozcIds.get(id) ?? id));
       } catch (e) {
         part.ok = false;
       }

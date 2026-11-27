@@ -48,6 +48,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | 対象 | 確認すること |
 |---|---|
 | `input-behavior.test.cjs` | Gboard基準の決定表と採用行の記載 |
+| `emoji-suggestions.test.cjs` | 日本語の読みの完全一致と絵文字候補の上限 |
 | `mozc-engine.test.cjs` / `ime-session.test.cjs` | 変換中のDelete、範囲調整後と部分確定後の読みに戻す動作、候補一覧の取消と復旧の違い、直接英語の強調解除と次のDelete |
 | `grapheme-delete.test.cjs` / `ime-coordinator.test.cjs` / `english-input.test.cjs` | 複数コードポイントの書記素幅、国旗の末尾からの組み合わせ、本文と英語未確定の削除、読み取り失敗・入力先変更・選択範囲 |
 | `composition-position.test.cjs` / `composition-preview.test.cjs` | 部分確定の起点とカーソルが不明な場合の表示更新の省略 |
