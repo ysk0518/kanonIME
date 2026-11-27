@@ -6,7 +6,8 @@
  * - ログは符号・件数・長さのみ。本文・候補は扱わない（REQ-07）。
  */
 
-import { CandidateLabel, EditorPort, ImeCoordinator, ImeSnapshot, OpResult } from './ImeCoordinator';
+import { CandidateLabel, EditorPort, ImeCoordinator, ImeSnapshot, OpResult, TextReadResult } from './ImeCoordinator';
+import { DOUBLE_SPACE_MS, doubleSpacePeriod, sentenceStart } from './SentenceInput';
 import { EditorDirection, EditorEdge, InputEvent, KanaModifier, UiEvent, UiEventKind } from './InputEventTypes';
 import { MozcEngine } from './MozcEngine';
 import { CompositionPreview, CompositionPreviewPort } from './CompositionPreview';
@@ -93,6 +94,9 @@ export class ImeSession {
   private toggleRun: ToggleRun | undefined = undefined;
   private toggleEditing: boolean = false;
   private toggleSelection: ToggleSelection | undefined = undefined;
+  /** When the last English space was typed, for a double-space period; -1 after any other input. */
+  private lastEnglishSpace: number = -1;
+  private sentenceRead: number = 0;
   private now: () => number;
 
   constructor(ports: ImeSessionPorts, now: () => number = (): number => Date.now()) {
@@ -276,6 +280,7 @@ export class ImeSession {
     this.cursorSync.notify(epoch);
     this.editorSync.selectionChanged(epoch, begin, end);
     this.scheduleEditorSync();
+    if (!this.toggleEditing) { this.refreshSentenceStart(); }
   }
 
   textChanged(empty: boolean): void {
@@ -287,6 +292,7 @@ export class ImeSession {
     const epoch: number = this.ports.editor.getEpoch();
     this.editorSync.visibilityChanged(epoch);
     this.scheduleEditorSync();
+    this.refreshSentenceStart();
   }
 
   private scheduleEditorSync(): void {
@@ -406,6 +412,7 @@ export class ImeSession {
       }
       const result: ImeSnapshot = await this.routeRequest(request, requestEpoch);
       this.suggestWhenIdle();
+      if (request.kind !== 'suggest') { this.refreshSentenceStart(); }
       return result;
     } catch (e) {
       this.toggleRun = undefined;
@@ -453,6 +460,7 @@ export class ImeSession {
   }
 
   private async routeRequest(request: ImeRequest, requestEpoch: number): Promise<ImeSnapshot> {
+    if (request.kind !== 'convert') { this.lastEnglishSpace = -1; }
     if (request.kind === 'deleteLearnedCandidate') {
       // Candidate IDs are reused. A menu can only delete the original candidate object.
       if (this.mode !== 'JP' || !this.coord.getCandidateView().includes(request.candidate)) {
@@ -510,7 +518,8 @@ export class ImeSession {
     }
     if (request.kind === 'undoEnglish') { return this.undoEnglish(requestEpoch); }
     const kind: UiEventKind = request.kind;
-    if (this.isDirectEnglish() && kind === 'convert') { return this.convertDirectEnglish(requestEpoch); }
+    if (kind === 'convert' && this.mode === 'EN') { return this.englishSpace(request, requestEpoch); }
+    this.lastEnglishSpace = -1;
     if (kind === 'paste' && !await this.localRequests.beforePaste(requestEpoch)) {
       return this.coord.getSnapshot();
     }
@@ -595,6 +604,57 @@ export class ImeSession {
     const snapshot: ImeSnapshot = this.coord.getSnapshot();
     if (result !== 'stale') { this.publish(snapshot, requestEpoch); }
     return snapshot;
+  }
+
+  private async englishSpace(request: UiEvent, requestEpoch: number): Promise<ImeSnapshot> {
+    const previous: number = this.lastEnglishSpace;
+    this.lastEnglishSpace = -1;
+    if (previous >= 0 && this.now() - previous <= DOUBLE_SPACE_MS && await this.periodForDoubleSpace(requestEpoch)) {
+      const snapshot: ImeSnapshot = this.coord.getSnapshot();
+      this.publish(snapshot, requestEpoch);
+      return snapshot;
+    }
+    const result: ImeSnapshot = this.isDirectEnglish() ? await this.convertDirectEnglish(requestEpoch) :
+      await this.dispatchNormal(request, requestEpoch);
+    if (requestEpoch === this.ports.editor.getEpoch()) { this.lastEnglishSpace = this.now(); }
+    return result;
+  }
+
+  // Samsung Keyboard: a second space right after a word's space ends the sentence ("word. ").
+  private async periodForDoubleSpace(epoch: number): Promise<boolean> {
+    const state: string = this.coord.getSnapshot().state;
+    if ((state !== 'EN_EMPTY' && state !== 'DIRECT_EN') || this.ports.editor.hasSelection()) { return false; }
+    let before: TextReadResult;
+    try { before = await this.ports.editor.queryBeforeResult(2); } catch (error) { return false; }
+    if (epoch !== this.ports.editor.getEpoch() || !before.ok || before.value === undefined ||
+      !doubleSpacePeriod(before.value)) { return false; }
+    // HarmonyOS deleteForward removes text before the caret.
+    const removed: OpResult = await this.ports.editor.deleteForward(1);
+    if (!removed.ok || epoch !== this.ports.editor.getEpoch()) { return false; }
+    const inserted: OpResult = await this.ports.editor.insert('. ');
+    // Put the space back when the period cannot be written.
+    if (!inserted.ok && epoch === this.ports.editor.getEpoch()) { await this.ports.editor.insert(' '); }
+    this.ports.prediction.clear();
+    return true;
+  }
+
+  // The shift keys show one capital while the next English letter starts a
+  // sentence. The read runs beside the input queue; only the newest one applies.
+  private refreshSentenceStart(): void {
+    const read: number = ++this.sentenceRead;
+    const epoch: number = this.ports.editor.getEpoch();
+    const state: string = this.coord.getSnapshot().state;
+    if (this.mode !== 'EN' || !this.ports.bindings.autoCapitalAllowed() || this.ports.editor.hasSelection() ||
+      (state !== 'EN_EMPTY' && state !== 'DIRECT_EN')) {
+      this.ports.bindings.setSentenceStart(false);
+      return;
+    }
+    this.ports.editor.queryBeforeResult(8).then((before: TextReadResult): void => {
+      if (read !== this.sentenceRead || epoch !== this.ports.editor.getEpoch()) { return; }
+      this.ports.bindings.setSentenceStart(before.ok && before.value !== undefined && sentenceStart(before.value));
+    }).catch((): void => {
+      if (read === this.sentenceRead) { this.ports.bindings.setSentenceStart(false); }
+    });
   }
 
   private async convertDirectEnglish(requestEpoch: number): Promise<ImeSnapshot> {

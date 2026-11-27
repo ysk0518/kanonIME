@@ -47,7 +47,23 @@ export struct KeyMenu {
   @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
+  // The session reports a sentence start in English (Samsung Keyboard's automatic capitals).
+  @StorageLink('kanonSentenceStart') @Watch('applySentenceStart') sentenceStart: boolean = false;
+  private autoShift: boolean = false;
   private keyList: keySourceListType[] = keySourceListData;
+
+  aboutToAppear(): void { this.applySentenceStart(); }
+
+  // Shift once for a sentence start; undo only a shift this set itself.
+  applySentenceStart(): void {
+    if (this.layout === 'en_qwerty' && this.sentenceStart && this.keyState === KeyState.LOWER_CASE) {
+      this.keyState = KeyState.ONCE_UPPER_CASE;
+      this.autoShift = true;
+    } else if (!this.sentenceStart && this.autoShift) {
+      if (this.keyState === KeyState.ONCE_UPPER_CASE) { this.keyState = KeyState.LOWER_CASE; }
+      this.autoShift = false;
+    }
+  }
 
   private comma(): string {
     return isUrlInputPattern(this.inputPattern) ? '/' : this.layout === 'jp_qwerty' ? '、' : ',';
@@ -101,6 +117,7 @@ export struct KeyMenu {
         .borderRadius(4)
         .onClick(() => {
           keyboardHaptics.key();
+          this.autoShift = false;
           if (this.keyState === KeyState.LOWER_CASE) {
             this.keyState = KeyState.ONCE_UPPER_CASE;
           } else if (this.keyState === KeyState.ONCE_UPPER_CASE) {
