@@ -9,6 +9,16 @@ const mutations = {
     before: "    this.candidateItems = [];\n    this.candidateCount = 0;\n  }\n\n  private async applyUpdate(",
     after: "  }\n\n  private async applyUpdate("
   },
+  periodWithoutWord: {
+    file: 'kanon/SentenceInput.ets',
+    before: 'return WORD_END.test(before.slice(0, -1));',
+    after: 'return true;'
+  },
+  noSentenceStart: {
+    file: 'kanon/SentenceInput.ets',
+    before: 'return /[.!?]',
+    after: 'return false && /[.!?]'
+  },
   suggestRomanOnlyWord: {
     file: 'kanon/MozcEngine.ets',
     before: 'endsWithRomanKey(out.preedit, romanKey) && hasKana(out.preedit)',

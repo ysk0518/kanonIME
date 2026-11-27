@@ -1265,6 +1265,62 @@ test('P49: candidates are fetched once no newer key is queued, never between que
   r.bridge.assertDone();
 });
 
+async function typeEnglish(r, text) {
+  for (const ch of text) { await r.session.keyText(ch); }
+}
+
+const settle = () => new Promise(resolve => setImmediate(resolve));
+
+test('P52: two quick spaces after an English word write a period and one space', async () => {
+  const r = rig();
+  await typeEnglish(r, 'xqz');
+  await r.session.keySpace();
+  r.advance(300);
+  await r.session.keySpace();
+  assert.equal(r.editor.text, 'xqz. ');
+  // A third space is an ordinary space, not another period.
+  r.advance(300);
+  await r.session.keySpace();
+  assert.equal(r.editor.text, 'xqz.  ');
+});
+
+test('P52: slow or interrupted spaces stay spaces', async () => {
+  const r = rig();
+  await typeEnglish(r, 'xqz');
+  await r.session.keySpace();
+  r.advance(1500);
+  await r.session.keySpace();
+  assert.equal(r.editor.text, 'xqz  ');
+  const s = rig();
+  await typeEnglish(s, 'xqz');
+  await s.session.keySpace();
+  await s.session.keyDelete();
+  await typeEnglish(s, ' ');
+  await s.session.keySpace();
+  assert.equal(s.editor.text, 'xqz  ');
+});
+
+test('P52: the shift keys follow sentence starts in English text fields', async () => {
+  const r = rig();
+  await r.session.keySpace();
+  await r.session.keyDelete();
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), true);
+  await typeEnglish(r, 'xqz');
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), false);
+  await r.session.keySpace();
+  r.advance(100);
+  await r.session.keySpace();
+  await settle();
+  assert.equal(r.editor.text, 'xqz. ');
+  assert.equal(r.store.get('kanonSentenceStart'), true);
+  r.store.set('inputPattern', 6);
+  await r.session.keyDelete();
+  await settle();
+  assert.equal(r.store.get('kanonSentenceStart'), false);
+});
+
 test('P54: deleting committed text drops the next-word predictions', async () => {
   const r = rig({ mode: 'JP', steps: [
     { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },

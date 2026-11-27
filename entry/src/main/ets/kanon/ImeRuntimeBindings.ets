@@ -1,8 +1,9 @@
 import {
   INPUT_PATTERN, KANON_CANDIDATES_EXPANDED, KANON_CURSOR, KANON_LAST_LAYOUT, KANON_LAYOUT,
-  KANON_LAYOUT_ORDER, KANON_MODE
+  KANON_LAYOUT_ORDER, KANON_MODE, KANON_SENTENCE_START
 } from '../common/AppStorageKeys';
 import { DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfigValues';
+import { autoCapitalField } from './SentenceInput';
 
 export interface ImeInputPatterns {
   normal: number;
@@ -48,6 +49,12 @@ export class ImeRuntimeBindings {
     const pattern: number = this.port.readNumber(INPUT_PATTERN) ?? this.normal;
     return pattern !== this.password && pattern !== this.numberPassword && pattern !== this.newPassword;
   }
+  /** English fields that hold sentences, where the first letter of a sentence is capitalized. */
+  autoCapitalAllowed(): boolean {
+    return autoCapitalField(this.port.readNumber(INPUT_PATTERN) ?? this.normal);
+  }
+  /** The shift keys show one capital while the next letter starts a sentence. */
+  setSentenceStart(value: boolean): void { this.port.boolean(KANON_SENTENCE_START, value); }
   applyLayout(layout: string): void {
     this.port.string(KANON_LAYOUT, layout);
     this.port.string(KANON_LAST_LAYOUT, layout);
