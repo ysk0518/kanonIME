@@ -127,6 +127,8 @@ export class MozcEngine implements EnginePort {
   /** The pending roman letter "suggest" deletes and retypes; empty to move the cursor. */
   private retypeKey: string = '';
   private lastLabels: CandidateLabel[] = [];
+  /** The shown candidates predict the next word after a commit (Mozc zero query suggestion). */
+  private nextWord: boolean = false;
   private lastCandidateRevision: number = 0;
   private revision: number = 0;
   private lastIds: number[] = [];
@@ -306,6 +308,38 @@ export class MozcEngine implements EnginePort {
     return update;
   }
 
+  // After a commit Mozc predicts the next word (zero query suggestion). Show
+  // those candidates with an empty composition; a tap commits one of them.
+  private committedUpdate(sessionId: string, epoch: number, seq: number, out: ConvOut,
+    effects: CommitEffect[]): EngineUpdate {
+    if (!out.ok || out.preedit_len > 0 || out.candidates.length === 0) {
+      this.lastIds = [];
+      this.lastLabels = [];
+      const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
+      u.effects = effects;
+      return u;
+    }
+    const u: EngineUpdate = this.fromOut(sessionId, epoch, seq, out, effects);
+    this.nextWord = true;
+    return u;
+  }
+
+  private async commitNextWord(sessionId: string, epoch: number, seq: number, id: number): Promise<EngineUpdate> {
+    if (this.lastIds.indexOf(id) < 0) { return this.errUpdate(sessionId, epoch, seq, true); }
+    let out: ConvOut = new ConvOut();
+    out.ok = false;
+    try { out = parseOut(await this.bridge.executeAsync('submitCandidate', '', id)); } catch (e) { out.ok = false; }
+    this.revision++;
+    if (!out.ok || out.result.length === 0) {
+      // Clear the predictions instead of keeping a list Mozc no longer holds.
+      this.lastIds = [];
+      this.lastLabels = [];
+      return this.emptyUpdate(sessionId, epoch, seq);
+    }
+    const effects: CommitEffect[] = [{ effectId: `n${this.revision}`, text: out.result, undoable: true }];
+    return this.committedUpdate(sessionId, epoch, seq, out, effects);
+  }
+
   private async suggest(sessionId: string, epoch: number, seq: number): Promise<EngineUpdate> {
     if (!this.needsSuggestion()) { return this.currentUpdate(sessionId, epoch, seq); }
     this.suggestPending = false;
@@ -471,6 +505,17 @@ export class MozcEngine implements EnginePort {
     const api: MozcBridgePort = this.bridge;
     const kind: string = event.kind;
     if (kind === 'suggest') { return await this.suggest(sessionId, epoch, seq); }
+    const nextWord: boolean = this.nextWord && this.phase === 'empty';
+    this.nextWord = false;
+    if (nextWord && kind === 'select') {
+      return await this.commitNextWord(sessionId, epoch, seq, (event as CandidateInputEvent).candidateId);
+    }
+    if (nextWord) {
+      this.lastIds = [];
+      this.lastLabels = [];
+    }
+    // Without a composition only next-word predictions can be selected.
+    if (kind === 'select' && this.phase === 'empty') { return this.errUpdate(sessionId, epoch, seq, true); }
     // Any other operation replaces the composition the deferred candidates were for.
     this.suggestPending = false;
     this.retypeKey = '';
@@ -795,12 +840,12 @@ export class MozcEngine implements EnginePort {
       if (done.ok && done.result.length > 0) {
         effects.push({ effectId: `s${this.revision}`, text: done.result, undoable: true });
       }
-      const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
-      u.effects = effects;
       if (effects.length === 0) {
-        u.errorCode = 2;
+        const failed: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
+        failed.errorCode = 2;
+        return failed;
       }
-      return u;
+      return this.committedUpdate(sessionId, epoch, seq, done, effects);
     }
     if (kind === 'partial' || scopedSelection || (kind === 'enter' && this.phase === 'converting')) {
       // Enter during conversion shares the segment-commit path. Submit is
@@ -850,6 +895,7 @@ export class MozcEngine implements EnginePort {
       if (part.result.length > 0) {
         effects.push({ effectId: `p${this.revision}`, text: part.result, undoable: true });
       }
+      if (!hasRemaining) { return this.committedUpdate(sessionId, epoch, seq, remaining, effects); }
       return this.fromOut(sessionId, epoch, seq, remaining, effects);
     }
     if (kind === 'submit' || kind === 'enter') {
@@ -874,10 +920,12 @@ export class MozcEngine implements EnginePort {
         this.lastPreedit = '';
         this.phase = 'empty';
         this.editing.reset();
-        if (!done.ok || effects.length === 0 || !effects[0].undoable) {
+        const kept: boolean = done.ok && effects.length > 0 && effects[0].undoable === true;
+        if (!kept) {
           try { await api.executeAsync('reset', '', 0); } catch (error) { }
         }
         this.revision++;
+        if (kept) { return this.committedUpdate(sessionId, epoch, seq, done, effects); }
         const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
         u.effects = effects;
         return u;
@@ -910,9 +958,7 @@ export class MozcEngine implements EnginePort {
       if (done.ok && done.result.length > 0) {
         effects.push({ effectId: `c${this.revision}`, text: done.result, undoable: true });
       }
-      const u: EngineUpdate = this.emptyUpdate(sessionId, epoch, seq);
-      u.effects = effects;
-      return u;
+      return this.committedUpdate(sessionId, epoch, seq, done, effects);
     }
     return this.emptyUpdate(sessionId, epoch, seq);
   }

@@ -68,6 +68,8 @@ bool ConfigureKeyboardRequest() {
   // restrict realtime conversion to one result, even for an ambiguous kana.
   auto* request = input.mutable_request();
   request->set_mixed_conversion(true);
+  // Predict the next word after a commit (Mozc computes it inside the commit).
+  request->set_zero_query_suggestion(true);
   request->set_candidate_page_size(20);
   request->set_is_a11y_talkback_enabled(true);
   request->set_crossing_edge_behavior(mozc::commands::Request::DO_NOTHING);

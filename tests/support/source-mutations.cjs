@@ -28,6 +28,16 @@ const mutations = {
     before: 'if (emoji !== undefined && !parseOut(reset).ok) {',
     after: 'if (false) {'
   },
+  forgetNextWord: {
+    file: 'kanon/MozcEngine.ets',
+    before: "    this.nextWord = true;\n",
+    after: ''
+  },
+  keepNextWordAfterDelete: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "    this.candidateItems = [];\n    this.candidateCount = 0;\n  }\n\n  private async applyUpdate(",
+    after: "  }\n\n  private async applyUpdate("
+  },
   periodWithoutWord: {
     file: 'kanon/SentenceInput.ets',
     before: 'return WORD_END.test(before.slice(0, -1));',
