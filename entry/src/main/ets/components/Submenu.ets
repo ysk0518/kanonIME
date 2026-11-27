@@ -43,8 +43,9 @@ export struct Submenu {
       }
       .width(52).height(52).borderRadius(26)
       .backgroundColor($r('app.color.key_item_normal'))
-      Text(label).fontColor($r('app.color.text_normal')).fontSize(13)
-        .maxLines(2).textAlign(TextAlign.Center).textOverflow({ overflow: TextOverflow.Ellipsis })
+      Text(label).fontColor($r('app.color.text_normal')).maxFontSize(13).minFontSize(9)
+        .maxLines(1).heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
+        .textAlign(TextAlign.Center).width('100%')
     }
     .width('100%').padding({ top: 12, bottom: 4 })
     .alignItems(HorizontalAlign.Center)

@@ -5,6 +5,7 @@ import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { SymbolToggleItem } from './SymbolToggleItem';
 import { EmojiToggleItem } from './EmojiToggleItem';
 import { DEFAULT_TOOLBAR_HEIGHT } from '../common/KeyboardLayout';
+import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from '../common/ShortcutConfig';
 
 @Component
 export struct KeyboardToolbar {
@@ -15,13 +16,15 @@ export struct KeyboardToolbar {
   @StorageLink('kanonEnglishUndo') englishUndo: boolean = false;
   @StorageLink('kanonLayout') layout: string = 'jp_flick';
   @Consume menuType: number;
+  @StorageLink('kanonShortcutOrder') shortcutConfig: string = DEFAULT_SHORTCUT_ORDER;
 
   build() {
     Row() {
       // Samsung Keyboard order: emoji, symbols, shortcuts, more, then hide.
-      EmojiToggleItem({ buttonHeight: this.toolbarHeight })
-      SymbolToggleItem({ buttonHeight: this.toolbarHeight })
-      KeyboardShortcuts().layoutWeight(1)
+      // Every button gets an equal cell, so the icons sit evenly apart.
+      Column() { EmojiToggleItem({ buttonHeight: this.toolbarHeight }) }.layoutWeight(1)
+      Column() { SymbolToggleItem({ buttonHeight: this.toolbarHeight }) }.layoutWeight(1)
+      KeyboardShortcuts().layoutWeight(Math.max(1, shortcutOrder(this.shortcutConfig).length))
       if (this.submenuType === SubMenuType.NORMAL && this.needsRecovery) {
         Column() {
         Text('再開').fontSize(13).fontColor($r('app.color.text_error')).width('100%').height(this.toolbarHeight)
@@ -42,7 +45,7 @@ export struct KeyboardToolbar {
         }.width(32).height(32).borderRadius(16)
           .backgroundColor(this.submenuType === SubMenuType.NORMAL ? Color.Transparent : $r('app.color.candidate_selected'))
       }
-      .width(40).height(this.toolbarHeight)
+      .layoutWeight(1).height(this.toolbarHeight)
       .backgroundColor(Color.Transparent)
       .onClick(() => {
         AppStorage.setOrCreate('kanonCandidatesExpanded', false);
@@ -53,7 +56,7 @@ export struct KeyboardToolbar {
       Stack() {
         Image($rawfile('down.svg')).width(20).height(20).fillColor($r('app.color.key_text'))
       }
-      .width(40).height(this.toolbarHeight)
+      .layoutWeight(1).height(this.toolbarHeight)
       .onClick(() => { this.submenuType = SubMenuType.NORMAL; InputHandler.getInstance().hideKeyboardSelf(); })
       .accessibilityText('キーボードを閉じる').id('kikaInputDown')
     }
