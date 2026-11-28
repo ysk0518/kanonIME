@@ -14,6 +14,141 @@ const mutations = {
     before: '    urlFieldKey: defaults.urlFieldKey,\n',
     after: ''
   },
+  gamingLightingStopsAtLastAnchor: {
+    file: 'common/GamingLightingModel.ets',
+    before: 'anchors[(index + 1) % anchors.length]',
+    after: 'anchors[Math.min(index + 1, anchors.length - 1)]'
+  },
+  gamingSolidIgnoresPhase: {
+    file: 'common/GamingLightingModel.ets',
+    before: '[solid, scaleRgb(solid, 0.7)]',
+    after: '[solid, solid]'
+  },
+  gamingInvalidSolidDefaultsToWhite: {
+    file: 'common/GamingLightingModel.ets',
+    before: '? value : DEFAULT_GAMING_SOLID_COLOR',
+    after: '? value : 0xffffff'
+  },
+  gamingResetKeepsPalette: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'gamingPalette: defaults.gamingPalette, ',
+    after: ''
+  },
+  gamingFeverUsesSelectedPalette: {
+    file: 'common/GamingLightingModel.ets',
+    before: 'this.phaseRgb(offset, dark, pressed, flow)',
+    after: 'this.phaseRgb(offset, dark, pressed, true)'
+  },
+  gamingLightingEnabledDuringFever: {
+    file: 'common/GamingEffectModel.ets',
+    before: "return effect === 'flow' || effect === 'wave' || effect === 'ripple';",
+    after: "return effect !== 'off';"
+  },
+  pachinkoReachBeforeJackpot: {
+    file: 'common/PachinkoModel.ets',
+    before: '[PachinkoResult.Jackpot, PachinkoResult.Reach, PachinkoResult.Miss]',
+    after: '[PachinkoResult.Reach, PachinkoResult.Reach, PachinkoResult.Miss]'
+  },
+  pachinkoExtraHold: {
+    file: 'common/PachinkoModel.ets',
+    before: 'holds.length >= PACHINKO_HOLD_LIMIT',
+    after: 'holds.length > PACHINKO_HOLD_LIMIT'
+  },
+  pachinkoWrongColor: {
+    file: 'common/PachinkoModel.ets',
+    before: '[25, 15, 15, 25, 15, 5]',
+    after: '[25, 15, 15, 26, 14, 5]'
+  },
+  pachinkoEarlyReel: {
+    file: 'common/PachinkoModel.ets',
+    before: 'PACHINKO_IDLE_MS: number = 800',
+    after: 'PACHINKO_IDLE_MS: number = 799'
+  },
+  pachinkoNewestFirst: {
+    file: 'common/PachinkoModel.ets',
+    before: 'hold: holds[0]',
+    after: 'hold: holds[holds.length - 1]'
+  },
+  pachinkoMatchOnMiss: {
+    file: 'common/PachinkoModel.ets',
+    before: 'if (right >= left) { right++; }',
+    after: ''
+  },
+  pachinkoRushResetsToSeven: {
+    file: 'common/PachinkoModel.ets',
+    before: 'remaining > 0 || digit % 2 === 1)) { return PACHINKO_RUSH_LENGTH; }',
+    after: 'remaining > 0 || digit % 2 === 1)) { return remaining > 0 ? 7 : PACHINKO_RUSH_LENGTH; }'
+  },
+  pachinkoEvenStartsRush: {
+    file: 'common/PachinkoModel.ets',
+    before: '(remaining > 0 || digit % 2 === 1)',
+    after: '(remaining >= 0 || digit % 2 === 1)'
+  },
+  pachinkoMissIgnoresThreeHolds: {
+    file: 'common/PachinkoModel.ets',
+    before: 'holdCount >= 3 ? 600',
+    after: 'holdCount > 3 ? 600'
+  },
+  pachinkoSkipsHoldReveal: {
+    file: 'common/PachinkoModel.ets',
+    before: 'if (hold.displayColor !== hold.trueColor)',
+    after: 'if (hold.displayColor === hold.trueColor)'
+  },
+  pachinkoNoNextDigitWrap: {
+    file: 'common/PachinkoModel.ets',
+    before: 'return (digit + (random() < 0.5 ? 7 : 9)) % 9 + 1;',
+    after: 'return random() < 0.5 ? (digit + 7) % 9 + 1 : Math.min(9, digit + 1);'
+  },
+  pachinkoSkipsThirdPseudo: {
+    file: 'common/PachinkoModel.ets',
+    before: 'count <= repeats; count++',
+    after: 'count <= Math.min(repeats, 1); count++'
+  },
+  pachinkoCommitSignalMissing: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: 'if (ef.text.length > 0) { imeCommitNotifications.emit(); }',
+    after: ''
+  },
+  gamingWaveNoRadiusLimit: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'if (distance >= frame.maxRadius) { continue; }',
+    after: ''
+  },
+  gamingWaveDropsStrongerPress: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'if (intensity > sample.intensity)',
+    after: 'if (intensity > 0)'
+  },
+  gamingSpeedIgnoresLevel: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'FLOW_PERIODS_MS[level - MIN_GAMING_SPEED]',
+    after: 'FLOW_PERIODS_MS[DEFAULT_GAMING_SPEED - MIN_GAMING_SPEED]'
+  },
+  gamingResetKeepsSpeed: {
+    file: 'common/SettingsMenuModel.ets',
+    before: ', gamingSpeed: defaults.gamingSpeed',
+    after: ''
+  },
+  gamingTapGap: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'now - this.lastTap >= 2000',
+    after: 'now - this.lastTap > 2000'
+  },
+  gamingResetLocks: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'gamingEffect: defaults.gamingEffect',
+    after: 'gamingEffect: defaults.gamingEffect, gamingUnlocked: false'
+  },
+  gamingMenuWithoutUnlock: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'group.styleHeading && gamingUnlocked',
+    after: 'group.styleHeading'
+  },
+  gamingRippleEvictsNewest: {
+    file: 'common/GamingEffectModel.ets',
+    before: 'this.rings.shift();',
+    after: 'this.rings.pop();'
+  },
   keepNextWordOnCaretMove: {
     file: 'kanon/ImeCoordinator.ets',
     before: "        this.dropNextWordCandidates();\n        return true;",

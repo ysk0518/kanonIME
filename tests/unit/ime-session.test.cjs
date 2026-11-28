@@ -1412,6 +1412,22 @@ test('P54: deleting committed text drops the next-word predictions', async () =>
   r.bridge.assertDone();
 });
 
+test('P58c: direct English signals a commit only at a word boundary, not per letter', async () => {
+  const { imeCommitNotifications } = require('../../entry/src/main/ets/common/PachinkoModel.ets');
+  let commits = 0;
+  const listener = () => { commits++; };
+  imeCommitNotifications.listen(listener);
+  try {
+    const r = rig({ supported: false });
+    for (const ch of 'hi') { await r.session.keyText(ch); }
+    assert.equal(commits, 0);
+    await r.session.keyText(' ');
+    assert.equal(commits, 1);
+  } finally {
+    imeCommitNotifications.unlisten(listener);
+  }
+});
+
 test('P59: moving the caret away from a commit drops the next-word predictions', async () => {
   const r = rig({ mode: 'JP', steps: [
     { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },

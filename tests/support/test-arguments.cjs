@@ -3,7 +3,7 @@ const { join } = require('node:path');
 
 function selectTestFiles(files, group) {
   if (group === undefined) { return files.map(file => file.filename); }
-  if (!/^[A-Z]\d+$/.test(group)) { throw new Error(`Invalid test group: ${group}`); }
+  if (!/^[A-Z]\d+[a-z]?$/.test(group)) { throw new Error(`Invalid test group: ${group}`); }
   // Keep every file containing the same literal prefix used by the name filter.
   const selected = files.filter(file => file.source.includes(`${group}:`))
     .map(file => file.filename);

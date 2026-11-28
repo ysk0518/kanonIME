@@ -4,6 +4,8 @@ import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 import { SettingsHeader } from './SettingsHeader';
 import { DebugConsole } from './DebugConsole';
+import { debugLog } from '../common/DebugLog';
+import { PachinkoReplay } from '../common/PachinkoModel';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { applySettingsPatch, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
@@ -18,7 +20,53 @@ import { HIDDEN_URL_FIELD_KEY, URL_FIELD_KEY_OPTIONS } from '../common/UrlFieldK
 import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, SettingsMenuGroup,
   SettingsNumber, SettingsToggle, SettingsReset, settingsLanguages, settingsLanguageSummary, settingsThemeSummary,
   settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
-  settingsShortcutPatch, settingsReset } from '../common/SettingsMenuModel';
+  settingsShortcutPatch, settingsReset, settingsMenuRows, settingsGamingSummary } from '../common/SettingsMenuModel';
+import { GAMING_EFFECTS, MAX_GAMING_SPEED, MIN_GAMING_SPEED, GamingEffect, GamingTapResult,
+  GamingUnlockTaps, gamingSpeedEnabled } from '../common/GamingEffectModel';
+import { GAMING_PALETTES, GAMING_SOLID_COLORS, GamingPalette, gamingLightingAnchors } from '../common/GamingLightingModel';
+
+function gamingEffectTitle(effect: GamingEffect): Resource {
+  switch (effect) {
+    case 'flow': return $r('app.string.settings_gaming_flow');
+    case 'wave': return $r('app.string.settings_gaming_wave');
+    case 'ripple': return $r('app.string.settings_gaming_ripple');
+    case 'pachinko': return $r('app.string.settings_gaming_pachinko');
+    default: return $r('app.string.settings_gaming_off');
+  }
+}
+
+function gamingPaletteTitle(palette: GamingPalette): Resource {
+  switch (palette) {
+    case 'flame': return $r('app.string.settings_gaming_palette_flame');
+    case 'ice': return $r('app.string.settings_gaming_palette_ice');
+    case 'neon': return $r('app.string.settings_gaming_palette_neon');
+    case 'sakura': return $r('app.string.settings_gaming_palette_sakura');
+    case 'solid': return $r('app.string.settings_gaming_palette_solid');
+    default: return $r('app.string.settings_gaming_palette_rainbow');
+  }
+}
+
+function gamingSolidColorTitle(color: number): Resource {
+  switch (color) {
+    case 0xff3b30: return $r('app.string.settings_gaming_color_red');
+    case 0xff9500: return $r('app.string.settings_gaming_color_orange');
+    case 0xffd60a: return $r('app.string.settings_gaming_color_yellow');
+    case 0x34c759: return $r('app.string.settings_gaming_color_green');
+    case 0x0a84ff: return $r('app.string.settings_gaming_color_blue');
+    case 0xbf5af2: return $r('app.string.settings_gaming_color_purple');
+    case 0xffffff: return $r('app.string.settings_gaming_color_white');
+    default: return $r('app.string.settings_gaming_color_cyan');
+  }
+}
+
+function gamingPaletteSwatch(palette: GamingPalette, solid: number): LinearGradientOptions {
+  const anchors: number[] = gamingLightingAnchors(palette, solid, true);
+  const gradient: LinearGradientOptions = { direction: GradientDirection.Right, colors: [] };
+  for (let index: number = 0; index < anchors.length; index++) {
+    gradient.colors.push([0xff000000 + anchors[index], index / (anchors.length - 1)]);
+  }
+  return gradient;
+}
 
 function pageTitle(page: SettingsPageId): Resource {
   switch (page) {
@@ -31,6 +79,7 @@ function pageTitle(page: SettingsPageId): Resource {
     case SettingsPageId.Toolbar: return $r('app.string.settings_menu_toolbar');
     case SettingsPageId.Feedback: return $r('app.string.settings_menu_feedback');
     case SettingsPageId.About: return $r('app.string.settings_menu_about');
+    case SettingsPageId.Gaming: return $r('app.string.settings_menu_gaming');
   }
 }
 
@@ -46,11 +95,13 @@ export struct KeyboardSettings {
   @State private spacingPreviewQwerty: boolean = false;
   @State private version: string = '';
   @State private hasBackground: boolean = false;
+  private gamingTaps: GamingUnlockTaps = new GamingUnlockTaps();
   @StorageLink('kanonSettingsGeneration') @Watch('settingsChanged') settingsGeneration: number = 0;
   @StorageLink('kanonSettingsSyncState') syncState: string = '';
   @StorageLink('kanonSettingsRequestSyncState') requestState: string = '';
   @StorageLink('kanonBackgroundVersion') @Watch('backgroundChanged') backgroundVersion: number = 0;
   @StorageLink('kanonBackgroundSyncState') backgroundSyncState: string = '';
+  @StorageProp('kanonDebugEnabled') debugEnabled: boolean = false;
   languageOnly: boolean = false;
   onOpen: (page: SettingsPageId) => void = () => {};
   onClose: () => void = () => {};
@@ -87,7 +138,39 @@ export struct KeyboardSettings {
     if (!this.saving) { this.snapshot = readSettings(); }
   }
 
-  private pageChanged(): void { this.activeSlider = undefined; }
+  private pageChanged(): void {
+    this.activeSlider = undefined;
+    this.gamingTaps.reset();
+  }
+
+  private showGamingToast(message: Resource): void {
+    try { this.getUIContext().getPromptAction().showToast({ message: message, duration: 1200 }); } catch (error) {}
+  }
+
+  private requestPachinkoReplay(replay: PachinkoReplay): void {
+    if (debugLog.queuePachinkoReplay(replay)) {
+      this.showGamingToast($r('app.string.settings_gaming_debug_queued'));
+    }
+  }
+
+  private async tapVersion(): Promise<void> {
+    if (this.saving || this.page !== SettingsPageId.About) { return; }
+    switch (this.gamingTaps.tap(Date.now(), this.snapshot.gamingUnlocked)) {
+      case GamingTapResult.ThreeLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 3)); break;
+      case GamingTapResult.TwoLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 2)); break;
+      case GamingTapResult.OneLeft:
+        this.showGamingToast($r('app.string.settings_gaming_taps_left', 1)); break;
+      case GamingTapResult.Unlock:
+        await this.save({ gamingUnlocked: true });
+        if (this.snapshot.gamingUnlocked) { this.showGamingToast($r('app.string.settings_gaming_unlocked')); }
+        break;
+      case GamingTapResult.AlreadyUnlocked:
+        this.showGamingToast($r('app.string.settings_gaming_already_unlocked')); break;
+      default: break;
+    }
+  }
 
   private syncPending(): boolean {
     const state: string = keyboardSettingsSync.isReplica() ? this.requestState : this.syncState;
@@ -171,6 +254,14 @@ export struct KeyboardSettings {
           resources.getStringSync($r('app.string.settings_summary_english').id),
           resources.getStringSync($r('app.string.settings_summary_separator').id));
       }
+      if (page === SettingsPageId.Gaming) {
+        return settingsGamingSummary(this.snapshot.gamingEffect,
+          resources.getStringSync(gamingEffectTitle('off').id),
+          resources.getStringSync(gamingEffectTitle('flow').id),
+          resources.getStringSync(gamingEffectTitle('ripple').id),
+          resources.getStringSync(gamingEffectTitle('wave').id),
+          resources.getStringSync(gamingEffectTitle('pachinko').id));
+      }
       return settingsThemeSummary(this.hasBackground,
         resources.getStringSync($r('app.string.settings_theme_standard').id),
         resources.getStringSync($r('app.string.settings_theme_image').id));
@@ -202,6 +293,7 @@ export struct KeyboardSettings {
       case SettingsNumber.Haptics: return this.snapshot.hapticLevel;
       case SettingsNumber.KeySound: return this.snapshot.keySoundLevel;
       case SettingsNumber.Height: return this.snapshot.heightPercent;
+      case SettingsNumber.GamingSpeed: return this.snapshot.gamingSpeed;
     }
   }
 
@@ -214,14 +306,19 @@ export struct KeyboardSettings {
       case SettingsNumber.KeyGap: return $r('app.string.settings_key_gap', this.sliderValue(setting));
       case SettingsNumber.CandidateFont: return $r('app.string.settings_candidate_font', this.sliderValue(setting));
       case SettingsNumber.Height: return $r('app.string.settings_keyboard_height', `${this.sliderValue(setting)}%`);
+      case SettingsNumber.GamingSpeed: return $r('app.string.settings_gaming_speed', this.sliderValue(setting));
       case SettingsNumber.LongPress:
         return $r('app.string.settings_long_press_seconds', (this.sliderValue(setting) / 1000).toFixed(2));
       default: return $r('app.string.settings_flick_sensitivity');
     }
   }
 
+  private sliderEnabled(setting: SettingsNumber): boolean {
+    return !this.saving && (setting !== SettingsNumber.GamingSpeed || gamingSpeedEnabled(this.snapshot.gamingEffect));
+  }
+
   private sliderChanged(setting: SettingsNumber, value: number, mode: SliderChangeMode): void {
-    if (this.saving) { return; }
+    if (!this.sliderEnabled(setting)) { return; }
     if (mode === SliderChangeMode.End || mode === SliderChangeMode.Click) {
       this.activeSlider = undefined;
       if (value !== this.numberValue(setting)) { this.save(settingsNumberPatch(setting, value)); }
@@ -248,7 +345,8 @@ export struct KeyboardSettings {
         Column({ space: 4 }) {
           Text(row.action === SettingsMenuAction.Reset ? $r('app.string.settings_menu_reset') : pageTitle(row.page))
             .fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
-          if (row.page === SettingsPageId.Languages || row.page === SettingsPageId.Theme) {
+          if (row.page === SettingsPageId.Languages || row.page === SettingsPageId.Theme ||
+            row.page === SettingsPageId.Gaming) {
             Text(this.rowSummary(row.page)).fontSize(14)
               .fontColor($r('app.color.settings_accent')).width('100%')
           }
@@ -288,7 +386,7 @@ export struct KeyboardSettings {
                   $r('app.string.settings_summary_english'))
             }, (setting: SettingsToggle) => setting.toString())
           } else {
-            ForEach(group.rows, (row: SettingsMenuRow, index: number) => {
+            ForEach(settingsMenuRows(group, this.snapshot.gamingUnlocked), (row: SettingsMenuRow, index: number) => {
               if (index > 0) { this.divider() }
               this.navigationRow(row)
             }, (row: SettingsMenuRow) => row.page.toString())
@@ -377,7 +475,7 @@ export struct KeyboardSettings {
     Text(this.sliderTitle(setting)).fontSize(18).fontColor($r('app.color.text_normal')).width('100%')
     Slider({ value: this.sliderValue(setting), min: min, max: max, step: step })
       .sliderInteractionMode(SliderInteraction.SLIDE_AND_CLICK_UP)
-      .selectedColor($r('app.color.settings_accent')).enabled(!this.saving)
+      .selectedColor($r('app.color.settings_accent')).enabled(this.sliderEnabled(setting))
       .onChange((value: number, mode: SliderChangeMode) => this.sliderChanged(setting, value, mode))
       .accessibilityText(this.sliderTitle(setting)).id(id).width('100%')
   }
@@ -493,6 +591,101 @@ export struct KeyboardSettings {
   }
 
   @Builder
+  gamingOptions() {
+    Column() {
+      ForEach(GAMING_EFFECTS, (effect: GamingEffect, index: number) => {
+        if (index > 0) { this.divider() }
+        Button({ type: ButtonType.Normal }) {
+          Row({ space: 12 }) {
+            Text(gamingEffectTitle(effect)).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            Radio({ value: effect, group: 'keyboard_gaming_effect' })
+              .checked(this.snapshot.gamingEffect === effect)
+              .hitTestBehavior(HitTestMode.None).accessibilityLevel('no')
+          }.width('100%').constraintSize({ minHeight: 56 })
+        }.width('100%').padding(0).backgroundColor(Color.Transparent)
+          .enabled(!this.saving).accessibilityChecked(this.snapshot.gamingEffect === effect)
+          .onClick(() => {
+            if (this.snapshot.gamingEffect !== effect) { this.save({ gamingEffect: effect }); }
+          }).id(`keyboard_config_gaming_${effect}`)
+      }, (effect: GamingEffect) => effect)
+      this.divider()
+      Column({ space: 4 }) {
+        this.slider(SettingsNumber.GamingSpeed, MIN_GAMING_SPEED, MAX_GAMING_SPEED, 1, 'keyboard_config_gaming_speed')
+      }.padding({ top: 14, bottom: 16 })
+        .opacity(gamingSpeedEnabled(this.snapshot.gamingEffect) ? 1 : 0.5)
+      this.divider()
+      this.gamingLightingOptions()
+    }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  gamingLightingOptions() {
+    Column() {
+      this.label($r('app.string.settings_gaming_lighting_color'))
+      ForEach(GAMING_PALETTES, (palette: GamingPalette, index: number) => {
+        if (index > 0) { this.divider() }
+        Button({ type: ButtonType.Normal }) {
+          Row({ space: 12 }) {
+            Text(gamingPaletteTitle(palette)).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            Row() {}.width(48).height(16).borderRadius(8).clip(true)
+              .linearGradient(gamingPaletteSwatch(palette, this.snapshot.gamingSolidColor))
+              .accessibilityLevel('no')
+            Radio({ value: palette, group: 'keyboard_gaming_palette' })
+              .checked(this.snapshot.gamingPalette === palette)
+              .hitTestBehavior(HitTestMode.None).accessibilityLevel('no')
+          }.width('100%').constraintSize({ minHeight: 48 })
+        }.width('100%').padding(0).backgroundColor(Color.Transparent)
+          .accessibilityChecked(this.snapshot.gamingPalette === palette)
+          .onClick(() => {
+            if (this.snapshot.gamingPalette !== palette) { this.save({ gamingPalette: palette }); }
+          }).id(`keyboard_config_gaming_palette_${palette}`)
+      }, (palette: GamingPalette) => palette)
+      if (this.snapshot.gamingPalette === 'solid') {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
+          ForEach(GAMING_SOLID_COLORS, (color: number) => {
+            Button({ type: ButtonType.Circle }) {
+              Circle().width(28).height(28).fill(0xff000000 + color)
+                .stroke($r('app.color.text_secondary')).strokeWidth(1).accessibilityLevel('no')
+            }.width(34).height(34).padding(0).margin({ left: 1, right: 1, bottom: 4 })
+              .backgroundColor(Color.Transparent)
+              .border({ width: 2, color: color === this.snapshot.gamingSolidColor ?
+                $r('app.color.text_normal') : Color.Transparent })
+              .accessibilityText(gamingSolidColorTitle(color))
+              .accessibilityChecked(this.snapshot.gamingSolidColor === color)
+              .onClick(() => {
+                if (this.snapshot.gamingSolidColor !== color) { this.save({ gamingSolidColor: color }); }
+              }).id(`keyboard_config_gaming_solid_${color.toString(16)}`)
+          }, (color: number) => color.toString())
+        }.width('100%').padding({ top: 4 })
+      }
+    }.width('100%').alignItems(HorizontalAlign.Start).padding({ top: 14, bottom: 8 })
+      .opacity(gamingSpeedEnabled(this.snapshot.gamingEffect) ? 1 : 0.5)
+      .enabled(this.sliderEnabled(SettingsNumber.GamingSpeed))
+      .id('keyboard_config_gaming_lighting')
+  }
+
+  @Builder
+  pachinkoDebugCard() {
+    Column({ space: 8 }) {
+      this.label($r('app.string.settings_gaming_debug'))
+      Button($r('app.string.settings_gaming_debug_normal')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.Normal)).id('pachinko_debug_normal')
+      Button($r('app.string.settings_gaming_debug_sp')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.SP)).id('pachinko_debug_sp')
+      Button($r('app.string.settings_gaming_debug_spsp')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.SPSP)).id('pachinko_debug_spsp')
+      Button($r('app.string.settings_gaming_debug_full_rotation')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.FullRotation)).id('pachinko_debug_full_rotation')
+      Button($r('app.string.settings_gaming_debug_revival')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.Revival)).id('pachinko_debug_revival')
+      Button($r('app.string.settings_gaming_debug_rush')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.Rush)).id('pachinko_debug_rush')
+      Button($r('app.string.settings_gaming_debug_holds')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.FourHolds)).id('pachinko_debug_holds')
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
   content() {
     if (this.languageOnly || this.page === SettingsPageId.Languages) {
       this.languages()
@@ -513,11 +706,18 @@ export struct KeyboardSettings {
         onChange: (ids: string[]) => this.save(settingsShortcutPatch(ids)) })
     } else if (this.page === SettingsPageId.Feedback) {
       this.feedback()
+    } else if (this.page === SettingsPageId.Gaming && this.snapshot.gamingUnlocked) {
+      this.gamingOptions()
+      if (this.debugEnabled) { this.pachinkoDebugCard() }
     } else if (this.page === SettingsPageId.About) {
       Column({ space: 8 }) {
         this.label($r('app.string.settings_app_name'))
         if (this.version !== '') {
-          this.help($r('app.string.settings_about_version', this.version))
+          Button({ type: ButtonType.Normal }) {
+            Text($r('app.string.settings_about_version', this.version))
+              .fontSize(14).fontColor($r('app.color.text_secondary')).width('100%')
+          }.width('100%').constraintSize({ minHeight: 44 }).padding(0).backgroundColor(Color.Transparent)
+            .onClick(() => { this.tapVersion(); }).id('keyboard_settings_version')
         }
       }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
       DebugConsole().padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))

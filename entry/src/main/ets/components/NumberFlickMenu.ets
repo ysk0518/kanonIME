@@ -11,6 +11,8 @@ import { LayoutItem } from './LayoutItem';
 import { ModeCycleItem } from './ModeCycleItem';
 import { ReturnItem } from './ReturnItem';
 import { spaceKeyLabel } from '../model/KeyboardKeyLabels';
+import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
+import { GamingPoint } from '../common/GamingEffectModel';
 
 @Component
 export struct NumberFlickMenu {
@@ -18,6 +20,11 @@ export struct NumberFlickMenu {
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: InputType = InputType.Normal;
+  @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
+  @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
+  @State private controlCenters: (GamingPoint | undefined)[] =
+    [undefined, undefined, undefined, undefined, undefined, undefined, undefined];
+  @State private pressedControl: number = -1;
 
   private kind(): string {
     return numberFlickKind(this.inputPattern);
@@ -28,8 +35,17 @@ export struct NumberFlickMenu {
     Text(label)
       .fontSize(16).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
+      .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.controlCenters[action], $r('app.color.key_text'))).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
+      .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.controlCenters[action], 6, this.pressedControl === action))
+      .linearGradient(gamingKeyTint(this.gamingTime, this.controlCenters[action]))
+      .onAreaChange((_old: Area, area: Area) => { this.controlCenters[action] = gamingKeyCenter(area); })
+      .onTouch((event: TouchEvent) => {
+        if (this.kind() !== 'general' && action === 5) { return; }
+        if (gamingControlPressed(event, this.gamingPhase, this.pressedControl === action)) {
+          this.pressedControl = action;
+        } else if (this.pressedControl === action) { this.pressedControl = -1; }
+      })
       .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
       .enabled(this.kind() === 'general' || action !== 5)
       .opacity(this.kind() !== 'general' && action === 5 ? 0.4 : 1)

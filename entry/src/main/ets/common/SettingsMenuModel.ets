@@ -3,9 +3,10 @@ import { languageLayouts, layoutLanguage } from './KeyboardConfigValues';
 import { KeyboardSettingsPatch, KeyboardSettingsSnapshot } from './KeyboardSettingsModel';
 import { keyboardHeightPercent, keyboardKeyGap } from './KeyboardLayout';
 import { shortcutOrder } from './ShortcutConfigValues';
+import { gamingEffect } from './GamingEffectModel';
 
 export enum SettingsPageId {
-  Top, Languages, JapaneseInput, Theme, Size, Layout, Toolbar, Feedback, About
+  Top, Languages, JapaneseInput, Theme, Size, Layout, Toolbar, Feedback, About, Gaming
 }
 
 export enum SettingsMenuAction {
@@ -45,6 +46,22 @@ export const SETTINGS_MENU: SettingsMenuGroup[] = [
     { action: SettingsMenuAction.Reset, page: SettingsPageId.Top }, open(SettingsPageId.About)
   ] }
 ];
+
+export function settingsMenuRows(group: SettingsMenuGroup, gamingUnlocked: boolean): SettingsMenuRow[] {
+  if (group.styleHeading && gamingUnlocked) { return group.rows.concat([open(SettingsPageId.Gaming)]); }
+  return group.rows;
+}
+
+export function settingsGamingSummary(effect: string, off: string, flow: string, ripple: string, wave: string = off,
+  pachinko: string = off): string {
+  switch (gamingEffect(effect)) {
+    case 'flow': return flow;
+    case 'wave': return wave;
+    case 'ripple': return ripple;
+    case 'pachinko': return pachinko;
+    default: return off;
+  }
+}
 
 export function settingsLanguages(layoutOrder: string): string[] {
   return languageLayouts(layoutOrder).map((id: string) => layoutLanguage(id));
@@ -91,7 +108,7 @@ export function settingsTogglePatch(setting: SettingsToggle, value: boolean): Ke
 }
 
 export enum SettingsNumber {
-  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height
+  FlickDistance, LongPress, KeyGap, CandidateFont, CandidateRows, Haptics, KeySound, Height, GamingSpeed
 }
 
 export function settingsNumberPatch(setting: SettingsNumber, value: number): KeyboardSettingsPatch {
@@ -104,6 +121,7 @@ export function settingsNumberPatch(setting: SettingsNumber, value: number): Key
     case SettingsNumber.Haptics: return { hapticLevel: value };
     case SettingsNumber.KeySound: return { keySoundLevel: value };
     case SettingsNumber.Height: return { heightPercent: keyboardHeightPercent(value) };
+    case SettingsNumber.GamingSpeed: return { gamingSpeed: value };
   }
 }
 
@@ -125,7 +143,8 @@ export function settingsReset(): SettingsReset {
     doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
     urlFieldKey: defaults.urlFieldKey,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
-    heightPercent: defaults.heightPercent
+    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect, gamingSpeed: defaults.gamingSpeed,
+    gamingPalette: defaults.gamingPalette, gamingSolidColor: defaults.gamingSolidColor
   };
   return { patch: patch, background: new BackgroundConfig() };
 }
