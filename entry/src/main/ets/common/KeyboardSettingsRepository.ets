@@ -3,7 +3,7 @@ import {
   KANON_FLICK_PREVIEW_ENABLED, KANON_HAPTIC_LEVEL, KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEY_GAP, KANON_KEY_SOUND_LEVEL,
   KANON_LAYOUT_ORDER, KANON_LONG_PRESS_MS, KANON_SETTINGS_GENERATION, KANON_SETTINGS_PENDING_COUNT,
   KANON_SETTINGS_REVISION, KANON_SHORTCUT_ORDER, KANON_EMOJI_SUGGESTIONS, KANON_AUTO_CAPITALIZE,
-  KANON_DOUBLE_SPACE_PERIOD, KANON_SENTENCE_START
+  KANON_DOUBLE_SPACE_PERIOD, KANON_SENTENCE_START, KANON_GAMING_UNLOCKED, KANON_GAMING_EFFECT, KANON_GAMING_SPEED
 } from './AppStorageKeys';
 import common from '@ohos.app.ability.common';
 import preferences from '@ohos.data.preferences';
@@ -18,6 +18,7 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS, DE
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_FLICK_ENABLED } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT } from './KeyboardLayout';
+import { gamingLightingColors } from './GamingLightingModel';
 
 const CONFIG_FILE: string = 'kanon_keyboard_config';
 const RECORD_KEY: string = 'settings_record_v1';
@@ -94,11 +95,15 @@ function setValue(key: string, value: string | number | boolean): void {
 
 function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   const snapshot: KeyboardSettingsSnapshot = readSettings();
+  gamingLightingColors.configure(snapshot.gamingPalette, snapshot.gamingSolidColor);
   setValue(KANON_FLICK_ENABLED, snapshot.flickEnabled);
   setValue(KANON_FLICK_DISTANCE, snapshot.flickDistance);
   setValue(KANON_LONG_PRESS_MS, snapshot.longPressMs);
   setValue(KANON_FLICK_PREVIEW_ENABLED, snapshot.keyPreview);
   setValue(KANON_EMOJI_SUGGESTIONS, snapshot.emojiSuggestions);
+  setValue(KANON_GAMING_UNLOCKED, snapshot.gamingUnlocked);
+  setValue(KANON_GAMING_EFFECT, snapshot.gamingEffect);
+  setValue(KANON_GAMING_SPEED, snapshot.gamingSpeed);
   setValue(KANON_AUTO_CAPITALIZE, snapshot.autoCapitalize);
   setValue(KANON_DOUBLE_SPACE_PERIOD, snapshot.doubleSpacePeriod);
   if (!snapshot.autoCapitalize) { setValue(KANON_SENTENCE_START, false); }

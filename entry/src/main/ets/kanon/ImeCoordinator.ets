@@ -10,6 +10,7 @@ import { decodeInputEvent } from './InputEventContract';
 import { CandidateInputEvent, DirectionInputEvent, EditorDirection, InputEvent,
   ModeInputEvent, PartialInputEvent, ReplaceToggleEvent, TextInputEvent, UiEvent, UndoCompletionEvent } from './InputEventTypes';
 import { lastGraphemeLength } from './GraphemeDelete';
+import { imeCommitNotifications } from '../common/PachinkoModel';
 
 export interface OpResult {
   ok: boolean;
@@ -411,6 +412,8 @@ export class ImeCoordinator {
         return;
       }
       const r: OpResult = await this.editor.insert(t);
+      // Direct English writes every letter; only a word boundary ends a word.
+      if (r.ok && epoch === this.editor.getEpoch() && /[\s.,!?;:]/.test(t)) { imeCommitNotifications.emit(); }
       this.lastError = r.ok ? 'ok' : `edit-${r.code}`;
       if (!r.ok && this.needsHoldAfterFailure(r.code)) {
         this.needsRecovery = true;
@@ -578,6 +581,7 @@ export class ImeCoordinator {
         return;
       }
       this.appliedEffects.push(key);
+      if (ef.text.length > 0) { imeCommitNotifications.emit(); }
       if (rememberCommit && this.mode === 'JP' && ef.undoable === true && ef.text.length > 0) {
         const cursor: number = start >= 0 ? start + ef.text.length : await this.editor.queryCursor();
         if (epoch !== this.editor.getEpoch()) { this.lastError = 'stale-epoch'; return; }

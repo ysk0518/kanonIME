@@ -101,7 +101,7 @@ test('P55: confirmed reset restores every keyboard field and the standard backgr
   const defaults = new KeyboardSettingsSnapshot();
   defaults.revision = customized.revision;
   assert.deepEqual(applySettingsPatch(customized, reset.patch), { ...defaults });
-  assert.equal(Object.keys(reset.patch).length, Object.keys(defaults).length - 2);
+  assert.equal(Object.keys(reset.patch).length, Object.keys(defaults).length - 3);
 });
 
 test('P55: successive menu edits persist without waiting for the IME and then sync', async () => {
