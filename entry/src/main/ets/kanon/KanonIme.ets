@@ -14,6 +14,7 @@ import { imeRuntimeBindings } from './AppStorageImeBindings';
 import { editorAdapter } from './EditorAdapter';
 import { englishPrediction } from './EnglishRuntime';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
+import { perfBegin, perfEnd } from '../common/PerfTrace';
 import { emojiHistory } from '../common/EmojiHistoryStorage';
 import Log from '../model/Log';
 import { EmptyEditorRead } from './ExternalEditorSync';
@@ -67,8 +68,10 @@ class KanonIme {
   }
 
   async keyText(ch: string, feedback: boolean = true): Promise<void> {
+    const perfId: number = perfBegin('key.down');
     if (feedback) { keyboardHaptics.key(); }
     await this.session.keyText(ch);
+    perfEnd('key.done', perfId);
   }
 
   async keyPaste(value: string): Promise<boolean> {
@@ -82,13 +85,17 @@ class KanonIme {
   }
 
   async keyKana(kana: string): Promise<void> {
+    const perfId: number = perfBegin('key.down');
     keyboardHaptics.key();
     await this.session.keyKana(kana);
+    perfEnd('key.done', perfId);
   }
 
   async keyToggleTap(key: string, uppercase: boolean): Promise<void> {
+    const perfId: number = perfBegin('key.down');
     keyboardHaptics.key();
     await this.session.keyToggleTap(key, uppercase);
+    perfEnd('key.done', perfId);
   }
 
   toggleInputEnabled(): boolean { return this.ports.bindings.toggleInputEnabled(); }

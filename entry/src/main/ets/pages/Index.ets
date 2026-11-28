@@ -39,6 +39,7 @@ import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas
 import { GamingFlowClock, GamingRippleOverlay, GamingWaveClock } from '../components/GamingEffects';
 import { PachinkoOverlay } from '../components/PachinkoOverlay';
 import { debugLog } from '../common/DebugLog';
+import { perfKeyboardLaidOut } from '../common/PerfTrace';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
@@ -227,6 +228,7 @@ struct Index {
     .onAreaChange((_old: Area, area: Area) => {
       this.measuredWidth = Number(area.width);
       this.measuredHeight = Number(area.height);
+      perfKeyboardLaidOut(this.measuredWidth, this.measuredHeight);
       this.updateMeasuredStyle();
     })
     .backgroundColor(this.submenuType === SubMenuType.SIZE ? Color.Transparent : $r('app.color.key_item_normal'))

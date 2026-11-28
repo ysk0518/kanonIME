@@ -1,4 +1,14 @@
 const mutations = {
+  perfTraceOmitsSequence: {
+    file: 'common/PerfTraceModel.ets',
+    before: "${detail.length > 0 ? detail : '-'}",
+    after: '-'
+  },
+  perfFrameRepeatsOnLayout: {
+    file: 'common/PerfTraceModel.ets',
+    before: ' || this.emitted',
+    after: ''
+  },
   ignoreBackgroundPoster: {
     file: 'common/BackgroundAppearance.ets',
     before: 'return source.length > 0 || poster.length > 0;',

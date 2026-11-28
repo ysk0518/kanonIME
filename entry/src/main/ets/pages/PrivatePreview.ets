@@ -15,6 +15,7 @@
  */
 
 import Log from '../model/Log';
+import { perfMark } from '../common/PerfTrace';
 
 const TAG: string = 'PrivatePreview->';
 
@@ -53,6 +54,7 @@ struct PrivatePreview {
         controller: this.controllerPreview
       })
         .id('kanon_validation_input')
+        .onFocus(() => { perfMark('field.focus'); })
         .placeholderFont({ size: 16, weight: 400 })
         .placeholderColor($r('app.color.text_secondary'))
         .width('100%')
