@@ -1,0 +1,412 @@
+{
+ "attributes": {
+  "id": "",
+  "key": "",
+  "type": "",
+  "text": "",
+  "bounds": "[0,0][1260,2844]",
+  "selected": "",
+  "checked": "",
+  "focused": "",
+  "enabled": "",
+  "clickable": "",
+  "description": ""
+ },
+ "children": [
+  {
+   "attributes": {
+    "id": "",
+    "key": "",
+    "type": "root",
+    "text": "",
+    "bounds": "[0,128][1260,2844]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "true",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false",
+    "description": "",
+    "hint": ""
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "",
+      "key": "",
+      "type": "Navigation",
+      "text": "",
+      "bounds": "[0,128][1260,2844]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "true",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false",
+      "description": "",
+      "hint": ""
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "",
+        "key": "",
+        "type": "NavigationContent",
+        "text": "",
+        "bounds": "[0,128][1260,2844]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "false",
+        "description": "",
+        "hint": ""
+       },
+       "children": [
+        {
+         "attributes": {
+          "id": "Setting.Display",
+          "key": "Setting.Display",
+          "type": "NavDestination",
+          "text": "",
+          "bounds": "[0,128][1260,2844]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "true",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "TitleBar",
+            "text": "",
+            "bounds": "[0,128][1260,317]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "HdsTitleBar",
+              "key": "HdsTitleBar",
+              "type": "HdsTitleBar",
+              "text": "",
+              "bounds": "[0,128][1260,317]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "false",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false",
+              "description": "",
+              "hint": ""
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "Setting.Display.title_id",
+                "key": "Setting.Display.title_id",
+                "type": "Text",
+                "text": "ディスプレイと画面の明るさ",
+                "bounds": "[216,173][1089,271]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": []
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "NavDestinationContent",
+            "text": "",
+            "bounds": "[0,128][1260,2844]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "true",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "",
+              "key": "",
+              "type": "Stack",
+              "text": "",
+              "bounds": "[0,317][1260,2750]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "true",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false",
+              "description": "",
+              "hint": ""
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "List",
+                "text": "",
+                "bounds": "[0,317][1260,2844]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "true",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "ListItem",
+                  "text": "",
+                  "bounds": "[54,317][1206,506]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "",
+                    "key": "",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[54,317][1206,506]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": [
+                    {
+                     "attributes": {
+                      "id": "",
+                      "key": "",
+                      "type": "Text",
+                      "text": "表示モード",
+                      "bounds": "[94,411][1166,479]",
+                      "selected": "false",
+                      "checked": "false",
+                      "focused": "false",
+                      "visible": "true",
+                      "enabled": "true",
+                      "clickable": "false",
+                      "description": "",
+                      "hint": ""
+                     },
+                     "children": []
+                    }
+                   ]
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "Setting.Display.display_setting",
+                  "key": "Setting.Display.display_setting",
+                  "type": "ListItemGroup",
+                  "text": "",
+                  "bounds": "[54,506][1206,1878]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "true",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "",
+                    "key": "",
+                    "type": "ListItem",
+                    "text": "",
+                    "bounds": "[67,519][1193,1703]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": [
+                    {
+                     "attributes": {
+                      "id": "",
+                      "key": "",
+                      "type": "Column",
+                      "text": "",
+                      "bounds": "[67,519][1193,1702]",
+                      "selected": "false",
+                      "checked": "false",
+                      "focused": "false",
+                      "visible": "true",
+                      "enabled": "true",
+                      "clickable": "false",
+                      "description": "",
+                      "hint": ""
+                     },
+                     "children": [
+                      {
+                       "attributes": {
+                        "id": "",
+                        "key": "",
+                        "type": "Row",
+                        "text": "",
+                        "bounds": "[67,519][1193,1701]",
+                        "selected": "false",
+                        "checked": "false",
+                        "focused": "false",
+                        "visible": "true",
+                        "enabled": "true",
+                        "clickable": "false",
+                        "description": "",
+                        "hint": ""
+                       },
+                       "children": [
+                        {
+                         "attributes": {
+                          "id": "",
+                          "key": "",
+                          "type": "Column",
+                          "text": "ライト, tab_unlock",
+                          "bounds": "[67,519][630,1701]",
+                          "selected": "false",
+                          "checked": "false",
+                          "focused": "false",
+                          "visible": "true",
+                          "enabled": "true",
+                          "clickable": "true",
+                          "description": "",
+                          "hint": ""
+                         },
+                         "children": [
+                          {
+                           "attributes": {
+                            "id": "",
+                            "key": "",
+                            "type": "Text",
+                            "text": "ライト",
+                            "bounds": "[278,1492][420,1560]",
+                            "selected": "false",
+                            "checked": "false",
+                            "focused": "false",
+                            "visible": "true",
+                            "enabled": "true",
+                            "clickable": "false",
+                            "description": "",
+                            "hint": ""
+                           },
+                           "children": []
+                          }
+                         ]
+                        },
+                        {
+                         "attributes": {
+                          "id": "",
+                          "key": "",
+                          "type": "Column",
+                          "text": "ダーク, tab_unlock",
+                          "bounds": "[630,519][1193,1701]",
+                          "selected": "true",
+                          "checked": "false",
+                          "focused": "false",
+                          "visible": "true",
+                          "enabled": "true",
+                          "clickable": "true",
+                          "description": " ",
+                          "hint": ""
+                         },
+                         "children": [
+                          {
+                           "attributes": {
+                            "id": "",
+                            "key": "",
+                            "type": "Text",
+                            "text": "ダーク",
+                            "bounds": "[841,1492][983,1560]",
+                            "selected": "false",
+                            "checked": "false",
+                            "focused": "false",
+                            "visible": "true",
+                            "enabled": "true",
+                            "clickable": "false",
+                            "description": "",
+                            "hint": ""
+                           },
+                           "children": []
+                          }
+                         ]
+                        }
+                       ]
+                      }
+                     ]
+                    }
+                   ]
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

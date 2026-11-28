@@ -1,0 +1,912 @@
+{
+ "attributes": {
+  "id": "",
+  "key": "",
+  "type": "",
+  "text": "",
+  "bounds": "[0,0][1260,2844]",
+  "selected": "",
+  "checked": "",
+  "focused": "",
+  "enabled": "",
+  "clickable": ""
+ },
+ "children": [
+  {
+   "attributes": {
+    "id": "",
+    "key": "",
+    "type": "root",
+    "text": "",
+    "bounds": "[0,128][1260,1748]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "true",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false"
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "",
+      "key": "",
+      "type": "Column",
+      "text": "",
+      "bounds": "[0,128][1260,1748]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "true",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false"
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "kanon_validation_input",
+        "key": "kanon_validation_input",
+        "type": "TextInput",
+        "text": "",
+        "bounds": "[67,417][1194,607]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "true",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "true"
+       },
+       "children": []
+      },
+      {
+       "attributes": {
+        "id": "kanon_validation_direct_input",
+        "key": "kanon_validation_direct_input",
+        "type": "TextInput",
+        "text": "",
+        "bounds": "[67,673][1194,863]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "true"
+       },
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "attributes": {
+    "id": "",
+    "key": "",
+    "type": "root",
+    "text": "",
+    "bounds": "[0,1748][1260,2693]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "false",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false"
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "",
+      "key": "",
+      "type": "Stack",
+      "text": "",
+      "bounds": "[0,1748][1260,2693]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "false",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false"
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "",
+        "key": "",
+        "type": "Column",
+        "text": "",
+        "bounds": "[0,1748][1260,2693]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "false"
+       },
+       "children": [
+        {
+         "attributes": {
+          "id": "",
+          "key": "",
+          "type": "Column",
+          "text": "",
+          "bounds": "[0,1937][1260,2693]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false"
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "Stack",
+            "text": "",
+            "bounds": "[0,1937][1260,2693]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false"
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "",
+              "key": "",
+              "type": "Column",
+              "text": "",
+              "bounds": "[0,1937][1260,2693]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "false",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false"
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,1957][1233,2128]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false"
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,1957][232,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_1",
+                    "key": "flick_control_1",
+                    "type": "Text",
+                    "text": "↺",
+                    "bounds": "[27,1957][232,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,1957][494,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_@",
+                    "key": "flick_@",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,1957][494,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,1957][756,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_a",
+                    "key": "flick_a",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,1957][756,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,1957][1018,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_d",
+                    "key": "flick_d",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,1957][1018,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,1957][1233,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "deleteItem",
+                    "key": "deleteItem",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[1028,1957][1233,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2139][1233,2310]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false"
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2139][232,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_2",
+                    "key": "flick_control_2",
+                    "type": "Text",
+                    "text": "←",
+                    "bounds": "[27,2139][232,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2139][494,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_g",
+                    "key": "flick_g",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,2139][494,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2139][756,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_j",
+                    "key": "flick_j",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2139][756,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2139][1018,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_m",
+                    "key": "flick_m",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2139][1018,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2139][1233,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_6",
+                    "key": "flick_control_6",
+                    "type": "Text",
+                    "text": "→",
+                    "bounds": "[1028,2139][1233,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2320][1233,2491]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false"
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2320][232,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "modeCycleItem",
+                    "key": "modeCycleItem",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[27,2320][232,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2320][494,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_p",
+                    "key": "flick_p",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,2320][494,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2320][756,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_t",
+                    "key": "flick_t",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2320][756,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2320][1018,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_w",
+                    "key": "flick_w",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2320][1018,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2320][1233,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_5",
+                    "key": "flick_control_5",
+                    "type": "Text",
+                    "text": "English ␣",
+                    "bounds": "[1028,2320][1233,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2502][1233,2673]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false"
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2502][232,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "layoutItem",
+                    "key": "layoutItem",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[27,2502][232,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2502][494,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_8",
+                    "key": "flick_control_8",
+                    "type": "Text",
+                    "text": "A/a",
+                    "bounds": "[242,2502][494,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2502][756,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_-",
+                    "key": "flick_-",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2502][756,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2502][1018,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_.",
+                    "key": "flick_.",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2502][1018,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false"
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2502][1233,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false"
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_7",
+                    "key": "flick_control_7",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[1028,2502][1233,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true"
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

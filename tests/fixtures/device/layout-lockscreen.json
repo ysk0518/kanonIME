@@ -1,0 +1,168 @@
+{
+ "attributes": {
+  "id": "",
+  "key": "",
+  "type": "",
+  "text": "",
+  "bounds": "[0,0][1260,2844]",
+  "selected": "",
+  "checked": "",
+  "focused": "",
+  "enabled": "",
+  "clickable": "",
+  "description": ""
+ },
+ "children": [
+  {
+   "attributes": {
+    "id": "session15",
+    "key": "session15",
+    "type": "WindowScene",
+    "text": "",
+    "bounds": "[0,128][1260,2844]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "true",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false",
+    "description": "",
+    "hint": ""
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "ScreenLockRootComponent",
+      "key": "ScreenLockRootComponent",
+      "type": "Stack",
+      "text": "",
+      "bounds": "[0,128][1260,2844]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "true",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false",
+      "description": "",
+      "hint": ""
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "",
+        "key": "",
+        "type": "Stack",
+        "text": "",
+        "bounds": "[0,128][1260,2844]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "false",
+        "description": "",
+        "hint": ""
+       },
+       "children": [
+        {
+         "attributes": {
+          "id": "MainPageView_Screen_Lock_Home",
+          "key": "MainPageView_Screen_Lock_Home",
+          "type": "Stack",
+          "text": "",
+          "bounds": "[0,128][1260,2844]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "EffectComponent",
+            "text": "",
+            "bounds": "[0,128][1260,2844]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "",
+              "key": "",
+              "type": "RelativeContainer",
+              "text": "",
+              "bounds": "[0,128][1260,2844]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "false",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false",
+              "description": "",
+              "hint": ""
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "RelativeContainer",
+                "text": "",
+                "bounds": "[31,128][1228,2772]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "sl_lock_head",
+                  "key": "sl_lock_head",
+                  "type": "__Common__",
+                  "text": "",
+                  "bounds": "[108,246][1151,388]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": []
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
