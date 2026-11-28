@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
 import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
@@ -23,17 +24,10 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
 import { enterKeyLabel } from '../model/KeyboardKeyLabels';
 
-@Styles function pressedStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
-@Styles function normalStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
 // 返回组件
 @Component
 export struct ReturnItem {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
   @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
   @State private gamingCenter: GamingPoint | undefined = undefined;
@@ -51,22 +45,33 @@ export struct ReturnItem {
     return enterKeyLabel(this.enterKeyType, this.englishComposing);
   }
 
+  @Styles pressedStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
+  }
+
+  @Styles normalStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
+  }
+
   build() {
     if (this.returnWidth) {
       Stack() {
         if (this.label() === '改行' || this.label() === '検索') {
           Image($rawfile(this.label() === '検索' ? 'search.svg' : 'return.svg'))
-            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
             .width(this.inputStyle.returnPicSize).height(this.inputStyle.returnPicSize)
         } else {
           Text(this.label())
             .minFontSize(8).maxFontSize(this.inputStyle.symbol_fontSize).maxFontScale(1.25)
             .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
             .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-            .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+            .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
         }
       }
-      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+        this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
       .width(this.returnWidth)
       .borderRadius(this.flick ? 6 : 4)
       .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, this.flick ? 6 : 4, this.gamingPressed))
@@ -75,7 +80,7 @@ export struct ReturnItem {
       .height('100%')
       .accessibilityText(this.englishComposing ? '確定' : this.label())
       .id(this.keyId)
-      .shadow({ radius: this.flick ? 0 : 1, color: $r('app.color.shadow'), offsetY: 3 })
+      .shadow({ radius: this.flick ? 0 : 1, color: photoKeyColor($r('app.color.shadow'), this.hasBackgroundPhoto), offsetY: 3 })
       .onTouch((event: TouchEvent) => {
         this.gamingPressed = gamingControlPressed(event, this.gamingPhase, this.gamingPressed);
       })
@@ -84,7 +89,7 @@ export struct ReturnItem {
         kanonIme.keyReturn();
       })
       .stateStyles({
-        normal: normalStyles, pressed: pressedStyles
+        normal: this.normalStyles, pressed: this.pressedStyles
       })
     }
   }

@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint, gamingPresses } from '../common/GamingKeyFeedback';
 import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
@@ -21,17 +22,11 @@ import { kanonIme } from '../kanon/KanonIme';
 import { keyRollover } from '../common/KeyRollover';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 
-@Styles function pressedStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
-@Styles function normalStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
 // タップで1文字削除。長押しでは間隔を短縮し、前の削除が完了してから次を送る。
 @Component
 export struct DeleteItem {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
+  photoThemeEnabled: boolean = true;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
   @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
   @State private gamingCenter: GamingPoint | undefined = undefined;
@@ -88,14 +83,25 @@ export struct DeleteItem {
     this.scheduleRepeat(delayMs);
   }
 
+  @Styles pressedStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
+  }
+
+  @Styles normalStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
+  }
+
   build() {
     Stack() {
       Image($rawfile('delete.svg'))
-            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text'), this.pressing))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.photoThemeEnabled && this.hasBackgroundPhoto), this.pressing))
         .width(this.inputStyle.featurePicSize)
         .height(this.inputStyle.featurePicSize)
     }
-    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
     .borderRadius(4)
     .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, 4, this.pressing))
     .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))
@@ -118,9 +124,9 @@ export struct DeleteItem {
     .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)
     .height('100%')
     .id('deleteItem')
-    .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
+    .shadow({ radius: 1, color: photoKeyColor($r('app.color.shadow'), this.photoThemeEnabled && this.hasBackgroundPhoto), offsetY: 3 })
     .stateStyles({
-      normal: normalStyles, pressed: pressedStyles
+      normal: this.normalStyles, pressed: this.pressedStyles
     })
   }
 }

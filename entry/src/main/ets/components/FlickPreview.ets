@@ -1,9 +1,11 @@
 // フリック・QWERTY共通のキー上表示。指の移動を遮らないようタッチは受け取らない。
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyVisualScale, keyPreviewSize } from '../common/KeyboardLayout';
 
 @Component
 export struct FlickPreview {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonKeyPreviewKind') kind: string = 'flick';
   @StorageLink('kanonFlickPreview') value: string = '';
@@ -23,13 +25,13 @@ export struct FlickPreview {
           .fontSize((this.value.length > 1 ? 18 : 28) * keyVisualScale(this.inputStyle.basicButtonHeight))
           .maxFontScale(1.3).maxLines(1)
           .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.candidate_accent'))
+          .fontColor(photoKeyColor($r('app.color.candidate_accent'), this.hasBackgroundPhoto))
           .textAlign(TextAlign.Center)
           .width(this.previewSize())
           .height(this.previewSize())
-          .backgroundColor($r('app.color.key_item_normal_pressed'))
+          .backgroundColor(photoKeyColor($r('app.color.key_item_normal_pressed'), this.hasBackgroundPhoto))
           .borderRadius(8)
-          .shadow({ radius: 2, color: $r('app.color.shadow'), offsetY: 1 })
+          .shadow({ radius: 2, color: photoKeyColor($r('app.color.shadow'), this.hasBackgroundPhoto), offsetY: 1 })
           .position({ x: Math.max(4, Math.min(this.previewX - this.originX - this.previewSize() / 2,
             this.panelWidth - this.previewSize() - 4)),
             y: Math.max(4, Math.min(this.previewY - this.originY, this.panelHeight - this.previewSize() - 4)) })

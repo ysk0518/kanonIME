@@ -1,4 +1,14 @@
 const mutations = {
+  ignoreBackgroundPoster: {
+    file: 'common/BackgroundAppearance.ets',
+    before: 'return source.length > 0 || poster.length > 0;',
+    after: 'return source.length > 0;'
+  },
+  useSystemPaletteOverPhoto: {
+    file: 'common/BackgroundAppearance.ets',
+    before: 'return hasPhoto || systemDark;',
+    after: 'return systemDark;'
+  },
   keepInvalidUrlFieldKey: {
     file: 'common/UrlFieldKey.ets',
     before: 'value !== undefined && validUrlFieldKey(value) ? value : DEFAULT_URL_FIELD_KEY',

@@ -1,7 +1,7 @@
 import common from '@ohos.app.ability.common';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { BackgroundConfig, keyboardBackground, copyBackgroundPhoto, BackgroundPhotoError } from '../common/KeyboardBackground';
-import { backgroundDraftChanged, backgroundImageUri, backgroundPosterUri,
+import { backgroundDraftChanged, backgroundImageUri, backgroundPosterUri, hasBackgroundPhoto,
   DEFAULT_GIF_ANIMATE } from '../common/BackgroundAppearance';
 import { readSharedLayoutOrder, DEFAULT_LAYOUT_ORDER } from '../common/KeyboardConfig';
 import { KeyboardBackgroundCanvas } from './KeyboardBackgroundCanvas';
@@ -344,7 +344,8 @@ export struct KeyboardBackgroundSettings {
           }
         }).width('100%').height(160)
         BackgroundKeyPreview({ qwerty: this.previewQwerty,
-          keyOpacity: this.draft.photo.length > 0 ? this.draft.keyOpacity : 100 })
+          hasBackgroundPhoto: hasBackgroundPhoto(this.draft.photo, this.draft.poster),
+          keyOpacity: hasBackgroundPhoto(this.draft.photo, this.draft.poster) ? this.draft.keyOpacity : 100 })
           .width('100%').height(160)
         BackgroundGestureHint({ source: this.draft.photo,
           available: this.showGestureHint && this.loaded && !this.busy && this.foreground })

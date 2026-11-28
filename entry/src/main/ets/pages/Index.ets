@@ -49,6 +49,7 @@ const TAG: string = 'index->';
 struct Index {
   @StorageLink('kanonBackgroundImage') backgroundPhoto: string = '';
   @StorageLink('kanonBackgroundPoster') backgroundPoster: string = '';
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageLink('kanonBackgroundAnimate') backgroundAnimate: boolean = true;
   @StorageLink('kanonKeyboardVisible') keyboardVisible: boolean = false;
   @StorageProp('kanonGamingUnlocked') gamingUnlocked: boolean = DEFAULT_GAMING_UNLOCKED;
@@ -139,7 +140,7 @@ struct Index {
 
   build() {
     Stack() {
-      if (this.backgroundPhoto.length > 0) {
+      if (this.hasBackgroundPhoto) {
         KeyboardBackgroundCanvas({ source: this.backgroundPhoto, zoom: this.backgroundZoom,
           x: this.backgroundX, y: this.backgroundY, photoBrightness: this.photoBrightness,
           poster: this.backgroundPoster, play: this.backgroundAnimate,
@@ -202,7 +203,7 @@ struct Index {
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(this.backgroundPhoto.length > 0 ? Color.Transparent : $r('app.color.keyboard_background'))
+        .backgroundColor(this.hasBackgroundPhoto ? Color.Transparent : $r('app.color.keyboard_background'))
       }
       .height(this.submenuType === SubMenuType.SIZE ? this.heightPreview : '100%')
       .width('100%')

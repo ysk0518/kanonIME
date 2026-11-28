@@ -141,7 +141,9 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['keepNextWordOnCaretMove', 'P59', 'moving the caret away from a commit drops the next-word predictions'],
   ['keepInvalidUrlFieldKey', 'P60', 'missing and invalid saved URL keys fall back'],
   ['showUrlKeyInAllFields', 'P60', 'the URL pattern selects the configured key'],
-  ['omitUrlFieldKeyReset', 'P60', 'immediate URL key edits and reset sync to the IME']]) {
+  ['omitUrlFieldKeyReset', 'P60', 'immediate URL key edits and reset sync to the IME'],
+  ['ignoreBackgroundPoster', 'P62', 'image or poster counts as a photo background'],
+  ['useSystemPaletteOverPhoto', 'P62', 'photo backgrounds select the dark palette']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

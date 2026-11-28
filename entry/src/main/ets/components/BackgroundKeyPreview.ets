@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { keySourceListData, keySourceListType } from '../model/KeyboardKeyData';
 import { DEFAULT_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
@@ -5,6 +6,7 @@ import { DEFAULT_KEY_GAP, keyboardKeyGap } from '../common/KeyboardLayout';
 /** Appearance-only keys; gestures belong to the background editor underneath. */
 @Component
 export struct BackgroundKeyPreview {
+  @Prop hasBackgroundPhoto: boolean = false;
   @Prop qwerty: boolean = false;
   @Prop keyOpacity: number = 100;
   @Prop gap: number | undefined = undefined;
@@ -22,10 +24,11 @@ export struct BackgroundKeyPreview {
   previewKey(label: string, weight: number = 1, control: boolean = false) {
     Text(label).fontSize(control ? 10 : this.qwerty ? 14 : 18)
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      .fontColor($r('app.color.key_text')).textAlign(TextAlign.Center)
+      .fontColor(photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)).textAlign(TextAlign.Center)
       .layoutWeight(weight).height('100%').borderRadius(4)
       .backgroundColor(backgroundKeyColor(control ? $r('app.color.key_item_gray') :
-        $r('app.color.key_item_normal'), this.keyOpacity, this.themeVersion))
+        $r('app.color.key_item_normal'),
+        this.keyOpacity, this.themeVersion, this.hasBackgroundPhoto))
   }
 
   build() {

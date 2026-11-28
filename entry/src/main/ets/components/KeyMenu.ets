@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -31,17 +32,10 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
 import { GamingPoint } from '../common/GamingEffectModel';
 
-@Styles function pressedStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
-@Styles function normalStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
 // key键盘
 @Component
 export struct KeyMenu {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
@@ -80,6 +74,16 @@ export struct KeyMenu {
   private urlKeyValue(): keySourceListType {
     const text: string = urlFieldKeyText(this.inputPattern, this.urlFieldKey);
     return { content: text, title: text, upperContent: text };
+  }
+
+  @Styles pressedStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
+  }
+
+  @Styles normalStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
   }
 
   build() {
@@ -122,11 +126,12 @@ export struct KeyMenu {
       Flex({ justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
         Stack() {
           Image($rawfile(this.keyState === KeyState.ONCE_UPPER_CASE ? 'shift light.svg' : this.keyState === KeyState.UPPER_CASE ? 'shift light long.svg' : 'shift.svg'))
-            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.shiftCenter, $r('app.color.key_text')))
+            .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.shiftCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
             .width(this.inputStyle.featurePicSize)
             .height(this.inputStyle.featurePicSize)
         }
-        .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+        .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+          this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
         .borderRadius(4)
         .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.shiftCenter, 4, this.gamingPressed))
         .linearGradient(gamingKeyTint(this.gamingTime, this.shiftCenter))
@@ -147,9 +152,9 @@ export struct KeyMenu {
         })
         .height('100%')
         .width(this.inputStyle.switchButtonWidth)
-        .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
+        .shadow({ radius: 1, color: photoKeyColor($r('app.color.shadow'), this.hasBackgroundPhoto), offsetY: 3 })
         .stateStyles({
-          normal: normalStyles, pressed: pressedStyles
+          normal: this.normalStyles, pressed: this.pressedStyles
         })
 
         ForEach(this.keyList.slice(19), (item: keySourceListType) => {

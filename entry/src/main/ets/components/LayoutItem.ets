@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
 import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
@@ -9,6 +10,7 @@ import { keyboardHaptics } from '../common/KeyboardHaptics';
 
 @Component
 export struct LayoutItem {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
   @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
   @State private gamingCenter: GamingPoint | undefined = undefined;
@@ -27,19 +29,19 @@ export struct LayoutItem {
   build() {
     Column({ space: 1 }) {
       if (this.globe) {
-        Image($r('app.media.ic_globe')).fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text'))).width(22).height(22)
+        Image($r('app.media.ic_globe')).fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto))).width(22).height(22)
       } else if (!this.flickEnabled) {
         Text(this.menuType === MenuType.SPECIAL ? 'ABC' : '#+=')
-          .fontSize(14).maxFontScale(1).maxLines(1).fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+          .fontSize(14).maxFontScale(1).maxLines(1).fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
       } else {
         Image(this.layout.endsWith('flick') ? $r('app.media.ic_layout_qwerty') : $r('app.media.ic_layout_12key'))
-        .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+        .fillColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
         .width(22)
         .height(22)
         Text(this.layout.endsWith('flick') ? 'QWERTY' : '12')
           .fontSize(this.layout.endsWith('flick') ? 9 : 10)
           .maxFontScale(1)
-          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+          .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto)))
           .maxLines(1)
       }
     }
@@ -47,7 +49,8 @@ export struct LayoutItem {
     .alignItems(HorizontalAlign.Center)
     .width(this.keyWidth ?? this.inputStyle.basicButtonWidth)
     .height('100%')
-    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
     .borderRadius(this.keyRadius)
     .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, this.keyRadius, this.gamingPressed))
     .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))

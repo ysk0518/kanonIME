@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import inputMethodEngine from '@ohos.inputMethodEngine';
 import { numberFlickKeys } from '../model/NumberFlickData';
 import { numberFlickKind } from '../model/KeyboardModes';
@@ -16,6 +17,7 @@ import { GamingPoint } from '../common/GamingEffectModel';
 
 @Component
 export struct NumberFlickMenu {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
@@ -35,7 +37,7 @@ export struct NumberFlickMenu {
     Text(label)
       .fontSize(16).maxFontScale(Math.max(1, Math.min(1.5, this.inputStyle.basicButtonHeight / 24)))
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.controlCenters[action], $r('app.color.key_text'))).textAlign(TextAlign.Center)
+      .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.controlCenters[action], photoKeyColor($r('app.color.key_text'), this.hasBackgroundPhoto))).textAlign(TextAlign.Center)
       .width('100%').height('100%').borderRadius(6)
       .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.controlCenters[action], 6, this.pressedControl === action))
       .linearGradient(gamingKeyTint(this.gamingTime, this.controlCenters[action]))
@@ -46,7 +48,8 @@ export struct NumberFlickMenu {
           this.pressedControl = action;
         } else if (this.pressedControl === action) { this.pressedControl = -1; }
       })
-      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+      .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+        this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
       .enabled(this.kind() === 'general' || action !== 5)
       .opacity(this.kind() !== 'general' && action === 5 ? 0.4 : 1)
       .accessibilityText(action === 1 ? '直前の確定を取り消す' : label)

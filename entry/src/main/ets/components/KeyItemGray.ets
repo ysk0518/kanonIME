@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { gamingControlPressed, gamingKeyColor, gamingKeyOutline, gamingKeyCenter, gamingKeyTint } from '../common/GamingKeyFeedback';
 import { GamingPoint } from '../common/GamingEffectModel';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
@@ -21,17 +22,11 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
 import { keyRollover } from '../common/KeyRollover';
 
-@Styles function pressedStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
-@Styles function normalStyles() {
-  .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), AppStorage.get<number>('kanonBackgroundKeyOpacity') ?? 100))
-}
-
 // 无大小写的灰色组件
 @Component
 export struct KeyItemGray {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
+  photoThemeEnabled: boolean = true;
   @StorageProp('kanonGamingPhase') gamingPhase: number = -1;
   @StorageProp('kanonGamingWaveTime') gamingTime: number = 0;
   @State private gamingCenter: GamingPoint | undefined = undefined;
@@ -44,14 +39,25 @@ export struct KeyItemGray {
   onActivate: (() => void) | undefined = undefined;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
 
+  @Styles pressedStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray_pressed'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
+  }
+
+  @Styles normalStyles() {
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
+  }
+
   build() {
     Stack() {
       Text(this.keyValue)
         .minFontSize(8).maxFontSize(this.inputStyle.switchNumberFontSize).maxFontScale(1)
         .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
-        .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, $r('app.color.key_text')))
+        .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.gamingCenter, photoKeyColor($r('app.color.key_text'), this.photoThemeEnabled && this.hasBackgroundPhoto)))
     }
-    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+    .backgroundColor(backgroundKeyColor($r('app.color.key_item_gray'),
+      this.backgroundKeyOpacity, this.backgroundThemeVersion, this.photoThemeEnabled && this.hasBackgroundPhoto))
     .borderRadius(4)
     .outline(gamingKeyOutline(this.gamingPhase, this.gamingTime, this.gamingCenter, 4, this.gamingPressed))
     .linearGradient(gamingKeyTint(this.gamingTime, this.gamingCenter))
@@ -67,9 +73,9 @@ export struct KeyItemGray {
     .height('100%')
     .width(this.keyWidth ?? this.inputStyle.switchButtonWidth)
     .id(this.keyId)
-    .shadow({ radius: 1, color: $r('app.color.shadow'), offsetY: 3 })
+    .shadow({ radius: 1, color: photoKeyColor($r('app.color.shadow'), this.photoThemeEnabled && this.hasBackgroundPhoto), offsetY: 3 })
     .stateStyles({
-      normal: normalStyles, pressed: pressedStyles
+      normal: this.normalStyles, pressed: this.pressedStyles
     })
   }
 }
