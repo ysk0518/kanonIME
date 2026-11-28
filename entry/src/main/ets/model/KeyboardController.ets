@@ -3,7 +3,7 @@ import {
   KANON_CANDIDATE_FONT_SIZE, KANON_CANDIDATE_ROWS, KANON_FLICK_PREVIEW, KANON_FLICK_PREVIEW_OWNER,
   KANON_FONT_SCALE, KANON_HEIGHT_ADJUSTMENT_BOTTOM_VP, KANON_HEIGHT_PREVIEW_VP, KANON_ID_LIST,
   KANON_KEYBOARD_HEIGHT_PERCENT, KANON_KEYBOARD_VISIBLE, KANON_KEY_SOUND_LEVEL, KANON_LAYOUT, KANON_LIST, KANON_MODE,
-  KANON_PANEL_HEIGHT_PX, KANON_PANEL_WIDTH_PX, KANON_TOOLBAR_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
+  KANON_PACHINKO_SESSION, KANON_PANEL_HEIGHT_PX, KANON_PANEL_WIDTH_PX, KANON_TOOLBAR_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
 } from '../common/AppStorageKeys';
 // Modified for kanonIME by ysk0518 and contributors, 2026.
 /*
@@ -42,6 +42,8 @@ import { keyboardPanelGeometry, keyboardPanelHeight, panelScreen, panelStyleSize
 import { openKeyboardPreferences, refreshSharedLayoutOrder, refreshSharedHapticLevel, refreshKeyboardHeightPercent, layoutLanguage } from '../common/KeyboardConfig';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardBackground } from '../common/KeyboardBackground';
+import { debugLog } from '../common/DebugLog';
+import { pachinkoKeyNotifications } from '../common/PachinkoModel';
 import { harmonyKeyboardSound } from '../common/HarmonyKeyboardSound';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
@@ -217,6 +219,7 @@ class KeyboardController {
   public onDestroy(): void {
     if (!this.active) { return; }
     AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false);
+    debugLog.cancelPachinkoReplay();
     this.active = false;
     clipboardHistory.stop();
     this.inputHandle.addLog('onDestroy');
@@ -248,7 +251,9 @@ class KeyboardController {
       // Use actual panel visibility for the sound pool lifetime.
       panel.on('show', () => {
         if (this.active && generation === this.panelGeneration) {
+          if (!this.soundPanelVisible) { debugLog.requestPachinkoReplay(); }
           this.soundPanelVisible = true;
+          AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, true);
           this.updateKeySound();
           kanonIme.editorVisibilityChanged();
         }
@@ -256,6 +261,8 @@ class KeyboardController {
       panel.on('hide', () => {
         if (this.active && generation === this.panelGeneration) {
           this.soundPanelVisible = false;
+          AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false);
+          debugLog.cancelPachinkoReplay();
           this.updateKeySound();
           kanonIme.editorVisibilityChanged();
         }
@@ -421,6 +428,8 @@ class KeyboardController {
     display.on('change', this.displayChanged);
     InputMethodEngine.on('inputStart', (kbController: inputMethodEngine.KeyboardController, textInputClient: inputMethodEngine.InputClient) => {
       this.inputHandle.addLog('keyboard inputStart');
+      debugLog.cancelPachinkoReplay();
+      AppStorage.setOrCreate(KANON_PACHINKO_SESSION, (AppStorage.get<number>(KANON_PACHINKO_SESSION) ?? 0) + 1);
       this.inputHandle.onInputStart(kbController, textInputClient);
       clipboardHistory.refresh();
       this.resizePanel();
@@ -436,7 +445,10 @@ class KeyboardController {
       refreshKeyboardHeightPercent();
       this.resizePanel();
     });
-    InputMethodEngine.on('keyboardHide', () => { AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false); });
+    InputMethodEngine.on('keyboardHide', () => {
+      AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false);
+      debugLog.cancelPachinkoReplay();
+    });
     InputMethodEngine.on('inputStop', this.inputStopped);
     try {
       InputMethodEngine.on('discardTypingText', this.typingDiscarded);
@@ -457,6 +469,7 @@ class KeyboardController {
     this.mKeyboardDelegate = inputMethodEngine.getKeyboardDelegate();
 
     this.mKeyboardDelegate.on('keyDown', (keyEvent: inputMethodEngine.KeyEvent) => {
+      pachinkoKeyNotifications.emit();
       if (this.isKeyboardShow) {
         this.inputHandle.hideKeyboardSelf();
       }

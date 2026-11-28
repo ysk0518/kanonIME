@@ -1,5 +1,6 @@
 import { ColorMetrics } from '@ohos.arkui.node';
 import { KANON_GAMING_WAVE_TIME } from './AppStorageKeys';
+import { pachinkoKeyNotifications } from './PachinkoModel';
 import { GAMING_FLOW_STEPS, GAMING_GOLD_PHASE, GamingPoint, GamingWaveFrame, GamingWaveSample,
   gamingWaveSample } from './GamingEffectModel';
 
@@ -121,7 +122,9 @@ class GamingPresses {
   }
 
   down(event: TouchEvent): void {
-    if (this.listener === undefined || event.type !== TouchType.Down) { return; }
+    if (event.type !== TouchType.Down) { return; }
+    pachinkoKeyNotifications.emit();
+    if (this.listener === undefined) { return; }
     const point: TouchObject | undefined = event.changedTouches[0];
     // Use the pressed key's layout position plus the touch inside it: the same
     // coordinate space as the overlay's globalPosition. Window coordinates do

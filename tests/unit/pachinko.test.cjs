@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { FakeEditor, deferred, update } = require('../support/fakes.cjs');
-const { drawPachinko, PachinkoDraws, PachinkoResult: Result, ImeCommitNotifications, imeCommitNotifications } =
+const { drawPachinko, drawPachinkoColor, enqueuePachinko, consumePachinkoHold, pachinkoIdleRemaining, pachinkoStops,
+  PachinkoColor: Color, PachinkoResult: Result, ImeCommitNotifications, imeCommitNotifications } =
   require('../../entry/src/main/ets/common/PachinkoModel.ets');
 const { GAMING_EFFECTS, gamingSpeedEnabled } = require('../../entry/src/main/ets/common/GamingEffectModel.ets');
 const { KeyboardSettingsRecord, KeyboardSettingsSnapshot, applySettingsPatch, decodeSettingsRecord,
@@ -26,23 +27,80 @@ test('P58c: one injected roll gives jackpot priority and exact probability bound
   assert.equal(outcomes.filter(outcome => outcome === Result.Jackpot).length, 1);
 });
 
-test('P58c: three commits skip the draw and more skip while an effect plays', () => {
-  for (const [roll, expected] of [[0, Result.Jackpot], [0.1, Result.Reach]]) {
-    const draws = new PachinkoDraws();
-    let calls = 0;
-    const random = () => { calls++; return roll; };
-    assert.equal(draws.onCommit(false, random), expected);
-    assert.equal(draws.onCommit(true, random), Result.Miss);
-    assert.equal(draws.onCommit(false, random), Result.Miss);
-    assert.equal(draws.onCommit(false, random), Result.Miss);
-    assert.equal(draws.onCommit(true, random), Result.Miss);
-    assert.equal(calls, 1);
-    assert.equal(draws.onCommit(false, random), expected);
-    assert.equal(calls, 2);
+test('P58d: each of the first four commits immediately draws a hold and the fifth is discarded', () => {
+  const inputs = [0, 0.29, 0.10, 0.20, 0.50, 0.10, 0, 0.79];
+  let calls = 0;
+  const random = () => inputs[calls++];
+  let holds = Object.freeze([]);
+  for (let i = 1; i <= 4; i++) {
+    holds = enqueuePachinko(Object.freeze(holds), random);
+    assert.equal(holds.length, i);
+    assert.equal(calls, i * 2);
   }
-  const draws = new PachinkoDraws();
-  assert.equal(draws.onCommit(false, () => 0.5), Result.Miss);
-  assert.equal(draws.onCommit(false, () => 0), Result.Jackpot);
+  assert.equal(enqueuePachinko(holds, random), holds);
+  assert.equal(calls, 8);
+  assert.deepEqual(holds, [
+    { result: Result.Jackpot, color: Color.Gold },
+    { result: Result.Reach, color: Color.Green },
+    { result: Result.Miss, color: Color.Blue },
+    { result: Result.Jackpot, color: Color.Red }
+  ]);
+  const forced = enqueuePachinko(holds.slice(1), () => 0.8, Result.Jackpot);
+  assert.deepEqual(forced[3], { result: Result.Jackpot, color: Color.Green });
+});
+
+test('P58d: hold colors use the result-specific probability table', () => {
+  const cases = [
+    [Result.Jackpot, [[0.3, Color.Gold, Color.Red], [0.8, Color.Red, Color.Green]]],
+    [Result.Reach, [[0.2, Color.Red, Color.Green], [0.6, Color.Green, Color.Blue]]],
+    [Result.Miss, [[0.1, Color.Green, Color.Blue]]]
+  ];
+  for (const [result, boundaries] of cases) {
+    for (const [threshold, before, at] of boundaries) {
+      assert.equal(drawPachinkoColor(result, () => threshold - Number.EPSILON), before);
+      assert.equal(drawPachinkoColor(result, () => threshold), at);
+    }
+  }
+});
+
+test('P58d: consumption waits 800 ms from the last activity and uses FIFO order', () => {
+  let holds = [];
+  for (const result of [Result.Reach, Result.Miss, Result.Jackpot]) {
+    holds = enqueuePachinko(holds, () => 0, result);
+  }
+  assert.equal(pachinkoIdleRemaining(1799, 1000), 1);
+  assert.equal(consumePachinkoHold(holds, 1799, 1000), undefined);
+  assert.equal(pachinkoIdleRemaining(1800, 1100), 100);
+  assert.equal(consumePachinkoHold(holds, 1800, 1100), undefined);
+  assert.equal(consumePachinkoHold(holds, 1800, 1000).hold, holds[0]);
+  for (const result of [Result.Reach, Result.Miss, Result.Jackpot]) {
+    const consumed = consumePachinkoHold(Object.freeze(holds), 1900, 1100);
+    assert.equal(consumed.hold.result, result);
+    assert.deepEqual(consumed.remaining, holds.slice(1));
+    holds = consumed.remaining;
+  }
+  assert.equal(consumePachinkoHold(holds, 2500, 1100), undefined);
+});
+
+test('P58d: reel stops give distinct misses adjacent near misses and jackpot 777', () => {
+  for (let left = 0; left < 9; left++) {
+    const reach = pachinkoStops(Result.Reach, () => left / 9);
+    assert.equal(reach.left, left + 1);
+    assert.equal(reach.right, reach.left);
+    assert.ok(reach.middle >= 1 && reach.middle <= 9);
+    assert.equal(Math.abs(reach.middle - reach.left), 1);
+    for (let right = 0; right < 8; right++) {
+      for (let middle = 0; middle < 7; middle++) {
+        const rolls = [left / 9, right / 8, middle / 7];
+        const stops = pachinkoStops(Result.Miss, () => rolls.shift());
+        const digits = [stops.left, stops.middle, stops.right];
+        assert.equal(new Set(digits).size, 3);
+        assert.ok(digits.every(digit => digit >= 1 && digit <= 9));
+      }
+    }
+  }
+  assert.deepEqual(pachinkoStops(Result.Jackpot, () => assert.fail('jackpot must always use 777')),
+    { left: 7, middle: 7, right: 7 });
 });
 
 test('P58c: commit signal delivers only to the current listener and isolates listener failures', () => {

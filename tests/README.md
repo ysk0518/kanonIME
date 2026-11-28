@@ -19,6 +19,7 @@ node tests/run.cjs --test-name-pattern "P57:"
 node tests/run.cjs --test-name-pattern "P58:"
 node tests/run.cjs --test-name-pattern "P58b:"
 node tests/run.cjs --test-name-pattern "P58c:"
+node tests/run.cjs --test-name-pattern "P58d:"
 node tests/mutations.cjs
 ```
 
@@ -81,7 +82,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | `keyboard-settings.test.cjs` / `settings-menu.test.cjs` / `settings-sync.test.cjs` / `mozc-engine.test.cjs` / `ime-session.test.cjs` | P56のスマート入力の既定値・検証・旧データ補完、カードとリセット、IMEへの同期、設定を変更した後の絵文字候補・自動大文字・ピリオド入力 |
 | `settings-subpages.test.cjs` | P57のショートカットの上下移動・削除・追加・端での無効判定、サイズからの高さの差分、テーマの未保存判定 |
 | `gaming-effect.test.cjs` | P58の7回タップと2秒境界、解放・設定同期・リセットと輪の上限。P58bの波の距離・経過時間・帯幅・半径・重なり・更新間の通過、5段階の周期と継続時間、速さの検証・移行・同期・リセット、選択名の要約 |
-| `pachinko.test.cjs` | P58cの抽選確率の境界・大当たり優先・乱数注入、当選直後3回と演出中の抽選抑止、日英の確定成功通知と失敗・重複・旧入力先の除外、ドパガキのタイトルと要約、設定の正規化・選択順・速さの無効化 |
+| `pachinko.test.cjs` | P58cの結果確率の境界・乱数注入、日英の確定成功通知と失敗・重複・旧入力先の除外、ドパガキの設定。P58dの先読みと保留上限4、結果別の色確率、注入時刻での800ms判定と先入れ先出し、ハズレ・リーチハズレ・大当たりの停止目 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
@@ -171,7 +172,8 @@ Node 24以降のテストには30秒の期限を付け、故意に処理を壊�
 | P57 | 末尾のショートカットの下移動を許す、高さスライダーの値を無視する、テーマの横位置の変更を見落とす |
 | P58 | タップ間隔がちょうど2秒のときに回数を維持する、リセットで再ロックする、未解放でメニューに表示する、上限で最新側の波紋を消す |
 | P58b | 波の最大半径を無視する、重なった強い波を後続の弱い波で上書きする、速さによる周期の変化を無視する、リセットで速さを保持する |
-| P58c | 大当たりをリーチにする、抽選を休む回数を2回にする、日本語・英語の変換確定の通知を削除する |
+| P58c | 大当たりをリーチにする、変換確定の通知を削除する |
+| P58d | 保留を5つ受け付ける、金の確率を変える、799msでリールを始める、最後の保留を先に消化する、ハズレで左右がそろう |
 
 ## 別に確認すること
 

@@ -4,6 +4,8 @@ import { ShortcutEditor } from './ShortcutEditor';
 import { KeyboardBackgroundSettings } from './KeyboardBackgroundSettings';
 import { SettingsHeader } from './SettingsHeader';
 import { DebugConsole } from './DebugConsole';
+import { debugLog } from '../common/DebugLog';
+import { PachinkoReplay } from '../common/PachinkoModel';
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { applySettingsPatch, KeyboardSettingsSnapshot, KeyboardSettingsPatch } from '../common/KeyboardSettingsModel';
 import { readSettings } from '../common/KeyboardSettingsRepository';
@@ -64,6 +66,7 @@ export struct KeyboardSettings {
   @StorageLink('kanonSettingsRequestSyncState') requestState: string = '';
   @StorageLink('kanonBackgroundVersion') @Watch('backgroundChanged') backgroundVersion: number = 0;
   @StorageLink('kanonBackgroundSyncState') backgroundSyncState: string = '';
+  @StorageProp('kanonDebugEnabled') debugEnabled: boolean = false;
   languageOnly: boolean = false;
   onOpen: (page: SettingsPageId) => void = () => {};
   onClose: () => void = () => {};
@@ -107,6 +110,12 @@ export struct KeyboardSettings {
 
   private showGamingToast(message: Resource): void {
     try { this.getUIContext().getPromptAction().showToast({ message: message, duration: 1200 }); } catch (error) {}
+  }
+
+  private requestPachinkoReplay(replay: PachinkoReplay): void {
+    if (debugLog.queuePachinkoReplay(replay)) {
+      this.showGamingToast($r('app.string.settings_gaming_debug_queued'));
+    }
   }
 
   private async tapVersion(): Promise<void> {
@@ -543,6 +552,19 @@ export struct KeyboardSettings {
   }
 
   @Builder
+  pachinkoDebugCard() {
+    Column({ space: 8 }) {
+      this.label($r('app.string.settings_gaming_debug'))
+      Button($r('app.string.settings_gaming_debug_reach')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.Reach)).id('pachinko_debug_reach')
+      Button($r('app.string.settings_gaming_debug_jackpot')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.Jackpot)).id('pachinko_debug_jackpot')
+      Button($r('app.string.settings_gaming_debug_holds')).width('100%')
+        .onClick(() => this.requestPachinkoReplay(PachinkoReplay.FourHolds)).id('pachinko_debug_holds')
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
   content() {
     if (this.languageOnly || this.page === SettingsPageId.Languages) {
       this.languages()
@@ -565,6 +587,7 @@ export struct KeyboardSettings {
       this.feedback()
     } else if (this.page === SettingsPageId.Gaming && this.snapshot.gamingUnlocked) {
       this.gamingOptions()
+      if (this.debugEnabled) { this.pachinkoDebugCard() }
     } else if (this.page === SettingsPageId.About) {
       Column({ space: 8 }) {
         this.label($r('app.string.settings_app_name'))

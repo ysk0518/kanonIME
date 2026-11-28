@@ -1,4 +1,5 @@
-import { KANON_DEBUG_CONSOLE, KANON_DEBUG_ENABLED } from './AppStorageKeys';
+import { KANON_DEBUG_CONSOLE, KANON_DEBUG_ENABLED, KANON_PACHINKO_REPLAY } from './AppStorageKeys';
+import { PachinkoReplay } from './PachinkoModel';
 import commonEventManager from '@ohos.commonEventManager';
 import { BusinessError } from '@ohos.base';
 
@@ -6,6 +7,8 @@ const BUNDLE: string = 'local.yplic.kanon';
 const CONTROL: string = `${BUNDLE}.DEBUG_CONTROL`;
 const RECORD: string = `${BUNDLE}.DEBUG_RECORD`;
 const REQUEST: string = `${BUNDLE}.DEBUG_REQUEST`;
+const PACHINKO_REQUEST: string = `${BUNDLE}.DEBUG_PACHINKO_REQUEST`;
+const PACHINKO_REPLAY: string = `${BUNDLE}.DEBUG_PACHINKO_REPLAY`;
 const LIMIT: number = 160;
 
 class DebugRecord {
@@ -25,6 +28,9 @@ class DebugLogStore {
   private lines: string[] = [];
   private flushTimer: number = -1;
   private leaseTimer: number = -1;
+  private pendingReplay: PachinkoReplay | undefined;
+  private replayRequest: string = '';
+  private replaySequence: number = 0;
   onEnabled: () => void = () => {};
 
   initialize(ime: boolean = false): Promise<void> {
@@ -39,13 +45,15 @@ class DebugLogStore {
 
   private async connect(): Promise<void> {
     this.subscriber = await commonEventManager.createSubscriber({
-      events: [CONTROL, RECORD, REQUEST], publisherBundleName: BUNDLE
+      events: [CONTROL, RECORD, REQUEST, PACHINKO_REQUEST, PACHINKO_REPLAY], publisherBundleName: BUNDLE
     });
     commonEventManager.subscribe(this.subscriber, (error, event) => {
       if (error) { this.local('console', `receive failed code=${error.code}`); return; }
       if (event.parameters?.['instance'] === this.instance) { return; }
       if (event.event === REQUEST) {
         if (!this.ime) { this.send(CONTROL, this.enabled ? 'on' : 'off'); }
+      } else if (event.event === PACHINKO_REQUEST || event.event === PACHINKO_REPLAY) {
+        this.receivePachinkoEvent(event);
       } else if (event.event === CONTROL && (event.data === 'on' || event.data === 'off')) {
         this.applyEnabled(event.data === 'on');
         if (this.enabled) { this.record('console', 'peer connected'); }
@@ -62,10 +70,10 @@ class DebugLogStore {
     if (this.enabled) { this.send(CONTROL, 'on'); }
   }
 
-  private send(event: string, data: string): void {
+  private send(event: string, data: string, request: string = ''): void {
     try {
       commonEventManager.publish(event, { bundleName: BUNDLE, data: data,
-        parameters: { instance: this.instance } }, (error) => {
+        parameters: { instance: this.instance, request: request } }, (error) => {
         if (error) { this.local('console', `transport failed code=${error.code}`); }
       });
     } catch (error) { this.local('console', `transport failed code=${debugErrorCode(error)}`); }
@@ -74,7 +82,11 @@ class DebugLogStore {
   private applyEnabled(value: boolean): void {
     this.enabled = value;
     AppStorage.setOrCreate(KANON_DEBUG_ENABLED, value);
-    if (!value) { this.clear(); }
+    if (!value) {
+      this.pendingReplay = undefined;
+      this.cancelPachinkoReplay();
+      this.clear();
+    }
     if (value) { this.onEnabled(); }
     if (this.leaseTimer >= 0) { clearTimeout(this.leaseTimer); this.leaseTimer = -1; }
     // Do not leave diagnostics running indefinitely if the settings app exits.
@@ -85,6 +97,42 @@ class DebugLogStore {
     this.applyEnabled(value);
     if (value) { this.local('console', 'enabled; metadata only; expires in 15 minutes'); }
     this.initialize().then(() => this.send(CONTROL, value ? 'on' : 'off'));
+  }
+
+  queuePachinkoReplay(replay: PachinkoReplay): boolean {
+    if (!this.enabled || this.ime) { return false; }
+    this.pendingReplay = replay;
+    return true;
+  }
+
+  requestPachinkoReplay(): void {
+    const request: string = `${this.instance}-${++this.replaySequence}`;
+    this.replayRequest = request;
+    this.initialize(true).then(() => {
+      if (this.replayRequest === request) { this.send(PACHINKO_REQUEST, '', request); }
+    });
+  }
+
+  cancelPachinkoReplay(): void {
+    this.replayRequest = '';
+    if (AppStorage.get<string>(KANON_PACHINKO_REPLAY)) { AppStorage.setOrCreate(KANON_PACHINKO_REPLAY, ''); }
+  }
+
+  private receivePachinkoEvent(event: commonEventManager.CommonEventData): void {
+    const request: string | undefined = typeof event.parameters?.['request'] === 'string' ?
+      event.parameters['request'] as string : undefined;
+    if (!request || request.length > 100) { return; }
+    if (event.event === PACHINKO_REQUEST) {
+      if (this.ime || !this.enabled || this.pendingReplay === undefined) { return; }
+      this.send(PACHINKO_REPLAY, this.pendingReplay, request);
+      this.pendingReplay = undefined;
+    } else if (this.ime && request === this.replayRequest) {
+      const replay: string | undefined = event.data;
+      if (replay === PachinkoReplay.Reach || replay === PachinkoReplay.Jackpot || replay === PachinkoReplay.FourHolds) {
+        this.replayRequest = '';
+        AppStorage.setOrCreate(KANON_PACHINKO_REPLAY, replay);
+      }
+    }
   }
 
   record(stage: string, detail: string): void {

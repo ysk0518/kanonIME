@@ -4,10 +4,30 @@ const mutations = {
     before: 'if (roll < 1 / 64) { return PachinkoResult.Jackpot; }',
     after: 'if (roll < 1 / 64) { return PachinkoResult.Reach; }'
   },
-  pachinkoCooldownTooShort: {
+  pachinkoExtraHold: {
     file: 'common/PachinkoModel.ets',
-    before: 'this.remaining = 3;',
-    after: 'this.remaining = 2;'
+    before: 'holds.length >= PACHINKO_HOLD_LIMIT',
+    after: 'holds.length > PACHINKO_HOLD_LIMIT'
+  },
+  pachinkoWrongColor: {
+    file: 'common/PachinkoModel.ets',
+    before: 'roll < 0.3',
+    after: 'roll < 0.4'
+  },
+  pachinkoEarlyReel: {
+    file: 'common/PachinkoModel.ets',
+    before: 'PACHINKO_IDLE_MS: number = 800',
+    after: 'PACHINKO_IDLE_MS: number = 799'
+  },
+  pachinkoNewestFirst: {
+    file: 'common/PachinkoModel.ets',
+    before: 'hold: holds[0]',
+    after: 'hold: holds[holds.length - 1]'
+  },
+  pachinkoMatchOnMiss: {
+    file: 'common/PachinkoModel.ets',
+    before: 'if (right >= left) { right++; }',
+    after: ''
   },
   pachinkoCommitSignalMissing: {
     file: 'kanon/ImeCoordinator.ets',

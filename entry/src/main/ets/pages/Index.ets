@@ -38,6 +38,7 @@ import { DEFAULT_TOOLBAR_HEIGHT, DEFAULT_KEY_GAP, effectiveKeyGap } from '../com
 import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas';
 import { GamingFlowClock, GamingRippleOverlay, GamingWaveClock } from '../components/GamingEffects';
 import { PachinkoOverlay } from '../components/PachinkoOverlay';
+import { debugLog } from '../common/DebugLog';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
@@ -51,7 +52,8 @@ struct Index {
   @StorageLink('kanonBackgroundAnimate') backgroundAnimate: boolean = true;
   @StorageLink('kanonKeyboardVisible') keyboardVisible: boolean = false;
   @StorageProp('kanonGamingUnlocked') gamingUnlocked: boolean = DEFAULT_GAMING_UNLOCKED;
-  @StorageProp('kanonGamingEffect') gamingEffect: GamingEffect = DEFAULT_GAMING_EFFECT;
+  @StorageProp('kanonGamingEffect') @Watch('gamingEffectChanged') gamingEffect: GamingEffect = DEFAULT_GAMING_EFFECT;
+  @StorageProp('kanonPachinkoReplay') pachinkoReplay: string = '';
   @StorageLink('kanonBackgroundZoom') backgroundZoom: number = 100;
   @StorageLink('kanonBackgroundX') backgroundX: number = 0;
   @StorageLink('kanonBackgroundY') backgroundY: number = 0;
@@ -99,6 +101,10 @@ struct Index {
 
   configChanged(): void { kanonIme.prepare(); }
 
+  gamingEffectChanged(): void {
+    if (this.pachinkoReplay !== '') { debugLog.cancelPachinkoReplay(); }
+  }
+
   aboutToAppear(): void {
     this.inputPatternChange();
     kanonIme.prepare();
@@ -127,7 +133,7 @@ struct Index {
   }
 
   private gamingActive(): boolean {
-    return this.gamingUnlocked && this.keyboardVisible &&
+    return this.pachinkoReplay === '' && this.gamingUnlocked && this.keyboardVisible &&
       this.submenuType === SubMenuType.NORMAL && !this.candidatesExpanded;
   }
 
@@ -202,13 +208,17 @@ struct Index {
       .width('100%')
       .markAnchor({ x: 0, y: '100%' }).position({ x: 0, y: '100%' })
       .translate({ y: this.submenuType === SubMenuType.SIZE ? -this.adjustmentBottom : 0 })
+      if (this.gamingUnlocked && this.keyboardVisible && this.submenuType === SubMenuType.NORMAL &&
+        (this.gamingEffect === 'pachinko' || this.pachinkoReplay !== '')) {
+        PachinkoOverlay({ keysVisible: !this.candidatesExpanded, replay: this.pachinkoReplay,
+          acceptCommits: this.gamingEffect === 'pachinko' })
+          .width('100%').height(this.inputStyle.keyboardHeight).constraintSize({ maxWidth: 720 })
+          .markAnchor({ x: '50%', y: '100%' }).position({ x: '50%', y: '100%' })
+          .hitTestBehavior(HitTestMode.None)
+      }
       if (this.submenuType === SubMenuType.NORMAL) { FlickPreview() }
       if (this.submenuType === SubMenuType.SIZE) {
         KeyboardSizeSettings({ onClose: () => { this.submenuType = SubMenuType.NORMAL; } })
-      }
-      if (this.gamingUnlocked && this.keyboardVisible && this.submenuType === SubMenuType.NORMAL &&
-        this.gamingEffect === 'pachinko') {
-        PachinkoOverlay()
       }
     }
     .height('100%')
