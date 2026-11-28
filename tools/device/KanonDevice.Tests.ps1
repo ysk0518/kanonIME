@@ -113,6 +113,12 @@ $fixtures = Join-Path $PSScriptRoot '../../tests/fixtures/device'
   Assert-Same 'EN' $keyboard.InputMode 'English space label'
   Assert-Same 'QWERTY' $keyboard.Layout 'QWERTY marker'
 
+  # The English 12-key space key has no id; its label still gives the mode.
+  $english12 = Read-KeyboardLayout (Read-LayoutSample 'layout-12key-english.json')
+  Assert-Same $true $english12.KeyboardVisible 'English 12-key keyboard visible'
+  Assert-Same 'EN' $english12.InputMode 'English 12-key mode from the unnamed space key'
+  Assert-Same '12KEY' $english12.Layout 'English 12-key layout'
+
   $lockLayout = Read-LayoutSample 'layout-lockscreen.json'
   Assert-Same 1 @(Select-UiNodes @(Get-VisibleUiNodes $lockLayout) Id ScreenLockRootComponent).Count 'lockscreen marker'
   Assert-Same $false (Read-KeyboardLayout $lockLayout).KeyboardVisible 'no Kanon keyboard on lockscreen'
@@ -177,8 +183,8 @@ $fixtures = Join-Path $PSScriptRoot '../../tests/fixtures/device'
   Assert-Same 'local.yplic.kanon' (Get-Foreground fixture-device).Bundle 'color read returns to old app'
   Set-KanonColorMode -Mode Dark
   Assert-Same 1 @($script:Commands -match '^shell uinput -T -c 911 1110$').Count 'dark card tapped and verified'
-  Assert-Throws { Set-KanonInputMode -Mode EN } '2 回のタップ'
-  Assert-Same 2 @($script:Commands -match '^shell uinput' | Where-Object { $_ -ne 'shell uinput -T -c 911 1110' }).Count 'at most two mode taps'
+  Assert-Throws { Set-KanonInputMode -Mode EN } '3 回のタップ'
+  Assert-Same 3 @($script:Commands -match '^shell uinput' | Where-Object { $_ -ne 'shell uinput -T -c 911 1110' }).Count 'at most three mode taps (12-key cycles JP, EN and numbers)'
   Assert-Throws {
     Use-KanonDeviceSession {
       Set-KanonColorMode -Mode Light

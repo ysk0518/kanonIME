@@ -86,8 +86,11 @@ function Read-KeyboardLayout($Layout) {
   if ($spaces.Count -eq 0 -and $keyLayout -eq '12KEY') {
     $spaces = @(Select-UiNodes $nodes Id flick_convert_space)
   }
-  if ($spaces.Count -eq 1) {
-    $texts = @(Get-VisibleUiNodes $spaces[0]).attributes.text
+  # The English 12-key space key carries no id, so fall back to the whole
+  # keyboard: only the space key shows these labels.
+  $labelRoot = if ($spaces.Count -eq 1) { $spaces[0] } elseif ($keyLayout) { $Layout } else { $null }
+  if ($labelRoot) {
+    $texts = @(Get-VisibleUiNodes $labelRoot).attributes.text
     $jp = $texts -ccontains '日本語 ␣'
     $en = $texts -ccontains 'English ␣'
     if ($jp -and !$en) { $mode = 'JP' }
@@ -344,6 +347,16 @@ function Invoke-ColorMode([string]$Target, [string]$Mode) {
   $originalIsSettings = $original.Bundle -ceq $script:SettingsBundle
   $displayOpened = $false
   $settings = @{ Bundle = $script:SettingsBundle }
+  # Opening the settings app hides the keyboard. Remember the focused field
+  # so the keyboard can be brought back on the original page afterwards.
+  $focusedId = $null
+  if (!$originalIsSettings) {
+    $focused = @(Get-VisibleUiNodes (Read-DeviceLayout $Target) | Where-Object {
+      $_.attributes.type -cin @('TextInput', 'TextArea', 'textField') -and
+        [string]$_.attributes.focused -eq 'true' -and $_.attributes.id
+    })
+    if ($focused.Count -eq 1) { $focusedId = [string]$focused[0].attributes.id }
+  }
   try {
     if (!$originalIsSettings) { Enter-SettingsApp $Target }
     Assert-Foreground $Target $settings.Bundle
@@ -371,15 +384,26 @@ function Invoke-ColorMode([string]$Target, [string]$Mode) {
     $current
   } finally {
     try {
-      $front = Get-Foreground $Target
-      if ($front.Bundle -ceq $script:SettingsBundle -and (!$originalIsSettings -or $displayOpened)) {
-        # Back can preserve the original task and its input focus.
+      # Back returns to the original task with its page kept; starting the
+      # ability again would reopen its first page. The display page sits one
+      # level below the settings home, so leaving can take two presses.
+      $backs = if ($originalIsSettings) { [int]$displayOpened } else { 3 }
+      for ($press = 0; $press -lt $backs; $press++) {
+        if ((Get-Foreground $Target).Bundle -cne $script:SettingsBundle) { break }
         Assert-KanonDeviceReady -Target $Target
         Invoke-DeviceHdc $Target @('shell', 'uitest uiInput keyEvent Back') | Out-Null
-        Start-Sleep -Milliseconds 300
+        Start-Sleep -Milliseconds 400
       }
     } finally {
       Restore-Foreground $Target $original
+      if ($focusedId) {
+        $layout = Read-DeviceLayout $Target
+        if (!(Read-KeyboardLayout $layout).KeyboardVisible) {
+          $selection = Resolve-UiSelection @{ Id = $focusedId } Id $Target $original
+          Send-UiTap $Target $selection $original
+          Start-Sleep -Milliseconds 600
+        }
+      }
     }
   }
 }
@@ -413,21 +437,23 @@ function Set-KanonInputMode {
   $device = Assert-KanonDeviceReady -Target $Target -PassThru
   $front = Get-Foreground $device.Target
   if (!$front) { throw 'Kanon が表示されている前面アプリを確認できませんでした。' }
-  for ($attempt = 0; $attempt -le 2; $attempt++) {
+  # The 12-key mode key cycles Japanese, English and numbers, so up to three
+  # presses can be needed; the number mode shows no language label.
+  for ($attempt = 0; $attempt -le 3; $attempt++) {
     Assert-Foreground $device.Target $front.Bundle $front.Ability
     $layout = Read-DeviceLayout $device.Target
     $keyboard = Read-KeyboardLayout $layout
-    if (!$keyboard.KeyboardVisible -or !$keyboard.InputMode) {
+    $nodes = @(Select-UiNodes @(Get-VisibleUiNodes $layout) Id modeCycleItem)
+    if ($nodes.Count -eq 0) {
       throw 'Kanon の入力モードが確認できません。入力欄をフォーカスし、キーボードを表示してください。'
     }
     if ($keyboard.InputMode -eq $Mode) { return }
-    if ($attempt -eq 2) { break }
-    $nodes = @(Select-UiNodes @(Get-VisibleUiNodes $layout) Id modeCycleItem)
+    if ($attempt -eq 3) { break }
     if ($nodes.Count -ne 1) { throw 'Kanon の入力モード切替キーを一意に特定できませんでした。' }
     Send-UiTap $device.Target @{ Node = $nodes[0]; Layout = $layout } $front
     Start-Sleep -Milliseconds 400
   }
-  throw "入力モードが 2 回のタップで $Mode に切り替わりませんでした。"
+  throw "入力モードが 3 回のタップで $Mode に切り替わりませんでした。"
 }
 
 function Save-DeviceFrames([string]$Target, [string[]]$Files, [int]$IntervalMs) {
