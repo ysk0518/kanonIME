@@ -30,14 +30,31 @@ export function perfEnd(event: string, id: number): void {
   if (id !== 0) { writeMark(event, id.toString()); }
 }
 
+type FrameRequest = (done: () => void) => void;
+let frameRequest: FrameRequest | undefined = undefined;
+
+/** The keyboard page registers how to wait for its next rendered frame. */
+export function perfSetFrameRequest(request: FrameRequest | undefined): void {
+  frameRequest = request;
+}
+
 function markFrame(): void {
   if (!enabled()) { return; }
-  const wallMs: number = Date.now();
   const mode: string = AppStorage.get<string>(KANON_MODE) ?? '-';
   const layout: string = AppStorage.get<string>(KANON_LAYOUT) ?? '-';
   const photo: boolean | undefined = AppStorage.get<boolean>(KANON_BACKGROUND_HAS_PHOTO);
   const background: string = photo === undefined ? 'unknown' : (photo ? 'present' : 'absent');
-  hilog.debug(DOMAIN, TAG, '%{public}s', perfMessage('kb.frame', wallMs, `${mode}/${layout}/${background}`));
+  const detail: string = `${mode}/${layout}/${background}`;
+  const request: FrameRequest | undefined = frameRequest;
+  if (request === undefined) {
+    writeMark('kb.frame', detail);
+    return;
+  }
+  try {
+    request((): void => { writeMark('kb.frame', detail); });
+  } catch (error) {
+    writeMark('kb.frame', detail);
+  }
 }
 
 export function perfPanelShown(): void {

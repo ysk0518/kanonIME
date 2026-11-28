@@ -39,11 +39,26 @@ import { KeyboardBackgroundCanvas } from '../components/KeyboardBackgroundCanvas
 import { GamingFlowClock, GamingRippleOverlay, GamingWaveClock } from '../components/GamingEffects';
 import { PachinkoOverlay } from '../components/PachinkoOverlay';
 import { debugLog } from '../common/DebugLog';
-import { perfKeyboardLaidOut } from '../common/PerfTrace';
+import { perfKeyboardLaidOut, perfSetFrameRequest } from '../common/PerfTrace';
+import { FrameCallback } from '@ohos.arkui.UIContext';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_UNLOCKED, GamingEffect } from '../common/GamingEffectModel';
 import { candidateAreaHeight, DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
 
 const TAG: string = 'index->';
+
+/** Runs once when the next frame is rendered, for the keyboard frame mark. */
+class PerfFrameCallback extends FrameCallback {
+  private readonly done: () => void;
+
+  constructor(done: () => void) {
+    super();
+    this.done = done;
+  }
+
+  onFrame(frameTimeInNano: number): void { this.done(); }
+
+  onIdle(timeLeftInNano: number): void {}
+}
 
 @Entry
 @Component
@@ -110,6 +125,15 @@ struct Index {
   aboutToAppear(): void {
     this.inputPatternChange();
     kanonIme.prepare();
+    // The keyboard frame mark waits for the next rendered frame; a reused
+    // layout otherwise reports the show notification, not the paint.
+    perfSetFrameRequest((done: () => void): void => {
+      this.getUIContext().postFrameCallback(new PerfFrameCallback(done));
+    });
+  }
+
+  aboutToDisappear(): void {
+    perfSetFrameRequest(undefined);
   }
 
   private updateMeasuredStyle(): void {

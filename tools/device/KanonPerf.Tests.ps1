@@ -33,14 +33,18 @@ $warm[9].Detail = '24'
 Assert-Throws { Get-KanonPerfIntervals M2 $warm } 'Expected one key.done'
 
 $cold = @(ConvertFrom-KanonPerfLog (Get-Content (Join-Path $fixtures 'perf-cold.txt') -Raw -Encoding UTF8))
-Assert-Same '15,65,51,65' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 pairs concurrent prepares'
+Assert-Same '50,14,51,65,80,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 pairs concurrent prepares'
+Assert-Same 'kb.frame -> mozc.init.end (not ready)' (Get-KanonPerfIntervals M3 $cold)[-1].Interval 'not-ready window is reported'
 $coldFrame = Get-KanonPerfFrame $cold
 Assert-Same 'jp_flick' $coldFrame.Layout 'Japanese 12-key layout'
 Assert-Same 'unknown' $coldFrame.BackgroundImage 'unknown background'
 Assert-Same 'flick_a,flick_d,flick_g' ((Get-KanonPerfKeyIds @{ Layout = 'en_flick' }) -join ',') 'English 12-key ids'
 Assert-Throws { Get-KanonPerfFrame ($cold + $cold[6]) } 'one kb.frame'
+# On the device the IME is often created a few ms before the focus mark.
 $cold[0].WallMs = $cold[1].WallMs + 1
-Assert-Throws { Get-KanonPerfIntervals M3 $cold } 'Invalid order'
+Assert-Same '50,14,51,50,65,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 times from the IME creation when it comes first'
+$cold[4].WallMs = $cold[1].WallMs - 1
+Assert-Throws { Get-KanonPerfIntervals M3 $cold } 'precedes IME creation'
 
 $stats = Get-KanonPerfStatistics @(12, 5, 2, 1, 3, 9, 6, 8, 4, 7)
 Assert-Same 10 $stats.Count 'count'
