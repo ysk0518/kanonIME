@@ -19,8 +19,9 @@ import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { KeyItem } from './KeyItem';
 import { KeyItemGray } from './KeyItemGray';
 import { ReturnItem } from './ReturnItem';
-import { MenuType, symbolPageRows } from '../model/KeyboardKeyData';
-import { isUrlInputPattern } from '../model/KeyboardKeyLabels';
+import { MenuType, keySourceListType, symbolPageRows } from '../model/KeyboardKeyData';
+import { isUrlInputPattern, urlFieldKeyText } from '../model/KeyboardKeyLabels';
+import { DEFAULT_URL_FIELD_KEY } from '../common/UrlFieldKey';
 import { SpaceItem } from './SpaceItem';
 import { LayoutItem } from './LayoutItem';
 
@@ -29,12 +30,18 @@ import { LayoutItem } from './LayoutItem';
 export struct SymbolMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('inputPattern') inputPattern: number = 0;
+  @StorageLink('kanonUrlFieldKey') urlFieldKey: string = DEFAULT_URL_FIELD_KEY;
   @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   @Consume menuType: number;
   @State private page: number = 0;
 
   private comma(): string {
     return isUrlInputPattern(this.inputPattern) ? '/' : ',';
+  }
+
+  private urlKeyValue(): keySourceListType {
+    const text: string = urlFieldKeyText(this.inputPattern, this.urlFieldKey);
+    return { content: text, title: text, upperContent: text };
   }
 
   @Builder
@@ -90,9 +97,9 @@ export struct SymbolMenu {
           KeyItem({ keyValue: { content: '.', title: '.', upperContent: '.' },
             keyId: 'symbol_key_.', keyWidth: '100%' })
         }.layoutWeight(1).height('100%')
-        if (isUrlInputPattern(this.inputPattern)) {
+        if (urlFieldKeyText(this.inputPattern, this.urlFieldKey) !== '') {
           Column() {
-            KeyItem({ keyValue: { content: 'www.', title: 'www.', upperContent: 'www.' },
+            KeyItem({ keyValue: this.urlKeyValue(),
               keyId: 'symbol_www', keyWidth: '100%', directInput: true })
           }.layoutWeight(1.75).height('100%')
         }

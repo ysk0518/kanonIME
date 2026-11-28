@@ -1,8 +1,16 @@
+import { HIDDEN_URL_FIELD_KEY, normalizeUrlFieldKey } from '../common/UrlFieldKey';
+
 // EditorAttribute.inputPattern uses inputMethod.TextInputType values.
 const TEXT_INPUT_TYPE_URL: number = 6;
 
 export function isUrlInputPattern(inputPattern: number): boolean {
   return inputPattern === TEXT_INPUT_TYPE_URL;
+}
+
+export function urlFieldKeyText(inputPattern: number, value: string | undefined): string {
+  if (!isUrlInputPattern(inputPattern)) { return ''; }
+  const key: string = normalizeUrlFieldKey(value);
+  return key === HIDDEN_URL_FIELD_KEY ? '' : key;
 }
 
 // These action values are shared by inputMethod.EnterKeyType and ArkUI EnterKeyType.

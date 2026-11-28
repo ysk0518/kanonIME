@@ -16,6 +16,7 @@ import { BackgroundKeyPreview } from './BackgroundKeyPreview';
 import { KeyboardPreviewLayoutSwitch } from './KeyboardPreviewLayoutSwitch';
 import { MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from '../common/CandidateLayout';
 import { CandidateAppearancePreview } from './CandidateAppearancePreview';
+import { HIDDEN_URL_FIELD_KEY, URL_FIELD_KEY_OPTIONS } from '../common/UrlFieldKey';
 import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, SettingsMenuGroup,
   SettingsNumber, SettingsToggle, SettingsReset, settingsLanguages, settingsLanguageSummary, settingsThemeSummary,
   settingsUseFlick, settingsLanguagePatch, settingsLayoutPatch, settingsTogglePatch, settingsNumberPatch,
@@ -520,6 +521,35 @@ export struct KeyboardSettings {
   }
 
   @Builder
+  urlFieldKeyOptions() {
+    Column({ space: 10 }) {
+      this.label($r('app.string.settings_url_field_key'))
+      this.help($r('app.string.settings_url_field_key_help'))
+      ForEach(URL_FIELD_KEY_OPTIONS, (value: string) => {
+        Row({ space: 8 }) {
+          Radio({ value: value, group: 'keyboard_config_url_field_key' })
+            .checked(this.snapshot.urlFieldKey === value)
+            .radioStyle({ checkedBackgroundColor: $r('app.color.settings_accent') })
+            .onChange((checked: boolean) => { if (checked) { this.selectUrlFieldKey(value); } })
+          Text(this.urlFieldKeyLabel(value)).fontSize(16).fontColor($r('app.color.text_normal')).layoutWeight(1)
+        }.width('100%').constraintSize({ minHeight: 40 }).enabled(!this.saving)
+          .onClick(() => this.selectUrlFieldKey(value))
+      }, (value: string) => value)
+    }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  private urlFieldKeyLabel(value: string): ResourceStr {
+    return value === HIDDEN_URL_FIELD_KEY ? $r('app.string.settings_url_field_key_hide') : value;
+  }
+
+  private selectUrlFieldKey(value: string): void {
+    if (value !== this.snapshot.urlFieldKey) {
+      const patch: KeyboardSettingsPatch = { urlFieldKey: value };
+      this.save(patch);
+    }
+  }
+
+  @Builder
   layoutOptions() {
     Column({ space: 10 }) {
       this.slider(SettingsNumber.KeyGap, MIN_KEY_GAP, MAX_KEY_GAP, 1, 'keyboard_config_key_gap')
@@ -541,6 +571,7 @@ export struct KeyboardSettings {
       CandidateAppearancePreview({ fontSize: this.sliderValue(SettingsNumber.CandidateFont), rows: this.snapshot.candidateRows })
       this.help($r('app.string.settings_candidate_rows_help'))
     }.width('100%').padding(18).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+    this.urlFieldKeyOptions()
   }
 
   @Builder

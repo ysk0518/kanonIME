@@ -22,6 +22,7 @@ node tests/run.cjs --test-name-pattern "P58c:"
 node tests/run.cjs --test-name-pattern "P58d:"
 node tests/run.cjs --test-name-pattern "P58e:"
 node tests/run.cjs --test-name-pattern "P58f:"
+node tests/run.cjs --test-name-pattern "P60:"
 node tests/mutations.cjs
 ```
 
@@ -85,6 +86,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | `settings-subpages.test.cjs` | P57のショートカットの上下移動・削除・追加・端での無効判定、サイズからの高さの差分、テーマの未保存判定 |
 | `gaming-effect.test.cjs` | P58の7回タップと2秒境界、解放・設定同期・リセットと輪の上限。P58bの波の距離・経過時間・帯幅・半径・重なり・更新間の通過、5段階の周期と継続時間、速さの検証・移行・同期・リセット、選択名の要約。P58fの配色アンカーと循環補間、ライト／ダークの色表、単色の明るさ、従来の虹とフィーバーの色、保存値の補正・同期・リセット、無効表示の条件 |
 | `pachinko.test.cjs` | P58cの日英の確定通知と失敗・重複・旧入力先の除外、ドパガキの設定。P58dの保留上限4、800ms待ちと先入れ先出し。P58eの通常／RUSHの抽選境界、信頼度、RUSHの回数と更新、台本の時間割・段階・停止図柄、保留変化とデバッグ台本 |
+| `url-field-key.test.cjs` | P60のURL専用キー。選択肢・保存値の検証、旧データや不正値の補完、保存と再読込、IME同期とリセット、入力欄による表示判定、レイアウトのラジオと翻訳。mutationでは不正値の補完漏れ、URL欄以外への表示、リセット漏れを検出 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |
