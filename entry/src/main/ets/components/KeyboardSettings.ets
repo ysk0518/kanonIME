@@ -432,7 +432,6 @@ export struct KeyboardSettings {
           Radio({ value: value, group: 'keyboard_config_url_field_key' })
             .checked(this.snapshot.urlFieldKey === value)
             .radioStyle({ checkedBackgroundColor: $r('app.color.settings_accent') })
-            .accessibilityText(this.urlFieldKeyLabel(value))
             .onChange((checked: boolean) => { if (checked) { this.selectUrlFieldKey(value); } })
           Text(this.urlFieldKeyLabel(value)).fontSize(16).fontColor($r('app.color.text_normal')).layoutWeight(1)
         }.width('100%').constraintSize({ minHeight: 40 }).enabled(!this.saving)
