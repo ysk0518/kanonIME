@@ -134,6 +134,11 @@ const mutations = {
     before: 'this.rings.shift();',
     after: 'this.rings.pop();'
   },
+  keepNextWordOnCaretMove: {
+    file: 'kanon/ImeCoordinator.ets',
+    before: "        this.dropNextWordCandidates();\n        return true;",
+    after: "        return true;"
+  },
   shortcutMovePastEnd: {
     file: 'common/ShortcutConfigValues.ets',
     before: 'next >= 0 && next < order.length;',

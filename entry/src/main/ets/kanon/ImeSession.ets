@@ -276,7 +276,7 @@ export class ImeSession {
     } else {
       this.ports.prediction.selectionChanged(begin, end);
     }
-    this.coord.selectionChanged(begin, end);
+    if (this.coord.selectionChanged(begin, end)) { this.publish(this.coord.getSnapshot(), epoch); }
     this.cursorSync.notify(epoch);
     this.editorSync.selectionChanged(epoch, begin, end);
     this.scheduleEditorSync();

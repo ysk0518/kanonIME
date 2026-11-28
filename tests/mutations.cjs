@@ -137,7 +137,8 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['gamingInvalidSolidDefaultsToWhite', 'P58f', 'missing or invalid saved lighting values'],
   ['gamingResetKeepsPalette', 'P58f', 'palette and solid color sync independently'],
   ['gamingFeverUsesSelectedPalette', 'P58f', 'rainbow matches the previous colors'],
-  ['gamingLightingEnabledDuringFever', 'P58f', 'lighting and speed are disabled']]) {
+  ['gamingLightingEnabledDuringFever', 'P58f', 'lighting and speed are disabled'],
+  ['keepNextWordOnCaretMove', 'P59', 'moving the caret away from a commit drops the next-word predictions']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
