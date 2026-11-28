@@ -1,0 +1,17 @@
+
+-------------------------------[ability]-------------------------------
+
+
+----------------------------------ScreenlockService----------------------------------
+
+---------------------------------
+
+ Screenlock system state\tValue\t\tDescription
+ * screenState  		true		screen on / off status
+ * offReason  			0		screen failure reason
+ * interactiveState 		2		screen interaction status
+ * deviceLocked  		true		100
+ * authState  		5		100
+ * screenLocked  		true		100
+ * strongAuth  		100		0		259200000
+

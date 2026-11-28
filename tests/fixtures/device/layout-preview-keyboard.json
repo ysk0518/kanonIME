@@ -1,0 +1,1320 @@
+{
+ "attributes": {
+  "id": "",
+  "key": "",
+  "type": "",
+  "text": "",
+  "bounds": "[0,0][1260,2844]",
+  "selected": "",
+  "checked": "",
+  "focused": "",
+  "enabled": "",
+  "clickable": "",
+  "description": ""
+ },
+ "children": [
+  {
+   "attributes": {
+    "id": "",
+    "key": "",
+    "type": "root",
+    "text": "",
+    "bounds": "[0,132][1260,1748]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "true",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false",
+    "description": "",
+    "hint": ""
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "",
+      "key": "",
+      "type": "Column",
+      "text": "",
+      "bounds": "[0,132][1260,1748]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "true",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false",
+      "description": "",
+      "hint": ""
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "kanon_validation_input",
+        "key": "kanon_validation_input",
+        "type": "TextInput",
+        "text": "",
+        "bounds": "[67,417][1194,607]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "true",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "true",
+        "description": "",
+        "hint": "Please input preview content"
+       },
+       "children": []
+      },
+      {
+       "attributes": {
+        "id": "kanon_validation_direct_input",
+        "key": "kanon_validation_direct_input",
+        "type": "TextInput",
+        "text": "",
+        "bounds": "[67,673][1194,863]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "true",
+        "description": "",
+        "hint": "未確定表示なしの入力確認"
+       },
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "attributes": {
+    "id": "",
+    "key": "",
+    "type": "root",
+    "text": "",
+    "bounds": "[0,1748][1260,2693]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "false",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false",
+    "description": "",
+    "hint": ""
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "",
+      "key": "",
+      "type": "Stack",
+      "text": "",
+      "bounds": "[0,1748][1260,2693]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "false",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false",
+      "description": "",
+      "hint": ""
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "",
+        "key": "",
+        "type": "Column",
+        "text": "",
+        "bounds": "[0,1748][1260,2693]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "false",
+        "description": "",
+        "hint": ""
+       },
+       "children": [
+        {
+         "attributes": {
+          "id": "",
+          "key": "",
+          "type": "Stack",
+          "text": "",
+          "bounds": "[0,1748][1260,1937]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "Column",
+            "text": "",
+            "bounds": "[0,1748][1260,1937]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "",
+              "key": "",
+              "type": "Row",
+              "text": "",
+              "bounds": "[0,1748][1260,1937]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "false",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false",
+              "description": "",
+              "hint": ""
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[0,1775][1260,1910]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,1775][228,1910]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "keyboardEmoji",
+                    "key": "keyboardEmoji",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[60,1775][195,1910]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[228,1775][429,1910]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "keyboardSymbols",
+                    "key": "keyboardSymbols",
+                    "type": "Text",
+                    "text": "!?#",
+                    "bounds": "[261,1775][396,1910]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "keyboardMenu",
+                  "key": "keyboardMenu",
+                  "type": "Stack",
+                  "text": "",
+                  "bounds": "[831,1775][1032,1910]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "true",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": []
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "attributes": {
+          "id": "",
+          "key": "",
+          "type": "Column",
+          "text": "",
+          "bounds": "[0,1937][1260,2693]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "",
+            "key": "",
+            "type": "Stack",
+            "text": "",
+            "bounds": "[0,1937][1260,2693]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": [
+            {
+             "attributes": {
+              "id": "",
+              "key": "",
+              "type": "Column",
+              "text": "",
+              "bounds": "[0,1937][1260,2693]",
+              "selected": "false",
+              "checked": "false",
+              "focused": "false",
+              "visible": "true",
+              "enabled": "true",
+              "clickable": "false",
+              "description": "",
+              "hint": ""
+             },
+             "children": [
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,1957][1233,2128]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,1957][232,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_1",
+                    "key": "flick_control_1",
+                    "type": "Text",
+                    "text": "↺",
+                    "bounds": "[27,1957][232,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,1957][494,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_あ",
+                    "key": "flick_あ",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,1957][494,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,1957][756,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_か",
+                    "key": "flick_か",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,1957][756,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,1957][1018,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_さ",
+                    "key": "flick_さ",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,1957][1018,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,1957][1233,2128]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "deleteItem",
+                    "key": "deleteItem",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[1028,1957][1233,2128]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2139][1233,2310]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2139][232,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_2",
+                    "key": "flick_control_2",
+                    "type": "Text",
+                    "text": "←",
+                    "bounds": "[27,2139][232,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2139][494,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_た",
+                    "key": "flick_た",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,2139][494,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2139][756,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_な",
+                    "key": "flick_な",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2139][756,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2139][1018,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_は",
+                    "key": "flick_は",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2139][1018,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2139][1233,2310]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_6",
+                    "key": "flick_control_6",
+                    "type": "Text",
+                    "text": "→",
+                    "bounds": "[1028,2139][1233,2310]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2320][1233,2491]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2320][232,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "modeCycleItem",
+                    "key": "modeCycleItem",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[27,2320][232,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2320][494,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_ま",
+                    "key": "flick_ま",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,2320][494,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2320][756,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_や",
+                    "key": "flick_や",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2320][756,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2320][1018,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_ら",
+                    "key": "flick_ら",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2320][1018,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2320][1233,2491]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_convert_space",
+                    "key": "flick_convert_space",
+                    "type": "Text",
+                    "text": "日本語 ␣",
+                    "bounds": "[1028,2320][1233,2491]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              },
+              {
+               "attributes": {
+                "id": "",
+                "key": "",
+                "type": "Row",
+                "text": "",
+                "bounds": "[27,2502][1233,2673]",
+                "selected": "false",
+                "checked": "false",
+                "focused": "false",
+                "visible": "true",
+                "enabled": "true",
+                "clickable": "false",
+                "description": "",
+                "hint": ""
+               },
+               "children": [
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[27,2502][232,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "layoutItem",
+                    "key": "layoutItem",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[27,2502][232,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[242,2502][494,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_小゛゜",
+                    "key": "flick_小゛゜",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[242,2502][494,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[504,2502][756,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_わ",
+                    "key": "flick_わ",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[504,2502][756,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[766,2502][1018,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_、",
+                    "key": "flick_、",
+                    "type": "Column",
+                    "text": "",
+                    "bounds": "[766,2502][1018,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "false",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                },
+                {
+                 "attributes": {
+                  "id": "",
+                  "key": "",
+                  "type": "Column",
+                  "text": "",
+                  "bounds": "[1028,2502][1233,2673]",
+                  "selected": "false",
+                  "checked": "false",
+                  "focused": "false",
+                  "visible": "true",
+                  "enabled": "true",
+                  "clickable": "false",
+                  "description": "",
+                  "hint": ""
+                 },
+                 "children": [
+                  {
+                   "attributes": {
+                    "id": "flick_control_7",
+                    "key": "flick_control_7",
+                    "type": "Stack",
+                    "text": "",
+                    "bounds": "[1028,2502][1233,2673]",
+                    "selected": "false",
+                    "checked": "false",
+                    "focused": "false",
+                    "visible": "true",
+                    "enabled": "true",
+                    "clickable": "true",
+                    "description": "",
+                    "hint": ""
+                   },
+                   "children": []
+                  }
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "attributes": {
+    "id": "keyboardPanel28",
+    "key": "keyboardPanel28",
+    "type": "WindowScene",
+    "text": "",
+    "bounds": "[0,2693][1260,2844]",
+    "selected": "false",
+    "checked": "false",
+    "focused": "false",
+    "visible": "true",
+    "enabled": "true",
+    "clickable": "false",
+    "description": "",
+    "hint": ""
+   },
+   "children": [
+    {
+     "attributes": {
+      "id": "inputMethodPanel",
+      "key": "inputMethodPanel",
+      "type": "Stack",
+      "text": "",
+      "bounds": "[0,2693][1260,2844]",
+      "selected": "false",
+      "checked": "false",
+      "focused": "false",
+      "visible": "true",
+      "enabled": "true",
+      "clickable": "false",
+      "description": "",
+      "hint": ""
+     },
+     "children": [
+      {
+       "attributes": {
+        "id": "",
+        "key": "",
+        "type": "Row",
+        "text": "",
+        "bounds": "[0,2693][1260,2844]",
+        "selected": "false",
+        "checked": "false",
+        "focused": "false",
+        "visible": "true",
+        "enabled": "true",
+        "clickable": "false",
+        "description": "",
+        "hint": ""
+       },
+       "children": [
+        {
+         "attributes": {
+          "id": "",
+          "key": "",
+          "type": "Column",
+          "text": "",
+          "bounds": "[0,2703][210,2844]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "keyboardLeftButton",
+            "key": "keyboardLeftButton",
+            "type": "Column",
+            "text": "",
+            "bounds": "[102,2703][210,2811]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": []
+          }
+         ]
+        },
+        {
+         "attributes": {
+          "id": "",
+          "key": "",
+          "type": "Column",
+          "text": "",
+          "bounds": "[1050,2703][1260,2844]",
+          "selected": "false",
+          "checked": "false",
+          "focused": "false",
+          "visible": "true",
+          "enabled": "true",
+          "clickable": "false",
+          "description": "",
+          "hint": ""
+         },
+         "children": [
+          {
+           "attributes": {
+            "id": "keyboardRightButton",
+            "key": "keyboardRightButton",
+            "type": "Column",
+            "text": "",
+            "bounds": "[1050,2703][1158,2811]",
+            "selected": "false",
+            "checked": "false",
+            "focused": "false",
+            "visible": "true",
+            "enabled": "true",
+            "clickable": "false",
+            "description": "",
+            "hint": ""
+           },
+           "children": []
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

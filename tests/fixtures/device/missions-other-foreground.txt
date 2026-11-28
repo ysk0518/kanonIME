@@ -1,0 +1,25 @@
+User ID #100
+  current mission lists:{
+    Mission ID #61  mission name #[#com.example.app:entry:EntryAbility]  lockedState #0  mission affinity #[]
+      AbilityRecord ID #438
+        app name [com.example.app]
+        main name [MainAbility]
+        bundle name [com.example.app]
+        ability type [PAGE]
+        state #BACKGROUND  start time [2796028]
+        app state #FOREGROUND
+        ready #1  window attached #0  launcher #0
+        callee connections: 
+        isKeepAlive: false
+        missionAffinity: 10
+Mission ID #1261  mission name #[#local.yplic.kanon:entry:EntryAbility]  lockedState #0  mission affinity #[]
+      AbilityRecord ID #15773
+        app name [local.yplic.kanon]
+        main name [EntryAbility]
+        bundle name [local.yplic.kanon]
+        ability type [PAGE]
+        state #BACKGROUND  start time [310517270]
+        app state #BACKGROUND
+        ready #1  window attached #0  launcher #0
+        callee connections: 
+        isKeepAlive: false

@@ -59,6 +59,7 @@ if ($Build) {
 }
 
 if ($Install -or $SelectKanon -or $OpenPreview -or $Tap -or $Screenshot -or $Status) {
+  Import-Module (Join-Path $PSScriptRoot 'device/KanonDevice.psm1') -ErrorAction Stop
   if (!$Target) {
     $targets = @(& $deviceHdc list targets -v)
     if ($LASTEXITCODE -ne 0) { throw 'Could not list HDC targets.' }
@@ -70,12 +71,13 @@ if ($Install -or $SelectKanon -or $OpenPreview -or $Tap -or $Screenshot -or $Sta
     elseif ($usb.Count -gt 1) { throw "Multiple USB devices connected: $($usb -join ', '). Pass -Target." }
     elseif ($tcp.Count -eq 1) { $Target = $tcp[0] }
     elseif ($tcp.Count -gt 1) { throw "Multiple TCP devices connected: $($tcp -join ', '). Pass -Target." }
-    else { throw 'No connected HDC device found.' }
+    else { throw 'No connected HDC device found. Check the USB connection and try again.' }
   }
   Write-Output "Device: $Target"
 }
 
 if ($Install) {
+  Assert-KanonDeviceReady -Target $Target
   if (!(Test-Path -LiteralPath $hapPath)) { throw "Signed HAP not found: $hapPath" }
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $hapArchive = [IO.Compression.ZipFile]::OpenRead($hapPath)
@@ -95,17 +97,20 @@ if ($Install) {
   # hdc exits 0 even when the bundle manager rejects the HAP (for example,
   # code 9568332 after the signing certificate changes). Treat it as a failure.
   $installOutput = (Invoke-Device @('install', '-r', $hapPath)) -join "`n"
-  if ($installOutput -match 'failed to install|error:') {
+  if ($installOutput -notmatch '\binstall bundle successfully\b' -or
+      $installOutput -match '(?m)^[ \t]*\[(?:Fail|Error)\]|\b(?:error\s*:|failed\b)') {
     throw "Install failed: $installOutput"
   }
   $watch.Stop()
   Write-Output ('Install: {0:N1}s' -f $watch.Elapsed.TotalSeconds)
 }
 if ($SelectKanon) {
+  Assert-KanonDeviceReady -Target $Target
   Invoke-Device @('shell', 'ime', '-s', 'local.yplic.kanon') | Out-Null
   Write-Output 'IME: kanon'
 }
 if ($OpenPreview) {
+  Assert-KanonDeviceReady -Target $Target
   Invoke-Device @('shell', 'aa', 'start', '-a', 'EntryAbility', '-b', 'local.yplic.kanon',
     '--pb', 'kanonPreview', 'true', '--pb', 'kanonKeepAwake', 'true') | Out-Null
   Start-Sleep -Milliseconds 650
@@ -114,7 +119,9 @@ if ($OpenPreview) {
 $tapCount = 0
 foreach ($point in ($Tap -split ';' | Where-Object { $_ })) {
   if ($point -notmatch '^(\d+),(\d+)$') { throw "Invalid tap '$point'; use x,y." }
-  Invoke-Device @('shell', 'uinput', '-T', '-c', $Matches[1], $Matches[2]) | Out-Null
+  $x, $y = $Matches[1], $Matches[2]
+  Assert-KanonDeviceReady -Target $Target
+  Invoke-Device @('shell', 'uinput', '-T', '-c', $x, $y) | Out-Null
   $tapCount++
 }
 if ($tapCount -gt 0) { Write-Output "Taps: $tapCount" }
@@ -123,11 +130,8 @@ if ($Screenshot) {
     throw 'Screenshot must be a simple name without a path or extension.'
   }
   $shotDir = Join-Path $localDir 'screenshots'
-  New-Item -ItemType Directory -Path $shotDir -Force | Out-Null
-  $remoteShot = '/data/local/tmp/kanon-fast-device.jpeg'
   $localShot = Join-Path $shotDir "$Screenshot.jpeg"
-  Invoke-Device @('shell', 'snapshot_display', '-f', $remoteShot) | Out-Null
-  Invoke-Device @('file', 'recv', $remoteShot, $localShot) | Out-Null
+  Save-KanonScreenshot -Target $Target -Path $localShot | Out-Null
   Write-Output "Screenshot: $localShot"
 }
 if ($Status) {

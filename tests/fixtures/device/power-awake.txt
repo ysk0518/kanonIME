@@ -1,0 +1,7 @@
+----------------------------------PowerManagerService----------------------------------
+POWER STATE DUMP:
+Current State: AWAKE  Reason: 35  Time: 310754682
+ScreenOffTime: Timeout=300000ms
+DUMP DETAILS:
+Last Screen On: 311568669
+Last Screen Off: 310002613

@@ -48,6 +48,8 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 
 ## 実行対象
 
+端末操作ツールの解析と操作ガードは、`device-tools.test.cjs` が PowerShell を起動し、`tests/fixtures/device` の見本で確認します。実行方法は [開発用の端末操作](../docs/DEVICE_TOOLS.md) を参照してください。
+
 実Mozcのホスト試験は [結合確認](integration/README.md)、Harmony／Web／コンテナの固定入力手順は
 [実機確認](device/README.md) を参照してください。通常のPCテストと結果を分けて記録します。
 [製品ブリッジの実機結合確認](integration/NATIVE_BRIDGE.md) は専用ohosTest HAPで実行します。
