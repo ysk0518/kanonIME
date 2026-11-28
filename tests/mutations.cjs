@@ -131,7 +131,13 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['pachinkoMissIgnoresThreeHolds', 'P58e', 'miss timelines shorten'],
   ['pachinkoSkipsHoldReveal', 'P58e', 'hold changes reveal a hidden color first'],
   ['pachinkoNoNextDigitWrap', 'P58e', 'near misses wrap both directions'],
-  ['pachinkoSkipsThirdPseudo', 'P58e', 'notices advance through every step']]) {
+  ['pachinkoSkipsThirdPseudo', 'P58e', 'notices advance through every step'],
+  ['gamingLightingStopsAtLastAnchor', 'P58f', 'presets interpolate through their anchors'],
+  ['gamingSolidIgnoresPhase', 'P58f', 'solid lighting varies only the brightness'],
+  ['gamingInvalidSolidDefaultsToWhite', 'P58f', 'missing or invalid saved lighting values'],
+  ['gamingResetKeepsPalette', 'P58f', 'palette and solid color sync independently'],
+  ['gamingFeverUsesSelectedPalette', 'P58f', 'rainbow matches the previous colors'],
+  ['gamingLightingEnabledDuringFever', 'P58f', 'lighting and speed are disabled']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

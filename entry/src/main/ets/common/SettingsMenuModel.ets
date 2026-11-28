@@ -142,7 +142,8 @@ export function settingsReset(): SettingsReset {
     emojiSuggestions: defaults.emojiSuggestions, autoCapitalize: defaults.autoCapitalize,
     doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
-    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect, gamingSpeed: defaults.gamingSpeed
+    heightPercent: defaults.heightPercent, gamingEffect: defaults.gamingEffect, gamingSpeed: defaults.gamingSpeed,
+    gamingPalette: defaults.gamingPalette, gamingSolidColor: defaults.gamingSolidColor
   };
   return { patch: patch, background: new BackgroundConfig() };
 }

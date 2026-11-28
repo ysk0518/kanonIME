@@ -21,6 +21,7 @@ node tests/run.cjs --test-name-pattern "P58b:"
 node tests/run.cjs --test-name-pattern "P58c:"
 node tests/run.cjs --test-name-pattern "P58d:"
 node tests/run.cjs --test-name-pattern "P58e:"
+node tests/run.cjs --test-name-pattern "P58f:"
 node tests/mutations.cjs
 ```
 
@@ -82,7 +83,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | `settings-menu.test.cjs` | P55のカード構成・遷移先、言語と背景の要約、即時保存の差分、全体リセット、IMEとの同期 |
 | `keyboard-settings.test.cjs` / `settings-menu.test.cjs` / `settings-sync.test.cjs` / `mozc-engine.test.cjs` / `ime-session.test.cjs` | P56のスマート入力の既定値・検証・旧データ補完、カードとリセット、IMEへの同期、設定を変更した後の絵文字候補・自動大文字・ピリオド入力 |
 | `settings-subpages.test.cjs` | P57のショートカットの上下移動・削除・追加・端での無効判定、サイズからの高さの差分、テーマの未保存判定 |
-| `gaming-effect.test.cjs` | P58の7回タップと2秒境界、解放・設定同期・リセットと輪の上限。P58bの波の距離・経過時間・帯幅・半径・重なり・更新間の通過、5段階の周期と継続時間、速さの検証・移行・同期・リセット、選択名の要約 |
+| `gaming-effect.test.cjs` | P58の7回タップと2秒境界、解放・設定同期・リセットと輪の上限。P58bの波の距離・経過時間・帯幅・半径・重なり・更新間の通過、5段階の周期と継続時間、速さの検証・移行・同期・リセット、選択名の要約。P58fの配色アンカーと循環補間、ライト／ダークの色表、単色の明るさ、従来の虹とフィーバーの色、保存値の補正・同期・リセット、無効表示の条件 |
 | `pachinko.test.cjs` | P58cの日英の確定通知と失敗・重複・旧入力先の除外、ドパガキの設定。P58dの保留上限4、800ms待ちと先入れ先出し。P58eの通常／RUSHの抽選境界、信頼度、RUSHの回数と更新、台本の時間割・段階・停止図柄、保留変化とデバッグ台本 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
@@ -176,6 +177,7 @@ Node 24以降のテストには30秒の期限を付け、故意に処理を壊�
 | P58c | 大当たりをリーチにする、変換確定の通知を削除する |
 | P58d | 保留を5つ受け付ける、大当たりの赤と金の比率を変える、799msでリールを始める、最後の保留を先に消化する、ハズレで左右がそろう |
 | P58e | RUSHの残りを7に戻す、通常時に偶数でRUSHへ入る、3つ保留時のハズレを短縮しない、白からの保留変化を省く、9→1の折り返しを壊す、擬似連×3を追加しない |
+| P58f | 最後のアンカーから最初の色へ戻らない、単色の明るさを固定する、不正な単色を白にする、リセットで配色を保持する、フィーバーのフラッシュに選択中の配色を適用する、フィーバー中に配色と速さの設定を有効にする |
 
 ## 別に確認すること
 

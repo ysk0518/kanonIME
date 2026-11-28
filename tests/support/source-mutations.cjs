@@ -1,4 +1,34 @@
 const mutations = {
+  gamingLightingStopsAtLastAnchor: {
+    file: 'common/GamingLightingModel.ets',
+    before: 'anchors[(index + 1) % anchors.length]',
+    after: 'anchors[Math.min(index + 1, anchors.length - 1)]'
+  },
+  gamingSolidIgnoresPhase: {
+    file: 'common/GamingLightingModel.ets',
+    before: '[solid, scaleRgb(solid, 0.7)]',
+    after: '[solid, solid]'
+  },
+  gamingInvalidSolidDefaultsToWhite: {
+    file: 'common/GamingLightingModel.ets',
+    before: '? value : DEFAULT_GAMING_SOLID_COLOR',
+    after: '? value : 0xffffff'
+  },
+  gamingResetKeepsPalette: {
+    file: 'common/SettingsMenuModel.ets',
+    before: 'gamingPalette: defaults.gamingPalette, ',
+    after: ''
+  },
+  gamingFeverUsesSelectedPalette: {
+    file: 'common/GamingLightingModel.ets',
+    before: 'this.phaseRgb(offset, dark, pressed, flow)',
+    after: 'this.phaseRgb(offset, dark, pressed, true)'
+  },
+  gamingLightingEnabledDuringFever: {
+    file: 'common/GamingEffectModel.ets',
+    before: "return effect === 'flow' || effect === 'wave' || effect === 'ripple';",
+    after: "return effect !== 'off';"
+  },
   pachinkoReachBeforeJackpot: {
     file: 'common/PachinkoModel.ets',
     before: '[PachinkoResult.Jackpot, PachinkoResult.Reach, PachinkoResult.Miss]',

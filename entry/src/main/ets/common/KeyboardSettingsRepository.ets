@@ -18,6 +18,7 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_DISTANCE, DEFAULT_LONG_PRESS_MS, DE
   DEFAULT_KEY_PREVIEW_ENABLED, DEFAULT_FLICK_ENABLED } from './KeyboardConfigValues';
 import { DEFAULT_SHORTCUT_ORDER, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT } from './KeyboardLayout';
+import { gamingLightingColors } from './GamingLightingModel';
 
 const CONFIG_FILE: string = 'kanon_keyboard_config';
 const RECORD_KEY: string = 'settings_record_v1';
@@ -94,6 +95,7 @@ function setValue(key: string, value: string | number | boolean): void {
 
 function publishSettings(previous: KeyboardSettingsSnapshot | undefined): void {
   const snapshot: KeyboardSettingsSnapshot = readSettings();
+  gamingLightingColors.configure(snapshot.gamingPalette, snapshot.gamingSolidColor);
   setValue(KANON_FLICK_ENABLED, snapshot.flickEnabled);
   setValue(KANON_FLICK_DISTANCE, snapshot.flickDistance);
   setValue(KANON_LONG_PRESS_MS, snapshot.longPressMs);

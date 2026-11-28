@@ -1,8 +1,17 @@
 import { ColorMetrics } from '@ohos.arkui.node';
 import { KANON_GAMING_PHASE } from '../common/AppStorageKeys';
-import { DEFAULT_GAMING_SPEED, GAMING_FLOW_STEPS, GAMING_RIPPLE_MS, GAMING_WAVE_TICK_MS, GamingPoint, GamingRipple, GamingRipples,
+import { DEFAULT_GAMING_SPEED, GAMING_FLOW_PALETTE_OFFSET, GAMING_FLOW_STEPS, GAMING_RIPPLE_MS, GAMING_WAVE_TICK_MS,
+  GamingPoint, GamingRipple, GamingRipples,
   GamingWaveFrame, gamingFlowPeriodMs, gamingFlowStep, gamingSpreadDurationMs } from '../common/GamingEffectModel';
-import { gamingKeyCenter, gamingPresses, publishGamingWave } from '../common/GamingKeyFeedback';
+import { gamingKeyCenter, gamingPresses, publishGamingWave, setGamingWaveTheme } from '../common/GamingKeyFeedback';
+import { gamingLightingColors } from '../common/GamingLightingModel';
+
+function gamingDarkKeys(fallback: boolean = false): boolean {
+  try {
+    const text: ColorMetrics = ColorMetrics.resourceColor($r('app.color.key_text'));
+    return text.red + text.green + text.blue > 384;
+  } catch (error) { return fallback; }
+}
 
 @Component
 export struct GamingFlowClock {
@@ -24,16 +33,13 @@ export struct GamingFlowClock {
   }
 
   private refreshPalette(): void {
-    try {
-      const text: ColorMetrics = ColorMetrics.resourceColor($r('app.color.key_text'));
-      this.paletteOffset = text.red + text.green + text.blue > 384 ? GAMING_FLOW_STEPS : 0;
-    } catch (error) {}
+    this.paletteOffset = gamingDarkKeys(this.paletteOffset !== 0) ? GAMING_FLOW_STEPS : 0;
     this.publishPhase();
   }
 
   private publishPhase(): void {
     const step: number = gamingFlowStep(Date.now() - this.startedAt, this.speed);
-    AppStorage.setOrCreate(KANON_GAMING_PHASE, this.paletteOffset + step);
+    AppStorage.setOrCreate(KANON_GAMING_PHASE, GAMING_FLOW_PALETTE_OFFSET + this.paletteOffset + step);
   }
 
   private restartClock(): void {
@@ -50,6 +56,7 @@ export struct GamingFlowClock {
 
 @Component
 export struct GamingWaveClock {
+  @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshTheme') themeVersion: number = 0;
   @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
   private presses: GamingRipples = new GamingRipples();
   private maxRadius: number = 0;
@@ -67,7 +74,12 @@ export struct GamingWaveClock {
     }
   };
 
-  aboutToAppear(): void { gamingPresses.listen(this.onPress); }
+  aboutToAppear(): void {
+    this.refreshTheme();
+    gamingPresses.listen(this.onPress);
+  }
+
+  private refreshTheme(): void { setGamingWaveTheme(gamingDarkKeys()); }
 
   aboutToDisappear(): void {
     gamingPresses.unlisten(this.onPress);
@@ -109,6 +121,7 @@ export struct GamingWaveClock {
 struct GamingRippleRing {
   finished: () => void = () => {};
   duration: number = GAMING_RIPPLE_MS;
+  @Prop colors: number[] = gamingLightingColors.ringRgb(false);
   @State private expanded: boolean = false;
   private startTimer: number = -1;
 
@@ -123,11 +136,11 @@ struct GamingRippleRing {
   build() {
     Stack() {
       this.ring(122, '#80202633', 7)
-      this.ring(126, '#ff7299', 2)
-      this.ring(122, '#fff17c', 2)
-      this.ring(118, '#65efae', 2)
-      this.ring(114, '#72c9ff', 2)
-      this.ring(110, '#b78cff', 2)
+      this.ring(126, 0xff000000 + this.colors[0], 2)
+      this.ring(122, 0xff000000 + this.colors[1], 2)
+      this.ring(118, 0xff000000 + this.colors[2], 2)
+      this.ring(114, 0xff000000 + this.colors[3], 2)
+      this.ring(110, 0xff000000 + this.colors[4], 2)
     }.width(128).height(128)
       .hitTestBehavior(HitTestMode.None)
       .opacity(this.expanded ? 0 : 1)
@@ -143,8 +156,11 @@ struct GamingRippleRing {
 
 @Component
 export struct GamingRippleOverlay {
+  @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshColors') themeVersion: number = 0;
+  @StorageProp('kanonSettingsGeneration') @Watch('refreshColors') settingsGeneration: number = 0;
   @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
   @State private rings: GamingRipple[] = [];
+  @State private colors: number[] = gamingLightingColors.ringRgb(false);
   private model: GamingRipples = new GamingRipples();
   private left: number = 0;
   private top: number = 0;
@@ -157,6 +173,7 @@ export struct GamingRippleOverlay {
   };
 
   aboutToAppear(): void {
+    this.refreshColors();
     this.alive = true;
     gamingPresses.listen(this.onPress);
   }
@@ -170,10 +187,14 @@ export struct GamingRippleOverlay {
     if (this.alive) { this.rings = this.model.remove(id); }
   }
 
+  private refreshColors(): void {
+    this.colors = gamingLightingColors.ringRgb(gamingDarkKeys());
+  }
+
   build() {
     Stack() {
       ForEach(this.rings, (ring: GamingRipple) => {
-        GamingRippleRing({ duration: ring.duration, finished: () => this.removeRing(ring.id) })
+        GamingRippleRing({ duration: ring.duration, colors: this.colors, finished: () => this.removeRing(ring.id) })
           .position({ x: ring.x - 64, y: ring.y - 64 })
           .hitTestBehavior(HitTestMode.None)
       }, (ring: GamingRipple) => ring.id.toString())

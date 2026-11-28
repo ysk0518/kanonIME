@@ -4,6 +4,8 @@ import { DEFAULT_LAYOUT_ORDER, DEFAULT_FLICK_ENABLED, DEFAULT_FLICK_DISTANCE, DE
 import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutConfigValues';
 import { DEFAULT_GAMING_EFFECT, DEFAULT_GAMING_SPEED, DEFAULT_GAMING_UNLOCKED, GamingEffect, gamingEffect,
   validGamingSpeed } from './GamingEffectModel';
+import { DEFAULT_GAMING_PALETTE, DEFAULT_GAMING_SOLID_COLOR, GamingPalette, normalizeGamingPalette,
+  normalizeGamingSolidColor } from './GamingLightingModel';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
@@ -23,6 +25,8 @@ export class KeyboardSettingsSnapshot {
   gamingUnlocked: boolean = DEFAULT_GAMING_UNLOCKED;
   gamingEffect: GamingEffect = DEFAULT_GAMING_EFFECT;
   gamingSpeed: number = DEFAULT_GAMING_SPEED;
+  gamingPalette: GamingPalette = DEFAULT_GAMING_PALETTE;
+  gamingSolidColor: number = DEFAULT_GAMING_SOLID_COLOR;
   autoCapitalize: boolean = DEFAULT_AUTO_CAPITALIZE;
   doubleSpacePeriod: boolean = DEFAULT_DOUBLE_SPACE_PERIOD;
   keyGap: number = DEFAULT_KEY_GAP;
@@ -47,6 +51,8 @@ export interface KeyboardSettingsPatch {
   gamingUnlocked?: boolean;
   gamingEffect?: GamingEffect;
   gamingSpeed?: number;
+  gamingPalette?: GamingPalette;
+  gamingSolidColor?: number;
   autoCapitalize?: boolean;
   doubleSpacePeriod?: boolean;
   keyGap?: number;
@@ -101,7 +107,7 @@ function validShortcuts(value: string): boolean {
 
 export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
   if (!patch) { return false; }
-  // Unknown gamingEffect values are normalized to off when copied, applied or merged.
+  // Unknown effect and lighting values are normalized when copied, applied or merged.
   return (patch.layoutOrder === undefined || validLayouts(patch.layoutOrder)) &&
     (patch.layoutKind === undefined || patch.layoutKind === 'flick' || patch.layoutKind === 'qwerty') &&
     (patch.flickEnabled === undefined || typeof patch.flickEnabled === 'boolean') &&
@@ -150,6 +156,8 @@ export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettin
   if (copy.gamingUnlocked === undefined) { copy.gamingUnlocked = DEFAULT_GAMING_UNLOCKED; }
   copy.gamingEffect = gamingEffect(copy.gamingEffect);
   if (copy.gamingSpeed === undefined) { copy.gamingSpeed = DEFAULT_GAMING_SPEED; }
+  copy.gamingPalette = normalizeGamingPalette(copy.gamingPalette);
+  copy.gamingSolidColor = normalizeGamingSolidColor(copy.gamingSolidColor);
   if (copy.autoCapitalize === undefined) { copy.autoCapitalize = DEFAULT_AUTO_CAPITALIZE; }
   if (copy.doubleSpacePeriod === undefined) { copy.doubleSpacePeriod = DEFAULT_DOUBLE_SPACE_PERIOD; }
   if (copy.toggleInputEnabled === undefined) { copy.toggleInputEnabled = DEFAULT_TOGGLE_INPUT_ENABLED; }
@@ -173,6 +181,8 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.gamingUnlocked !== undefined) { next.gamingUnlocked = patch.gamingUnlocked; }
   if (patch.gamingEffect !== undefined) { next.gamingEffect = gamingEffect(patch.gamingEffect); }
   if (patch.gamingSpeed !== undefined) { next.gamingSpeed = patch.gamingSpeed; }
+  if (patch.gamingPalette !== undefined) { next.gamingPalette = normalizeGamingPalette(patch.gamingPalette); }
+  if (patch.gamingSolidColor !== undefined) { next.gamingSolidColor = normalizeGamingSolidColor(patch.gamingSolidColor); }
   if (patch.autoCapitalize !== undefined) { next.autoCapitalize = patch.autoCapitalize; }
   if (patch.doubleSpacePeriod !== undefined) { next.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { next.keyGap = Math.round(patch.keyGap); }
@@ -201,6 +211,8 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.gamingUnlocked !== undefined) { merged.gamingUnlocked = patch.gamingUnlocked; }
   if (patch.gamingEffect !== undefined) { merged.gamingEffect = gamingEffect(patch.gamingEffect); }
   if (patch.gamingSpeed !== undefined) { merged.gamingSpeed = patch.gamingSpeed; }
+  if (patch.gamingPalette !== undefined) { merged.gamingPalette = normalizeGamingPalette(patch.gamingPalette); }
+  if (patch.gamingSolidColor !== undefined) { merged.gamingSolidColor = normalizeGamingSolidColor(patch.gamingSolidColor); }
   if (patch.autoCapitalize !== undefined) { merged.autoCapitalize = patch.autoCapitalize; }
   if (patch.doubleSpacePeriod !== undefined) { merged.doubleSpacePeriod = patch.doubleSpacePeriod; }
   if (patch.keyGap !== undefined) { merged.keyGap = patch.keyGap; }

@@ -7,6 +7,8 @@ export const MIN_GAMING_SPEED: number = 1;
 export const MAX_GAMING_SPEED: number = 5;
 export const DEFAULT_GAMING_SPEED: number = 3;
 export const GAMING_FLOW_STEPS: number = 36;
+// Fever flashes use the original two theme ranges of the shared phase.
+export const GAMING_FLOW_PALETTE_OFFSET: number = 2 * GAMING_FLOW_STEPS;
 export const GAMING_GOLD_PHASE: number = -2;
 export const GAMING_WAVE_TICK_MS: number = 50;
 export const GAMING_RIPPLE_MS: number = 400;

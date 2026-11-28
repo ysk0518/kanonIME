@@ -22,6 +22,7 @@ import { SETTINGS_MENU, SettingsPageId, SettingsMenuAction, SettingsMenuRow, Set
   settingsShortcutPatch, settingsReset, settingsMenuRows, settingsGamingSummary } from '../common/SettingsMenuModel';
 import { GAMING_EFFECTS, MAX_GAMING_SPEED, MIN_GAMING_SPEED, GamingEffect, GamingTapResult,
   GamingUnlockTaps, gamingSpeedEnabled } from '../common/GamingEffectModel';
+import { GAMING_PALETTES, GAMING_SOLID_COLORS, GamingPalette, gamingLightingAnchors } from '../common/GamingLightingModel';
 
 function gamingEffectTitle(effect: GamingEffect): Resource {
   switch (effect) {
@@ -31,6 +32,39 @@ function gamingEffectTitle(effect: GamingEffect): Resource {
     case 'pachinko': return $r('app.string.settings_gaming_pachinko');
     default: return $r('app.string.settings_gaming_off');
   }
+}
+
+function gamingPaletteTitle(palette: GamingPalette): Resource {
+  switch (palette) {
+    case 'flame': return $r('app.string.settings_gaming_palette_flame');
+    case 'ice': return $r('app.string.settings_gaming_palette_ice');
+    case 'neon': return $r('app.string.settings_gaming_palette_neon');
+    case 'sakura': return $r('app.string.settings_gaming_palette_sakura');
+    case 'solid': return $r('app.string.settings_gaming_palette_solid');
+    default: return $r('app.string.settings_gaming_palette_rainbow');
+  }
+}
+
+function gamingSolidColorTitle(color: number): Resource {
+  switch (color) {
+    case 0xff3b30: return $r('app.string.settings_gaming_color_red');
+    case 0xff9500: return $r('app.string.settings_gaming_color_orange');
+    case 0xffd60a: return $r('app.string.settings_gaming_color_yellow');
+    case 0x34c759: return $r('app.string.settings_gaming_color_green');
+    case 0x0a84ff: return $r('app.string.settings_gaming_color_blue');
+    case 0xbf5af2: return $r('app.string.settings_gaming_color_purple');
+    case 0xffffff: return $r('app.string.settings_gaming_color_white');
+    default: return $r('app.string.settings_gaming_color_cyan');
+  }
+}
+
+function gamingPaletteSwatch(palette: GamingPalette, solid: number): LinearGradientOptions {
+  const anchors: number[] = gamingLightingAnchors(palette, solid, true);
+  const gradient: LinearGradientOptions = { direction: GradientDirection.Right, colors: [] };
+  for (let index: number = 0; index < anchors.length; index++) {
+    gradient.colors.push([0xff000000 + anchors[index], index / (anchors.length - 1)]);
+  }
+  return gradient;
 }
 
 function pageTitle(page: SettingsPageId): Resource {
@@ -548,7 +582,55 @@ export struct KeyboardSettings {
         this.slider(SettingsNumber.GamingSpeed, MIN_GAMING_SPEED, MAX_GAMING_SPEED, 1, 'keyboard_config_gaming_speed')
       }.padding({ top: 14, bottom: 16 })
         .opacity(gamingSpeedEnabled(this.snapshot.gamingEffect) ? 1 : 0.5)
+      this.divider()
+      this.gamingLightingOptions()
     }.width('100%').padding({ left: 18, right: 18 }).borderRadius(22).backgroundColor($r('app.color.settings_card'))
+  }
+
+  @Builder
+  gamingLightingOptions() {
+    Column() {
+      this.label($r('app.string.settings_gaming_lighting_color'))
+      ForEach(GAMING_PALETTES, (palette: GamingPalette, index: number) => {
+        if (index > 0) { this.divider() }
+        Button({ type: ButtonType.Normal }) {
+          Row({ space: 12 }) {
+            Text(gamingPaletteTitle(palette)).fontSize(18).fontColor($r('app.color.text_normal')).layoutWeight(1)
+            Row() {}.width(48).height(16).borderRadius(8).clip(true)
+              .linearGradient(gamingPaletteSwatch(palette, this.snapshot.gamingSolidColor))
+              .accessibilityLevel('no')
+            Radio({ value: palette, group: 'keyboard_gaming_palette' })
+              .checked(this.snapshot.gamingPalette === palette)
+              .hitTestBehavior(HitTestMode.None).accessibilityLevel('no')
+          }.width('100%').constraintSize({ minHeight: 48 })
+        }.width('100%').padding(0).backgroundColor(Color.Transparent)
+          .accessibilityChecked(this.snapshot.gamingPalette === palette)
+          .onClick(() => {
+            if (this.snapshot.gamingPalette !== palette) { this.save({ gamingPalette: palette }); }
+          }).id(`keyboard_config_gaming_palette_${palette}`)
+      }, (palette: GamingPalette) => palette)
+      if (this.snapshot.gamingPalette === 'solid') {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
+          ForEach(GAMING_SOLID_COLORS, (color: number) => {
+            Button({ type: ButtonType.Circle }) {
+              Circle().width(28).height(28).fill(0xff000000 + color)
+                .stroke($r('app.color.text_secondary')).strokeWidth(1).accessibilityLevel('no')
+            }.width(34).height(34).padding(0).margin({ left: 1, right: 1, bottom: 4 })
+              .backgroundColor(Color.Transparent)
+              .border({ width: 2, color: color === this.snapshot.gamingSolidColor ?
+                $r('app.color.text_normal') : Color.Transparent })
+              .accessibilityText(gamingSolidColorTitle(color))
+              .accessibilityChecked(this.snapshot.gamingSolidColor === color)
+              .onClick(() => {
+                if (this.snapshot.gamingSolidColor !== color) { this.save({ gamingSolidColor: color }); }
+              }).id(`keyboard_config_gaming_solid_${color.toString(16)}`)
+          }, (color: number) => color.toString())
+        }.width('100%').padding({ top: 4 })
+      }
+    }.width('100%').alignItems(HorizontalAlign.Start).padding({ top: 14, bottom: 8 })
+      .opacity(gamingSpeedEnabled(this.snapshot.gamingEffect) ? 1 : 0.5)
+      .enabled(this.sliderEnabled(SettingsNumber.GamingSpeed))
+      .id('keyboard_config_gaming_lighting')
   }
 
   @Builder

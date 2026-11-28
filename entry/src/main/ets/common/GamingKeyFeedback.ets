@@ -1,18 +1,14 @@
 import { ColorMetrics } from '@ohos.arkui.node';
 import { KANON_GAMING_WAVE_TIME } from './AppStorageKeys';
 import { pachinkoKeyNotifications } from './PachinkoModel';
-import { GAMING_FLOW_STEPS, GAMING_GOLD_PHASE, GamingPoint, GamingWaveFrame, GamingWaveSample,
+import { GAMING_GOLD_PHASE, GamingPoint, GamingWaveFrame, GamingWaveSample,
   gamingWaveSample } from './GamingEffectModel';
-
-const RAINBOW_WIDTH: number = 420;
-
-// Each palette keeps the glyphs legible against the corresponding key surface.
-const LIGHT_RAINBOW: number[] = [0xb32247, 0x995008, 0x646500, 0x087344, 0x006c91, 0x5943ac];
-const DARK_RAINBOW: number[] = [0xff7196, 0xffb272, 0xece36e, 0x6cf1a0, 0x70d9ff, 0xbca0ff];
+import { gamingLightingColors, mixGamingChannel } from './GamingLightingModel';
 
 const NO_WAVE: GamingWaveSample = { intensity: 0, hue: 0 };
 const NO_TINT: LinearGradientOptions = { colors: [[Color.Transparent, 0], [Color.Transparent, 1]] };
 let waveFrame: GamingWaveFrame | undefined = undefined;
+let waveDark: boolean = false;
 const waveSamples: Map<GamingPoint, GamingWaveSample> = new Map<GamingPoint, GamingWaveSample>();
 
 function waveSample(now: number, center: GamingPoint | undefined): GamingWaveSample {
@@ -37,6 +33,8 @@ export function publishGamingWave(frame: GamingWaveFrame | undefined): void {
   AppStorage.setOrCreate(KANON_GAMING_WAVE_TIME, frame === undefined ? 0 : frame.now);
 }
 
+export function setGamingWaveTheme(dark: boolean): void { waveDark = dark; }
+
 export function gamingKeyColor(phase: number, now: number, center: GamingPoint | undefined,
   fallback: ResourceColor, pressed: boolean = false): ResourceColor {
   if (phase === GAMING_GOLD_PHASE) {
@@ -49,38 +47,19 @@ export function gamingKeyColor(phase: number, now: number, center: GamingPoint |
   if (wave.intensity > 0) {
     try {
       const base: ColorMetrics = ColorMetrics.resourceColor(fallback);
-      const palette: number[] = base.red + base.green + base.blue > 384 ? DARK_RAINBOW : LIGHT_RAINBOW;
-      const color: number = rainbow(wave.hue, palette, 0);
+      const color: number = gamingLightingColors.phaseRgb(wave.hue, base.red + base.green + base.blue > 384);
       const mix: number = wave.intensity;
-      return 0xff000000 + (mixChannel(base.red, color >> 16, mix, 0) << 16) +
-        (mixChannel(base.green, color >> 8, mix, 0) << 8) + mixChannel(base.blue, color, mix, 0);
+      return 0xff000000 + (mixGamingChannel(base.red, color >> 16, mix) << 16) +
+        (mixGamingChannel(base.green, color >> 8, mix) << 8) + mixGamingChannel(base.blue, color, mix);
     } catch (error) { return fallback; }
   }
   return flowColor(phase, center?.x ?? 0, fallback, pressed);
 }
 
-function flowColor(phase: number, x: number, fallback: ResourceColor, pressed: boolean): ResourceColor {
+function flowColor(phase: number, x: number, fallback: ResourceColor, pressed: boolean,
+  outline: boolean = false): ResourceColor {
   if (phase < 0) { return fallback; }
-  const dark: boolean = phase >= GAMING_FLOW_STEPS;
-  const palette: number[] = dark ? DARK_RAINBOW : LIGHT_RAINBOW;
-  const offset: number = x / RAINBOW_WIDTH - (phase % GAMING_FLOW_STEPS) / GAMING_FLOW_STEPS;
-  return 0xff000000 + rainbow(offset, palette, pressed && dark ? 45 : 0);
-}
-
-function rainbow(offset: number, palette: number[], glow: number): number {
-  const hue: number = (offset - Math.floor(offset)) * palette.length;
-  const index: number = Math.floor(hue);
-  const mix: number = hue - index;
-  const first: number = palette[index];
-  const second: number = palette[(index + 1) % palette.length];
-  const red: number = mixChannel(first >> 16, second >> 16, mix, glow);
-  const green: number = mixChannel(first >> 8, second >> 8, mix, glow);
-  const blue: number = mixChannel(first, second, mix, glow);
-  return (red << 16) + (green << 8) + blue;
-}
-
-function mixChannel(first: number, second: number, mix: number, glow: number): number {
-  return Math.min(255, Math.round((first & 255) * (1 - mix) + (second & 255) * mix) + glow);
+  return 0xff000000 + gamingLightingColors.flowRgb(phase, x, pressed, outline);
 }
 
 export function gamingKeyOutline(phase: number, now: number, center: GamingPoint | undefined,
@@ -90,10 +69,9 @@ export function gamingKeyOutline(phase: number, now: number, center: GamingPoint
   if (wave.intensity > 0) {
     return { width: 2, color: waveColor(wave, 255), radius: radius };
   }
-  const outlinePhase: number = pressed && phase >= 0 ? phase % GAMING_FLOW_STEPS + GAMING_FLOW_STEPS : phase;
   return {
     width: phase < 0 ? 0 : pressed ? 2 : 1,
-    color: flowColor(outlinePhase, center?.x ?? 0, Color.Transparent, pressed),
+    color: flowColor(phase, center?.x ?? 0, Color.Transparent, pressed, true),
     radius: radius
   };
 }
@@ -107,7 +85,8 @@ export function gamingKeyTint(now: number, center: GamingPoint | undefined): Lin
 }
 
 function waveColor(wave: GamingWaveSample, alpha: number): number {
-  return Math.round(alpha * wave.intensity) * 0x1000000 + rainbow(wave.hue, DARK_RAINBOW, 0);
+  return Math.round(alpha * wave.intensity) * 0x1000000 +
+    gamingLightingColors.phaseRgb(wave.hue, waveDark || gamingLightingColors.usesRainbow());
 }
 
 type GamingPressListener = (x: number, y: number, area: Area) => void;

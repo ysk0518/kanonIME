@@ -1,8 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { GAMING_EFFECTS, GamingTapResult: Tap, GamingUnlockTaps, GamingRipples, gamingFlowPeriodMs, gamingFlowStep,
-  gamingSpreadDurationMs, gamingWaveSample } =
+const { GAMING_EFFECTS, GAMING_FLOW_PALETTE_OFFSET, GAMING_FLOW_STEPS, GamingTapResult: Tap, GamingUnlockTaps,
+  GamingRipples, gamingFlowPeriodMs, gamingFlowStep, gamingSpreadDurationMs, gamingSpeedEnabled, gamingWaveSample } =
   require('../../entry/src/main/ets/common/GamingEffectModel.ets');
+const { GAMING_PALETTES, GAMING_SOLID_COLORS, GamingLightingColors, gamingLightingAnchors, gamingLightingRgb } =
+  require('../../entry/src/main/ets/common/GamingLightingModel.ets');
 const { KeyboardSettingsRecord, KeyboardSettingsSnapshot, validSettingsPatch, validSettingsSnapshot,
   applySettingsPatch, mergeSettingsPatch, decodeSettingsRecord } =
   require('../../entry/src/main/ets/common/KeyboardSettingsModel.ets');
@@ -214,4 +216,151 @@ test('P58b: speed syncs independently and reset restores level three', async () 
     assert.equal(endpoint.state.record.snapshot.gamingEffect, 'off');
     assert.equal(endpoint.state.record.snapshot.gamingUnlocked, true);
   }
+});
+
+test('P58f: presets interpolate through their anchors and wrap seamlessly', () => {
+  const presets = {
+    flame: [0xff3b30, 0xff9500, 0xffd60a],
+    ice: [0x3c83ff, 0x54dcff, 0xddf8ff],
+    neon: [0xff57c8, 0xb05aff, 0x527bff],
+    sakura: [0xf29abb, 0xffc9df, 0xffedf4]
+  };
+  const colors = new GamingLightingColors();
+  assert.deepEqual(GAMING_PALETTES, ['rainbow', ...Object.keys(presets), 'solid']);
+  for (const [palette, expected] of Object.entries(presets)) {
+    colors.configure(palette, 0x32d2ff);
+    const dark = gamingLightingAnchors(palette, 0x32d2ff, true);
+    const light = gamingLightingAnchors(palette, 0x32d2ff, false);
+    assert.deepEqual(dark, expected);
+    for (let index = 0; index < dark.length; index++) {
+      const phase = index / dark.length;
+      assert.equal(gamingLightingRgb(dark, phase), dark[index]);
+      assert.equal(gamingLightingRgb(dark, phase - 1e-8), dark[index]);
+      assert.equal(gamingLightingRgb(dark, phase + 1e-8), dark[index]);
+      assert.equal(colors.phaseRgb(phase, true), dark[index]);
+      assert.equal(colors.phaseRgb(phase, false), light[index]);
+      assert.ok(light[index] < dark[index]);
+    }
+    assert.equal(gamingLightingRgb(dark, 1), dark[0]);
+    assert.equal(colors.phaseRgb(1, true), dark[0]);
+    assert.equal(colors.phaseRgb(-1e-8, true), dark[0]);
+    assert.equal(colors.flowRgb(GAMING_FLOW_PALETTE_OFFSET, 0, false, false), light[0]);
+    for (const isDark of [false, true]) {
+      assert.deepEqual(colors.ringRgb(isDark), Array.from({ length: 5 }, (_, i) => colors.phaseRgb(i / 5, isDark)));
+    }
+  }
+  assert.equal(gamingLightingRgb(presets.flame, 1 / 6), 0xff6818);
+  assert.equal(gamingLightingRgb(presets.flame, 5 / 6), 0xff891d);
+});
+
+test('P58f: solid lighting varies only the brightness and retains the selected hue', () => {
+  assert.deepEqual(GAMING_SOLID_COLORS, [0xff3b30, 0xff9500, 0xffd60a, 0x34c759, 0x32d2ff, 0x0a84ff, 0xbf5af2, 0xffffff]);
+  const colors = new GamingLightingColors();
+  for (const solid of GAMING_SOLID_COLORS) {
+    colors.configure('solid', solid);
+    assert.equal(colors.phaseRgb(0, true), solid);
+    assert.equal(colors.phaseRgb(1, true), solid);
+    assert.ok(colors.phaseRgb(0, false) < solid);
+    for (const shift of [16, 8, 0]) {
+      const channel = (solid >> shift) & 255;
+      assert.equal((colors.phaseRgb(0.5, true) >> shift) & 255, Math.round(channel * 0.7));
+      for (let step = 0; step <= 16; step++) {
+        const phase = step / 16;
+        const expected = channel * (1 - 0.6 * Math.min(phase, 1 - phase));
+        const actual = (colors.phaseRgb(phase, true, true) >> shift) & 255;
+        assert.ok(Math.abs(actual - expected) <= 1);
+      }
+    }
+  }
+});
+
+function oldRainbowRgb(phase, dark, glow = 0) {
+  const palette = dark ? [0xff7196, 0xffb272, 0xece36e, 0x6cf1a0, 0x70d9ff, 0xbca0ff] :
+    [0xb32247, 0x995008, 0x646500, 0x087344, 0x006c91, 0x5943ac];
+  const hue = (phase - Math.floor(phase)) * palette.length;
+  const index = Math.floor(hue);
+  const mix = hue - index;
+  const first = palette[index];
+  const second = palette[(index + 1) % palette.length];
+  return [16, 8, 0].reduce((rgb, shift) => {
+    const value = Math.round(((first >> shift) & 255) * (1 - mix) + ((second >> shift) & 255) * mix);
+    return rgb + (Math.min(255, value + glow) << shift);
+  }, 0);
+}
+
+test('P58f: rainbow matches the previous colors and fever flashes ignore the selected palette', () => {
+  const colors = new GamingLightingColors();
+  for (const palette of ['rainbow', 'neon', 'rainbow']) {
+    colors.configure(palette, 0x32d2ff);
+    for (const dark of [false, true]) {
+      for (let step = 0; step < GAMING_FLOW_STEPS; step++) {
+        const phase = step + (dark ? GAMING_FLOW_STEPS : 0);
+        for (const x of [0, 22.5, 173, 420, 713.25]) {
+          const offset = x / 420 - step / GAMING_FLOW_STEPS;
+          for (const pressed of [false, true]) {
+            for (const outline of [false, true]) {
+              const useDark = dark || (pressed && outline);
+              const expected = oldRainbowRgb(offset, useDark, pressed && useDark ? 45 : 0);
+              assert.equal(colors.flowRgb(phase, x, pressed, outline), expected);
+              if (palette === 'rainbow') {
+                assert.equal(colors.flowRgb(phase + GAMING_FLOW_PALETTE_OFFSET, x, pressed, outline), expected);
+              }
+            }
+          }
+          if (palette === 'rainbow') { assert.equal(colors.phaseRgb(offset, dark), oldRainbowRgb(offset, dark)); }
+        }
+      }
+      if (palette === 'rainbow') {
+        assert.deepEqual(colors.ringRgb(dark), [0xff7299, 0xfff17c, 0x65efae, 0x72c9ff, 0xb78cff]);
+      }
+    }
+  }
+});
+
+test('P58f: missing or invalid saved lighting values default without discarding other settings', () => {
+  for (const [palette, solid] of [[undefined, undefined], ['ocean', 0], [null, '32d2ff'], [42, {}]]) {
+    const record = new KeyboardSettingsRecord();
+    Object.assign(record.snapshot, { gamingEffect: 'ripple', gamingSpeed: 4, gamingPalette: palette, gamingSolidColor: solid });
+    const snapshot = decodeSettingsRecord(JSON.stringify(record)).snapshot;
+    assert.equal(snapshot.gamingPalette, 'rainbow');
+    assert.equal(snapshot.gamingSolidColor, 0x32d2ff);
+    assert.equal(snapshot.gamingSpeed, 4);
+    assert.equal(snapshot.gamingEffect, 'ripple');
+  }
+  const legacy = migrateLegacySettings(new LegacyKeyboardSettings()).snapshot;
+  assert.equal(legacy.gamingPalette, 'rainbow');
+  assert.equal(legacy.gamingSolidColor, 0x32d2ff);
+  assert.deepEqual(mergeSettingsPatch({ gamingPalette: 'ice' }, { gamingSolidColor: 0x0a84ff }),
+    { gamingPalette: 'ice', gamingSolidColor: 0x0a84ff });
+  const normalized = applySettingsPatch(legacy, { gamingPalette: 'green', gamingSolidColor: 0xabcdef });
+  assert.equal(normalized.gamingPalette, 'rainbow');
+  assert.equal(normalized.gamingSolidColor, 0x32d2ff);
+  const record = new KeyboardSettingsRecord();
+  record.snapshot = applySettingsPatch(legacy, { gamingPalette: 'solid', gamingSolidColor: 0xffffff });
+  assert.deepEqual(decodeSettingsRecord(JSON.stringify(record)).snapshot, record.snapshot);
+});
+
+test('P58f: palette and solid color sync independently and reset on both endpoints', async () => {
+  const rig = await pair();
+  await rig.app.core.save({ gamingUnlocked: true, gamingEffect: 'wave', gamingPalette: 'solid' }, false);
+  await rig.app.core.save({ gamingSolidColor: 0xbf5af2 }, false);
+  assert.equal(rig.app.state.record.snapshot.gamingSolidColor, 0xbf5af2);
+  await rig.pump();
+  assert.equal(rig.ime.state.record.snapshot.gamingPalette, 'solid');
+  assert.equal(rig.ime.state.record.snapshot.gamingSolidColor, 0xbf5af2);
+  await rig.app.core.save({ gamingPalette: 'ice' }, false);
+  await rig.pump();
+  assert.equal(rig.ime.state.record.snapshot.gamingPalette, 'ice');
+  assert.equal(rig.ime.state.record.snapshot.gamingSolidColor, 0xbf5af2);
+  await rig.app.core.save(settingsReset().patch, false);
+  await rig.pump();
+  for (const endpoint of [rig.app, rig.ime]) {
+    assert.equal(endpoint.state.record.snapshot.gamingPalette, 'rainbow');
+    assert.equal(endpoint.state.record.snapshot.gamingSolidColor, 0x32d2ff);
+    assert.equal(endpoint.state.record.snapshot.gamingUnlocked, true);
+  }
+});
+
+test('P58f: lighting and speed are disabled for off and fever mode', () => {
+  assert.deepEqual(GAMING_EFFECTS.map(gamingSpeedEnabled), [false, true, true, true, false]);
 });
