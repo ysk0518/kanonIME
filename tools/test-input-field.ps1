@@ -149,6 +149,28 @@ try {
     Click-FixtureNode (Find-FixtureNode $snapshot 'layoutItem')
     Start-Sleep -Milliseconds 200
   }
+  # A case may name the input mode it starts from. The previous case can leave
+  # either mode, so read it from the space key label and press the mode key
+  # until it matches instead of depending on the order cases run in.
+  if ($caseData.startMode) {
+    $wanted=[string]$caseData.startMode
+    if ($wanted -cnotmatch '^(JP|EN)$') { throw 'startMode must be JP or EN.' }
+    for ($modeTries=0; ; $modeTries++) {
+      $snapshot=Read-Fixture
+      $spaceLabel=(@(Get-FixtureNodes (Find-FixtureNode $snapshot 'spaceItem')) |
+        ForEach-Object { [string]$_.attributes.text }) -join ' '
+      $current = if ($spaceLabel -cmatch 'English') { 'EN' } elseif ($spaceLabel -cmatch '日本語') { 'JP' } else { '' }
+      if ($modeTries -eq 0) { $report.initialMode=$current }
+      if ($current -ceq $wanted) { break }
+      if ($current -eq '' -or $modeTries -ge 2) {
+        $report.status='environment-wait'
+        throw "Unable to start in $wanted mode (space key reads '$spaceLabel'). Enable Japanese and English."
+      }
+      Click-FixtureNode (Find-FixtureNode $snapshot 'modeCycleItem')
+      Start-Sleep -Milliseconds 300
+    }
+    $report.startMode=$wanted
+  }
   # The layout key exists only while the 12-key layout is enabled in settings.
   # Without it a case that switches layouts cannot run; report the setting,
   # not a failed IME step.

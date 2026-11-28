@@ -1,4 +1,9 @@
 const mutations = {
+  autoCapitalSkipsUntypedField: {
+    file: 'kanon/SentenceInput.ets',
+    before: 'return inputPattern === -1 || inputPattern === 0',
+    after: 'return inputPattern === 0'
+  },
   keepInvalidUrlFieldKey: {
     file: 'common/UrlFieldKey.ets',
     before: 'value !== undefined && validUrlFieldKey(value) ? value : DEFAULT_URL_FIELD_KEY',
