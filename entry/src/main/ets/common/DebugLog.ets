@@ -1,5 +1,5 @@
 import { KANON_DEBUG_CONSOLE, KANON_DEBUG_ENABLED, KANON_PACHINKO_REPLAY } from './AppStorageKeys';
-import { PachinkoReplay } from './PachinkoModel';
+import { PachinkoReplay, parsePachinkoReplay } from './PachinkoModel';
 import commonEventManager from '@ohos.commonEventManager';
 import { BusinessError } from '@ohos.base';
 
@@ -127,8 +127,8 @@ class DebugLogStore {
       this.send(PACHINKO_REPLAY, this.pendingReplay, request);
       this.pendingReplay = undefined;
     } else if (this.ime && request === this.replayRequest) {
-      const replay: string | undefined = event.data;
-      if (replay === PachinkoReplay.Reach || replay === PachinkoReplay.Jackpot || replay === PachinkoReplay.FourHolds) {
+      const replay: PachinkoReplay | undefined = parsePachinkoReplay(event.data);
+      if (replay !== undefined) {
         this.replayRequest = '';
         AppStorage.setOrCreate(KANON_PACHINKO_REPLAY, replay);
       }

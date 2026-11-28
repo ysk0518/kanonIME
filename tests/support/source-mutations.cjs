@@ -1,8 +1,8 @@
 const mutations = {
   pachinkoReachBeforeJackpot: {
     file: 'common/PachinkoModel.ets',
-    before: 'if (roll < 1 / 64) { return PachinkoResult.Jackpot; }',
-    after: 'if (roll < 1 / 64) { return PachinkoResult.Reach; }'
+    before: '[PachinkoResult.Jackpot, PachinkoResult.Reach, PachinkoResult.Miss]',
+    after: '[PachinkoResult.Reach, PachinkoResult.Reach, PachinkoResult.Miss]'
   },
   pachinkoExtraHold: {
     file: 'common/PachinkoModel.ets',
@@ -11,8 +11,8 @@ const mutations = {
   },
   pachinkoWrongColor: {
     file: 'common/PachinkoModel.ets',
-    before: 'roll < 0.3',
-    after: 'roll < 0.4'
+    before: '[25, 15, 15, 25, 15, 5]',
+    after: '[25, 15, 15, 26, 14, 5]'
   },
   pachinkoEarlyReel: {
     file: 'common/PachinkoModel.ets',
@@ -28,6 +28,36 @@ const mutations = {
     file: 'common/PachinkoModel.ets',
     before: 'if (right >= left) { right++; }',
     after: ''
+  },
+  pachinkoRushResetsToSeven: {
+    file: 'common/PachinkoModel.ets',
+    before: 'remaining > 0 || digit % 2 === 1)) { return PACHINKO_RUSH_LENGTH; }',
+    after: 'remaining > 0 || digit % 2 === 1)) { return remaining > 0 ? 7 : PACHINKO_RUSH_LENGTH; }'
+  },
+  pachinkoEvenStartsRush: {
+    file: 'common/PachinkoModel.ets',
+    before: '(remaining > 0 || digit % 2 === 1)',
+    after: '(remaining >= 0 || digit % 2 === 1)'
+  },
+  pachinkoMissIgnoresThreeHolds: {
+    file: 'common/PachinkoModel.ets',
+    before: 'holdCount >= 3 ? 600',
+    after: 'holdCount > 3 ? 600'
+  },
+  pachinkoSkipsHoldReveal: {
+    file: 'common/PachinkoModel.ets',
+    before: 'if (hold.displayColor !== hold.trueColor)',
+    after: 'if (hold.displayColor === hold.trueColor)'
+  },
+  pachinkoNoNextDigitWrap: {
+    file: 'common/PachinkoModel.ets',
+    before: 'return (digit + (random() < 0.5 ? 7 : 9)) % 9 + 1;',
+    after: 'return random() < 0.5 ? (digit + 7) % 9 + 1 : Math.min(9, digit + 1);'
+  },
+  pachinkoSkipsThirdPseudo: {
+    file: 'common/PachinkoModel.ets',
+    before: 'count <= repeats; count++',
+    after: 'count <= Math.min(repeats, 1); count++'
   },
   pachinkoCommitSignalMissing: {
     file: 'kanon/ImeCoordinator.ets',

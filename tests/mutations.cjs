@@ -125,7 +125,13 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['pachinkoWrongColor', 'P58d', 'hold colors use the result-specific probability table'],
   ['pachinkoEarlyReel', 'P58d', 'consumption waits 800 ms'],
   ['pachinkoNewestFirst', 'P58d', 'consumption waits 800 ms'],
-  ['pachinkoMatchOnMiss', 'P58d', 'reel stops give distinct misses']]) {
+  ['pachinkoMatchOnMiss', 'P58d', 'reel stops give distinct misses'],
+  ['pachinkoRushResetsToSeven', 'P58e', 'RUSH enters on odd jackpots'],
+  ['pachinkoEvenStartsRush', 'P58e', 'RUSH enters on odd jackpots'],
+  ['pachinkoMissIgnoresThreeHolds', 'P58e', 'miss timelines shorten'],
+  ['pachinkoSkipsHoldReveal', 'P58e', 'hold changes reveal a hidden color first'],
+  ['pachinkoNoNextDigitWrap', 'P58e', 'near misses wrap both directions'],
+  ['pachinkoSkipsThirdPseudo', 'P58e', 'notices advance through every step']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);
