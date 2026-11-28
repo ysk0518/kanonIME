@@ -33,7 +33,12 @@ $warm[9].Detail = '24'
 Assert-Throws { Get-KanonPerfIntervals M2 $warm } 'Expected one key.done'
 
 $cold = @(ConvertFrom-KanonPerfLog (Get-Content (Join-Path $fixtures 'perf-cold.txt') -Raw -Encoding UTF8))
-Assert-Same '50,14,51,65,80,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 pairs concurrent prepares'
+Assert-Same '51,14,65,80,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 pairs concurrent prepares'
+$pre = @(ConvertFrom-KanonPerfLog (Get-Content (Join-Path $fixtures 'perf-cold.txt') -Raw -Encoding UTF8))
+$pre[1].WallMs = $pre[0].WallMs - 5000
+$preIntervals = @(Get-KanonPerfIntervals M3 $pre)
+Assert-Same '51,65,15' ($preIntervals.Ms -join ',') 'an IME the system restarted early is timed from the focus'
+Assert-Same 3 @($preIntervals | Where-Object { $_.Interval -like '*[[]IME pre-started[]]' }).Count 'pre-started trials are labelled'
 Assert-Same 'kb.frame -> mozc.init.end (not ready)' (Get-KanonPerfIntervals M3 $cold)[-1].Interval 'not-ready window is reported'
 $coldFrame = Get-KanonPerfFrame $cold
 Assert-Same 'jp_flick' $coldFrame.Layout 'Japanese 12-key layout'
@@ -42,7 +47,7 @@ Assert-Same 'flick_a,flick_d,flick_g' ((Get-KanonPerfKeyIds @{ Layout = 'en_flic
 Assert-Throws { Get-KanonPerfFrame ($cold + $cold[6]) } 'one kb.frame'
 # On the device the IME is often created a few ms before the focus mark.
 $cold[0].WallMs = $cold[1].WallMs + 1
-Assert-Same '50,14,51,50,65,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 times from the IME creation when it comes first'
+Assert-Same '51,14,50,65,15' ((Get-KanonPerfIntervals M3 $cold).Ms -join ',') 'M3 times from the IME creation when it comes first'
 $cold[4].WallMs = $cold[1].WallMs - 1
 Assert-Throws { Get-KanonPerfIntervals M3 $cold } 'precedes IME creation'
 

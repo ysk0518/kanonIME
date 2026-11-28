@@ -1,4 +1,8 @@
-﻿function ConvertFrom-KanonPerfLog {
+﻿# A cold start creates the IME within a few ms of the focus. A creation
+# this much earlier means the system restarted the IME on its own.
+$script:PrestartMs = 1000
+
+function ConvertFrom-KanonPerfLog {
   param([string]$Log)
   $index = 0
   foreach ($line in ($Log -split '\r?\n')) {
@@ -102,19 +106,27 @@ function Get-KanonPerfIntervals {
   if ($start.Index -le $create.Index -or $start.WallMs -lt $create.WallMs -or $shown.Index -le $create.Index) {
     throw 'Mozc initialization or keyboard frame precedes IME creation.'
   }
-  # On a cold start the system creates the IME as the field takes focus,
-  # often a few milliseconds before the app reports the focus, so time
-  # from whichever came first.
-  $origin = if ($create.WallMs -lt $focus.WallMs) { $create } else { $focus }
-  New-PerfInterval M3 'ime.create -> kb.frame' $create $shown $frame
-  New-PerfInterval M3 'ime.create -> mozc.init.start' $create $start $frame
-  New-PerfInterval M3 'mozc.init.start -> mozc.init.end' $start $end $frame
-  New-PerfInterval M3 'focus or create -> kb.frame' $origin $shown $frame
-  New-PerfInterval M3 'focus or create -> mozc.init.end' $origin $end $frame
+  # After a force-stop the system sometimes restarts the selected IME at
+  # once, long before the field is focused. Such a trial measures a warm
+  # IME with a fresh process, so report it under its own label.
+  $prestarted = $focus.WallMs - $create.WallMs -gt $script:PrestartMs
+  $label = if ($prestarted) { ' [IME pre-started]' } else { '' }
+  New-PerfInterval M3 "mozc.init.start -> mozc.init.end$label" $start $end $frame
+  if ($prestarted) {
+    New-PerfInterval M3 "field.focus -> kb.frame$label" $focus $shown $frame
+  } else {
+    # On a cold start the system creates the IME as the field takes focus,
+    # often a few milliseconds before the app reports the focus, so time
+    # from whichever came first.
+    $origin = if ($create.WallMs -lt $focus.WallMs) { $create } else { $focus }
+    New-PerfInterval M3 'ime.create -> mozc.init.start' $create $start $frame
+    New-PerfInterval M3 'focus or create -> kb.frame' $origin $shown $frame
+    New-PerfInterval M3 'focus or create -> mozc.init.end' $origin $end $frame
+  }
   # The keyboard can be on screen before Mozc is ready; keys typed in this
   # window wait for the initialization. Zero when Mozc finished first.
   [pscustomobject]@{
-    Scenario = 'M3'; Interval = 'kb.frame -> mozc.init.end (not ready)'
+    Scenario = 'M3'; Interval = "kb.frame -> mozc.init.end (not ready)$label"
     Ms = [Math]::Max(0, $end.WallMs - $shown.WallMs)
     Mode = $frame.Mode; Layout = $frame.Layout; BackgroundImage = $frame.BackgroundImage
   }
