@@ -5,6 +5,7 @@ import { DEFAULT_SHORTCUT_ORDER, SHORTCUT_IDS, shortcutOrder } from './ShortcutC
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE } from './CandidateLayout';
 import { DEFAULT_KEYBOARD_HEIGHT_PERCENT, MIN_KEYBOARD_HEIGHT_PERCENT, MAX_KEYBOARD_HEIGHT_PERCENT,
   DEFAULT_KEY_GAP, MIN_KEY_GAP, MAX_KEY_GAP } from './KeyboardLayout';
+import { DEFAULT_URL_FIELD_KEY, normalizeUrlFieldKey, validUrlFieldKey } from './UrlFieldKey';
 
 export const DEFAULT_TOGGLE_INPUT_ENABLED: boolean = false;
 
@@ -23,6 +24,7 @@ export class KeyboardSettingsSnapshot {
   keyGap: number = DEFAULT_KEY_GAP;
   candidateFontSize: number = DEFAULT_CANDIDATE_FONT_SIZE;
   candidateRows: number = DEFAULT_CANDIDATE_ROWS;
+  urlFieldKey: string = DEFAULT_URL_FIELD_KEY;
   hapticLevel: number = DEFAULT_HAPTIC_LEVEL;
   keySoundLevel: number = DEFAULT_KEY_SOUND_LEVEL;
   shortcutOrder: string = DEFAULT_SHORTCUT_ORDER;
@@ -44,6 +46,7 @@ export interface KeyboardSettingsPatch {
   keyGap?: number;
   candidateFontSize?: number;
   candidateRows?: number;
+  urlFieldKey?: string;
   hapticLevel?: number;
   keySoundLevel?: number;
   shortcutOrder?: string;
@@ -106,6 +109,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
     (patch.keyGap === undefined || inRange(patch.keyGap, MIN_KEY_GAP, MAX_KEY_GAP)) &&
     (patch.candidateFontSize === undefined || Number.isInteger(patch.candidateFontSize) && inRange(patch.candidateFontSize, MIN_CANDIDATE_FONT_SIZE, MAX_CANDIDATE_FONT_SIZE)) &&
     (patch.candidateRows === undefined || patch.candidateRows === 1 || patch.candidateRows === 2) &&
+    (patch.urlFieldKey === undefined || validUrlFieldKey(patch.urlFieldKey)) &&
     (patch.hapticLevel === undefined || patch.hapticLevel === 0 || patch.hapticLevel === 1 || patch.hapticLevel === 2) &&
     (patch.keySoundLevel === undefined || patch.keySoundLevel === 0 || patch.keySoundLevel === 1 || patch.keySoundLevel === 2) &&
     (patch.shortcutOrder === undefined || validShortcuts(patch.shortcutOrder)) &&
@@ -113,6 +117,7 @@ export function validSettingsPatch(patch: KeyboardSettingsPatch): boolean {
 }
 
 export function validSettingsSnapshot(snapshot: KeyboardSettingsSnapshot): boolean {
+  // copySettings normalizes missing or invalid URL key values without discarding the snapshot.
   return !!snapshot && snapshot.schema === 1 && Number.isSafeInteger(snapshot.revision) && snapshot.revision >= 0 &&
     validLayouts(snapshot.layoutOrder) && typeof snapshot.flickEnabled === 'boolean' &&
     (snapshot.toggleInputEnabled === undefined || typeof snapshot.toggleInputEnabled === 'boolean') &&
@@ -140,6 +145,7 @@ export function copySettings(snapshot: KeyboardSettingsSnapshot): KeyboardSettin
   if (copy.keyGap === undefined) { copy.keyGap = DEFAULT_KEY_GAP; }
   if (copy.candidateFontSize === undefined) { copy.candidateFontSize = DEFAULT_CANDIDATE_FONT_SIZE; }
   if (copy.candidateRows === undefined) { copy.candidateRows = DEFAULT_CANDIDATE_ROWS; }
+  copy.urlFieldKey = normalizeUrlFieldKey(copy.urlFieldKey);
   if (copy.keySoundLevel === undefined) { copy.keySoundLevel = DEFAULT_KEY_SOUND_LEVEL; }
   return copy;
 }
@@ -159,6 +165,7 @@ export function applySettingsPatch(snapshot: KeyboardSettingsSnapshot, patch: Ke
   if (patch.keyGap !== undefined) { next.keyGap = Math.round(patch.keyGap); }
   if (patch.candidateFontSize !== undefined) { next.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { next.candidateRows = patch.candidateRows; }
+  if (patch.urlFieldKey !== undefined) { next.urlFieldKey = patch.urlFieldKey; }
   if (patch.hapticLevel !== undefined) { next.hapticLevel = patch.hapticLevel; }
   if (patch.keySoundLevel !== undefined) { next.keySoundLevel = patch.keySoundLevel; }
   if (patch.shortcutOrder !== undefined) { next.shortcutOrder = shortcutOrder(patch.shortcutOrder).join(','); }
@@ -184,6 +191,7 @@ export function mergeSettingsPatch(base: KeyboardSettingsPatch, patch: KeyboardS
   if (patch.keyGap !== undefined) { merged.keyGap = patch.keyGap; }
   if (patch.candidateFontSize !== undefined) { merged.candidateFontSize = patch.candidateFontSize; }
   if (patch.candidateRows !== undefined) { merged.candidateRows = patch.candidateRows; }
+  if (patch.urlFieldKey !== undefined) { merged.urlFieldKey = patch.urlFieldKey; }
   if (patch.hapticLevel !== undefined) { merged.hapticLevel = patch.hapticLevel; }
   if (patch.keySoundLevel !== undefined) { merged.keySoundLevel = patch.keySoundLevel; }
   if (patch.shortcutOrder !== undefined) { merged.shortcutOrder = patch.shortcutOrder; }
@@ -209,6 +217,13 @@ export function validSettingsRecord(record: KeyboardSettingsRecord): boolean {
 /** Decode and normalize schema-1 storage without accessing preferences or UI. */
 export function decodeSettingsRecord(payload: string): KeyboardSettingsRecord {
   const loaded: KeyboardSettingsRecord = JSON.parse(payload) as KeyboardSettingsRecord;
+  if (loaded && Array.isArray(loaded.pending)) {
+    for (const change of loaded.pending) {
+      if (change && change.patch && change.patch.urlFieldKey !== undefined) {
+        change.patch.urlFieldKey = normalizeUrlFieldKey(change.patch.urlFieldKey);
+      }
+    }
+  }
   if (!validSettingsRecord(loaded)) { throw new Error('Invalid settings record'); }
   loaded.snapshot = copySettings(loaded.snapshot);
   return loaded;

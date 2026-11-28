@@ -1,4 +1,19 @@
 const mutations = {
+  keepInvalidUrlFieldKey: {
+    file: 'common/UrlFieldKey.ets',
+    before: 'value !== undefined && validUrlFieldKey(value) ? value : DEFAULT_URL_FIELD_KEY',
+    after: 'value ?? DEFAULT_URL_FIELD_KEY'
+  },
+  showUrlKeyInAllFields: {
+    file: 'model/KeyboardKeyLabels.ets',
+    before: "  if (!isUrlInputPattern(inputPattern)) { return ''; }\n",
+    after: ''
+  },
+  omitUrlFieldKeyReset: {
+    file: 'common/SettingsMenuModel.ets',
+    before: '    urlFieldKey: defaults.urlFieldKey,\n',
+    after: ''
+  },
   keepNextWordOnCaretMove: {
     file: 'kanon/ImeCoordinator.ets',
     before: "        this.dropNextWordCandidates();\n        return true;",

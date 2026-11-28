@@ -90,6 +90,7 @@ export const KANON_SHORTCUT_ORDER: string = 'kanonShortcutOrder';
 export const KANON_STATE: string = 'kanonState';
 export const KANON_TICK: string = 'kanonTick';
 export const KANON_TOOLBAR_HEIGHT: string = 'kanonToolbarHeight';
+export const KANON_URL_FIELD_KEY: string = 'kanonUrlFieldKey';
 export const SUBMENU_TYPE: string = 'submenuType';
 export const WINDOW_HEIGHT: string = 'windowHeight';
 export const WINDOW_WIDTH: string = 'windowWidth';

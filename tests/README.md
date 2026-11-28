@@ -16,6 +16,7 @@ npm run test:mutations
 node tests/run.cjs
 node tests/run.cjs --test-name-pattern "R02:"
 node tests/run.cjs --test-name-pattern "P57:"
+node tests/run.cjs --test-name-pattern "P60:"
 node tests/mutations.cjs
 ```
 
@@ -77,6 +78,7 @@ GitHub上での初回実行結果は、この変更をpushしてPRを作成し�
 | `settings-menu.test.cjs` | P55のカード構成・遷移先、言語と背景の要約、即時保存の差分、全体リセット、IMEとの同期 |
 | `keyboard-settings.test.cjs` / `settings-menu.test.cjs` / `settings-sync.test.cjs` / `mozc-engine.test.cjs` / `ime-session.test.cjs` | P56のスマート入力の既定値・検証・旧データ補完、カードとリセット、IMEへの同期、設定を変更した後の絵文字候補・自動大文字・ピリオド入力 |
 | `settings-subpages.test.cjs` | P57のショートカットの上下移動・削除・追加・端での無効判定、サイズからの高さの差分、テーマの未保存判定 |
+| `url-field-key.test.cjs` | P60のURL専用キー。選択肢・保存値の検証、旧データや不正値の補完、保存と再読込、IME同期とリセット、入力欄による表示判定、レイアウトのラジオと翻訳。mutationでは不正値の補完漏れ、URL欄以外への表示、リセット漏れを検出 |
 | SettingsRecordPolicy / SettingsPersistence | 未同期差分の先頭・末尾、ACK、重複・古い版、書き込みとflushの順序・失敗 |
 | SettingsReceiptState / SettingsRetryTimer / SettingsAckPolicy | 保存／適用の版、ACK待ちの期限、3回の再送、取消済みタイマー、発行済みACK範囲 |
 | SettingsSyncCore | 正本／IMEの送受信、保存・適用・ACKの順序、各段階の失敗、適用待ちの再試行 |

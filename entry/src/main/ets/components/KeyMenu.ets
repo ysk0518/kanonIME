@@ -17,7 +17,8 @@ import { backgroundKeyColor } from '../common/KeyboardBackground';
 
 import { DeleteItem } from './DeleteItem';
 import { KeyState, MenuType, keySourceListType, keySourceListData, qwertyDigits } from '../model/KeyboardKeyData';
-import { isUrlInputPattern } from '../model/KeyboardKeyLabels';
+import { isUrlInputPattern, urlFieldKeyText } from '../model/KeyboardKeyLabels';
+import { DEFAULT_URL_FIELD_KEY } from '../common/UrlFieldKey';
 import { KeyStyle, StyleConfiguration } from '../common/StyleConfiguration';
 import { KeyItem } from './KeyItem';
 import { KeyItemNumber } from './KeyItemNumber';
@@ -44,6 +45,7 @@ export struct KeyMenu {
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
   @StorageLink('kanonLayout') layout: string = 'jp_qwerty';
   @StorageLink('inputPattern') inputPattern: number = 0;
+  @StorageLink('kanonUrlFieldKey') urlFieldKey: string = DEFAULT_URL_FIELD_KEY;
   @StorageLink('kanonFlickEnabled') flickEnabled: boolean = true;
   @Consume menuType: number;
   @Provide keyState: number = KeyState.LOWER_CASE;
@@ -67,6 +69,11 @@ export struct KeyMenu {
 
   private comma(): string {
     return isUrlInputPattern(this.inputPattern) ? '/' : this.layout === 'jp_qwerty' ? '、' : ',';
+  }
+
+  private urlKeyValue(): keySourceListType {
+    const text: string = urlFieldKeyText(this.inputPattern, this.urlFieldKey);
+    return { content: text, title: text, upperContent: text };
   }
 
   build() {
@@ -159,9 +166,9 @@ export struct KeyMenu {
             title: this.layout === 'jp_qwerty' ? '。' : '.', upperContent: this.layout === 'jp_qwerty' ? '。' : '.' },
             keyId: 'qwerty_period', keyWidth: '100%' })
         }.layoutWeight(1).height('100%')
-        if (isUrlInputPattern(this.inputPattern)) {
+        if (urlFieldKeyText(this.inputPattern, this.urlFieldKey) !== '') {
           Column() {
-            KeyItem({ keyValue: { content: 'www.', title: 'www.', upperContent: 'www.' },
+            KeyItem({ keyValue: this.urlKeyValue(),
               keyId: 'qwerty_www', keyWidth: '100%', directInput: true })
           }.layoutWeight(1.75).height('100%')
         }

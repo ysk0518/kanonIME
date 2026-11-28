@@ -123,6 +123,7 @@ export function settingsReset(): SettingsReset {
     flickDistance: defaults.flickDistance, longPressMs: defaults.longPressMs, keyPreview: defaults.keyPreview,
     emojiSuggestions: defaults.emojiSuggestions, autoCapitalize: defaults.autoCapitalize,
     doubleSpacePeriod: defaults.doubleSpacePeriod, keyGap: defaults.keyGap, candidateFontSize: defaults.candidateFontSize, candidateRows: defaults.candidateRows,
+    urlFieldKey: defaults.urlFieldKey,
     hapticLevel: defaults.hapticLevel, keySoundLevel: defaults.keySoundLevel, shortcutOrder: defaults.shortcutOrder,
     heightPercent: defaults.heightPercent
   };
