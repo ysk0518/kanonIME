@@ -36,7 +36,22 @@ export class NativeMozcBridge implements MozcBridgePort {
     }
   }
 
-  async prepare(): Promise<boolean> {
+  /**
+   * Loads Mozc once. The IME starts this as soon as it is created, and later
+   * callers (the keyboard page, the first key) join the same load instead of
+   * starting a second one.
+   */
+  prepare(): Promise<boolean> {
+    if (this.api !== null) { return Promise.resolve(true); }
+    if (this.pending === null) {
+      this.pending = this.load().finally((): void => { this.pending = null; });
+    }
+    return this.pending;
+  }
+
+  private pending: Promise<boolean> | null = null;
+
+  private async load(): Promise<boolean> {
     if (this.api !== null) { return true; }
     if (this.initFailed || this.profileDirectory.length === 0) { return false; }
     const perfId: number = perfBegin('mozc.init.start');

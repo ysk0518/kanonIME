@@ -1,4 +1,14 @@
 const mutations = {
+  skipEngineWarmUp: {
+    file: 'model/KeyboardController.ets',
+    before: 'kanonIme.warmUpEngine();',
+    after: ''
+  },
+  startSecondMozcLoad: {
+    file: 'kanon/NativeMozcBridge.ets',
+    before: 'if (this.pending === null) {',
+    after: 'if (true) {'
+  },
   perfTraceOmitsSequence: {
     file: 'common/PerfTraceModel.ets',
     before: "${detail.length > 0 ? detail : '-'}",

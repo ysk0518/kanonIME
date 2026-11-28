@@ -51,6 +51,16 @@ class KanonIme {
     this.nativeBridge.configureProfile(filesDirectory);
   }
 
+  /**
+   * Starts loading Mozc in the background. Creating its session takes about
+   * 0.65 s on a cold start, off the UI thread; beginning when the IME is
+   * created instead of when the keyboard page appears shortens the time the
+   * keyboard is shown before Mozc can convert.
+   */
+  warmUpEngine(): void {
+    this.nativeBridge.prepare().catch((): void => {});
+  }
+
   async discardTypingText(): Promise<void> {
     await this.session.discardTypingText();
   }

@@ -40,3 +40,21 @@ test('P63: PowerShell parses and correlates device log fixtures', t => {
   }
   t.skip('PowerShell is unavailable');
 });
+
+test('P64: the IME starts loading Mozc when it is created and later callers join that load', () => {
+  const { readFileSync } = require('node:fs');
+  // Read through the mutation hook so the mutation suite can check these assertions.
+  const source = (file) => {
+    const text = readFileSync(require.resolve(`../../entry/src/main/ets/${file}`), 'utf8');
+    const mutation = process.env.KANON_TEST_MUTATION;
+    return mutation ? require('../support/source-mutations.cjs').mutate(file, text, mutation) : text.replace(/\r\n/g, '\n');
+  };
+  const controller = source('model/KeyboardController.ets');
+  // The profile must be set before the load, and the load must start in onCreate,
+  // not when the keyboard page appears.
+  assert.match(controller, /kanonIme\.configureProfile\(context\.filesDir\);\s*kanonIme\.warmUpEngine\(\);/);
+  const bridge = source('kanon/NativeMozcBridge.ets');
+  // A second prepare while the first is loading returns the same promise.
+  assert.match(bridge, /if \(this\.pending === null\) \{\s*this\.pending = this\.load\(\)/);
+  assert.match(bridge, /return this\.pending;/);
+});
