@@ -70,8 +70,8 @@ test('P58: the gaming row appears last in Style only after unlock and summarizes
   const labels = ['off', 'flow', 'ripple'].map(effect =>
     strings.find(entry => entry.name === `settings_gaming_${effect}`).value);
   assert.equal(settingsGamingSummary('off', ...labels), 'オフ');
-  assert.equal(settingsGamingSummary('flow', ...labels), '虹色が流れる');
-  assert.equal(settingsGamingSummary('ripple', ...labels), '輪が広がる');
+  assert.equal(settingsGamingSummary('flow', ...labels), 'レインボーフロー');
+  assert.equal(settingsGamingSummary('ripple', ...labels), 'インパクトリング');
   assert.equal(settingsGamingSummary('invalid', ...labels), 'オフ');
 });
 
@@ -189,7 +189,7 @@ test('P58b: wave is accepted and the gaming summary uses the selected label', ()
   assert.deepEqual(GAMING_EFFECTS.slice(0, 4), ['off', 'flow', 'wave', 'ripple']);
   const labels = ['off', 'flow', 'ripple', 'wave'].map(effect =>
     strings.find(entry => entry.name === `settings_gaming_${effect}`).value);
-  assert.equal(settingsGamingSummary('wave', ...labels), 'キーが波紋で光る');
+  assert.equal(settingsGamingSummary('wave', ...labels), 'リアクティブ・リップル');
   const defaults = new KeyboardSettingsSnapshot();
   assert.equal(validSettingsPatch({ gamingEffect: 'wave' }), true);
   assert.equal(applySettingsPatch(defaults, { gamingEffect: 'wave' }).gamingEffect, 'wave');

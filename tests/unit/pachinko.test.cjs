@@ -223,7 +223,7 @@ test('P58c: the renamed settings menu and title share a label and summarize pach
     const labels = ['off', 'flow', 'ripple', 'wave', 'pachinko'].map(effect => label(`gaming_${effect}`));
     assert.equal(settingsGamingSummary('pachinko', ...labels), label('gaming_pachinko'));
     if (locale === 'base') {
-      assert.equal(labels[4], 'パチンコ演出');
+      assert.equal(labels[4], 'フィーバーモード');
       assert.equal(label('gaming_taps_left'), 'あと%d回');
     }
   }
