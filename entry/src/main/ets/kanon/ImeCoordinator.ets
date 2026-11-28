@@ -167,11 +167,19 @@ export class ImeCoordinator {
     return origin;
   }
 
-  selectionChanged(begin: number, end: number): void {
+  /** True when next-word predictions were dropped and the view needs a refresh. */
+  selectionChanged(begin: number, end: number): boolean {
     const commit: JapaneseCommit | undefined = this.lastJapaneseCommit;
     if (commit !== undefined && (begin !== commit.cursor || end !== commit.cursor)) {
       this.forgetJapaneseCommit();
+      // The caret left the committed text: its next-word predictions no
+      // longer continue anything, and a tap would insert them elsewhere.
+      if (this.preeditLen === 0 && this.candidateItems.length > 0) {
+        this.dropNextWordCandidates();
+        return true;
+      }
     }
+    return false;
   }
 
   reportCursorSyncFailure(): void { this.lastError = 'cursor-sync'; }

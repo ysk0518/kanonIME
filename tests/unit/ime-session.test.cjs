@@ -1411,3 +1411,21 @@ test('P54: deleting committed text drops the next-word predictions', async () =>
   assert.deepEqual(r.session.getCandidates(), []);
   r.bridge.assertDone();
 });
+
+test('P59: moving the caret away from a commit drops the next-word predictions', async () => {
+  const r = rig({ mode: 'JP', steps: [
+    { operation: 'convert', text: 'a', output: response('あ', { candidates: [{ id: 2, value: '亜' }] }) },
+    { operation: 'submitCandidate', candidateId: 2, output: response('', { result: '亜',
+      candidates: [{ id: 0, value: 'いい' }, { id: 1, value: 'は' }] }) }
+  ] });
+  await r.session.keyText('a');
+  await r.session.selectCandidate(2);
+  // The editor echoes the caret after the commit: the predictions stay.
+  r.session.selectionChanged(1, 1);
+  assert.deepEqual(r.session.getCandidates().map(item => item.label), ['いい', 'は']);
+  // A tap elsewhere in the field moves the caret: they go.
+  r.session.selectionChanged(0, 0);
+  assert.deepEqual(r.session.getCandidates(), []);
+  assert.equal(r.store.get('kanonList').length, 0);
+  r.bridge.assertDone();
+});
