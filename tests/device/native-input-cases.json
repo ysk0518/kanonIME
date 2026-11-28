@@ -1,6 +1,6 @@
 {
   "cases": [
-    { "id": "SETUP_EN_TO_JP", "steps": [
+    { "id": "SETUP_EN_TO_JP", "startMode": "EN", "steps": [
       { "id": "modeCycleItem", "expect": "" }
     ] },
     { "id": "D01", "repeat": 5, "repeatPrefix": "き", "steps": [
@@ -73,17 +73,17 @@
       { "id": "qwerty_k" }, { "id": "qwerty_a", "expect": "かがきか" },
       { "id": "returnItem", "expect": "かがきか" }
     ] },
-    { "id": "D19", "steps": [
+    { "id": "D19", "startMode": "JP", "steps": [
       { "id": "modeCycleItem", "expect": "" },
-      { "id": "qwerty_h", "expect": "h" }, { "id": "qwerty_e", "expect": "he" },
-      { "id": "qwerty_l", "expect": "hel" },
-      { "id": "spaceItem", "expect": "hel" }, { "id": "returnItem", "expect": "hello" },
-      { "id": "deleteItem", "expect": "hel" }, { "id": "deleteItem", "expect": "he" }
+      { "id": "qwerty_h", "expect": "H" }, { "id": "qwerty_e", "expect": "He" },
+      { "id": "qwerty_l", "expect": "Hel" },
+      { "id": "spaceItem", "expect": "Hel" }, { "id": "returnItem", "expect": "Hello" },
+      { "id": "deleteItem", "expect": "Hel" }, { "id": "deleteItem", "expect": "He" }
     ] },
-    { "id": "D20", "steps": [
-      { "id": "qwerty_h", "expect": "h" }, { "id": "qwerty_e", "expect": "he" },
-      { "id": "qwerty_l", "expect": "hel" }, { "candidate": "hello", "expect": "hello" },
-      { "id": "deleteItem", "expect": "hel" }
+    { "id": "D20", "startMode": "EN", "steps": [
+      { "id": "qwerty_h", "expect": "H" }, { "id": "qwerty_e", "expect": "He" },
+      { "id": "qwerty_l", "expect": "Hel" }, { "candidate": "Hello", "expect": "Hello" },
+      { "id": "deleteItem", "expect": "Hel" }
     ] },
     { "id": "D22", "steps": [
       { "id": "qwerty_k" }, { "id": "qwerty_i", "expect": "き" },
@@ -91,18 +91,18 @@
       { "id": "qwerty_k" }, { "id": "qwerty_a", "expect": "きか" },
       { "id": "returnItem", "expect": "きか" }
     ] },
-    { "id": "D21", "steps": [
+    { "id": "D21", "startMode": "JP", "steps": [
       { "id": "modeCycleItem", "expect": "" },
-      { "id": "qwerty_h", "expect": "h" }, { "id": "qwerty_e", "expect": "he" },
-      { "id": "qwerty_l", "expect": "hel" },
-      { "id": "spaceItem", "expect": "hello" }, { "id": "returnItem", "expect": "hello" },
-      { "id": "deleteItem", "expect": "hel" }, { "id": "deleteItem", "expect": "he" }
+      { "id": "qwerty_h", "expect": "H" }, { "id": "qwerty_e", "expect": "He" },
+      { "id": "qwerty_l", "expect": "Hel" },
+      { "id": "spaceItem", "expect": "Hello" }, { "id": "returnItem", "expect": "Hello" },
+      { "id": "deleteItem", "expect": "Hel" }, { "id": "deleteItem", "expect": "He" }
     ] },
-    { "id": "D08", "steps": [
+    { "id": "D08", "startMode": "JP", "steps": [
       { "id": "modeCycleItem", "expect": "" },
-      { "id": "qwerty_h", "expect": "h" }, { "id": "qwerty_e", "expect": "he" },
-      { "id": "qwerty_l", "expect": "hel" },
-      { "id": "spaceItem", "expect": "hello" }, { "id": "returnItem", "expect": "hello" }
+      { "id": "qwerty_h", "expect": "H" }, { "id": "qwerty_e", "expect": "He" },
+      { "id": "qwerty_l", "expect": "Hel" },
+      { "id": "spaceItem", "expect": "Hello" }, { "id": "returnItem", "expect": "Hello" }
     ] },
     { "id": "D23", "steps": [
       {"id": "qwerty_k"},
@@ -154,14 +154,14 @@
       {"candidate": "🇯🇵", "expect": "あ🇯🇵"},
       {"id": "deleteItem", "expect": "あ"}
     ] },
-    { "id": "D26", "steps": [
+    { "id": "D26", "startMode": "JP", "steps": [
       {"id": "modeCycleItem", "expect": ""},
-      {"id": "qwerty_h", "expect": "h"},
-      {"id": "qwerty_e", "expect": "he"},
-      {"id": "qwerty_l", "expect": "hel"},
-      {"id": "spaceItem", "expect": "hel"},
-      {"id": "deleteItem", "expect": "hel"},
-      {"id": "deleteItem", "expect": "he"}
+      {"id": "qwerty_h", "expect": "H"},
+      {"id": "qwerty_e", "expect": "He"},
+      {"id": "qwerty_l", "expect": "Hel"},
+      {"id": "spaceItem", "expect": "Hel"},
+      {"id": "deleteItem", "expect": "Hel"},
+      {"id": "deleteItem", "expect": "He"}
     ] },
     { "id": "D27", "steps": [
       {"id": "qwerty_a", "expect": "あ"},
@@ -257,7 +257,7 @@
       {"id": "modeCycleItem", "expect": "-#0/:~"},
       {"id": "modeCycleItem", "expect": "-#0/:~"}
     ] },
-    { "id": "D35", "steps": [
+    { "id": "D35", "startMode": "JP", "steps": [
       {"id": "modeCycleItem", "expect": ""},
       {"id": "qwerty_digit_1", "expect": "1"},
       {"id": "qwerty_digit_0", "expect": "10"},
@@ -285,12 +285,12 @@
       {"burst": ["flick_あ", "flick_あ"], "expect": "ああ"},
       {"id": "flick_control_7", "expect": "ああ"}
     ] },
-    { "id": "D39", "steps": [
+    { "id": "D39", "startMode": "JP", "steps": [
       {"id": "modeCycleItem", "expect": ""},
-      {"id": "qwerty_a", "expect": "a"},
-      {"id": "modeCycleItem", "expect": "a"},
-      {"id": "qwerty_a", "expect": "aあ"},
-      {"id": "returnItem", "expect": "aあ"}
+      {"id": "qwerty_a", "expect": "A"},
+      {"id": "modeCycleItem", "expect": "A"},
+      {"id": "qwerty_a", "expect": "Aあ"},
+      {"id": "returnItem", "expect": "Aあ"}
     ] },
     { "id": "D40", "steps": [
       {"id": "keyboardEmoji", "expect": ""},

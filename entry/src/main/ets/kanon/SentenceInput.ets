@@ -18,7 +18,10 @@ export function sentenceStart(before: string): boolean {
   return /[.!?]["')\]]*\s+$/.test(before);
 }
 
-/** Text fields that hold sentences (TEXT, MULTILINE); not URLs, e-mail, numbers or passwords. */
+/**
+ * Text fields that hold sentences (TEXT, MULTILINE); not URLs, e-mail, numbers or passwords.
+ * A plain text field that declares no type reports NONE (-1); it holds sentences too.
+ */
 export function autoCapitalField(inputPattern: number): boolean {
-  return inputPattern === 0 || inputPattern === 1;
+  return inputPattern === -1 || inputPattern === 0 || inputPattern === 1;
 }

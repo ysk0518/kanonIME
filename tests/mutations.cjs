@@ -142,6 +142,7 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['keepInvalidUrlFieldKey', 'P60', 'missing and invalid saved URL keys fall back'],
   ['showUrlKeyInAllFields', 'P60', 'the URL pattern selects the configured key'],
   ['omitUrlFieldKeyReset', 'P60', 'immediate URL key edits and reset sync to the IME'],
+  ['autoCapitalSkipsUntypedField', 'P61', 'a plain field that declares no input type'],
   ['ignoreBackgroundPoster', 'P62', 'image or poster counts as a photo background'],
   ['useSystemPaletteOverPhoto', 'P62', 'photo backgrounds select the dark palette']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;

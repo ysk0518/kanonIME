@@ -23,3 +23,8 @@ test('P52: only text fields capitalize sentences', () => {
   assert.equal(autoCapitalField(1), true);
   for (const pattern of [2, 3, 5, 6, 7, 8, 9, 11]) { assert.equal(autoCapitalField(pattern), false, String(pattern)); }
 });
+
+test('P61: a plain field that declares no input type capitalizes sentences', () => {
+  // A TextInput without .type() reports NONE (-1) to the IME on the device.
+  assert.equal(autoCapitalField(-1), true);
+});

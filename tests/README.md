@@ -23,6 +23,7 @@ node tests/run.cjs --test-name-pattern "P58d:"
 node tests/run.cjs --test-name-pattern "P58e:"
 node tests/run.cjs --test-name-pattern "P58f:"
 node tests/run.cjs --test-name-pattern "P60:"
+node tests/run.cjs --test-name-pattern "P61:"
 node tests/run.cjs --test-name-pattern "P62:"
 node tests/mutations.cjs
 ```
