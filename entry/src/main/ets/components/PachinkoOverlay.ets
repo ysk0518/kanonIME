@@ -1,4 +1,4 @@
-import { ColorMetrics } from '@ohos.arkui.node';
+import { gamingDarkKeys } from '../common/KeyboardKeyPalette';
 import { KANON_GAMING_PHASE, KANON_PACHINKO_REPLAY } from '../common/AppStorageKeys';
 import { GAMING_FLOW_STEPS, GAMING_GOLD_PHASE } from '../common/GamingEffectModel';
 import { keyboardHaptics } from '../common/KeyboardHaptics';
@@ -18,6 +18,8 @@ export struct PachinkoOverlay {
   @Prop @Watch('keysVisibilityChanged') keysVisible: boolean = true;
   @Prop @Watch('replayChanged') replay: string = '';
   @Prop acceptCommits: boolean = true;
+  @StorageProp('kanonBackgroundHasPhoto') @Watch('refreshPalette') hasBackgroundPhoto: boolean = false;
+  @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshPalette') themeVersion: number = 0;
   @StorageProp('kanonPachinkoSession') @Watch('resetSession') session: number = 0;
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
   private holdContext: CanvasRenderingContext2D = new CanvasRenderingContext2D(new RenderingContextSettings(true));
@@ -54,11 +56,12 @@ export struct PachinkoOverlay {
   aboutToAppear(): void {
     imeCommitNotifications.listen(this.onCommit);
     pachinkoKeyNotifications.listen(this.onPress);
-    try {
-      const color: ColorMetrics = ColorMetrics.resourceColor($r('app.color.key_text'));
-      this.paletteOffset = color.red + color.green + color.blue > 384 ? GAMING_FLOW_STEPS : 0;
-    } catch (error) {}
+    this.refreshPalette();
     this.replayChanged();
+  }
+
+  private refreshPalette(): void {
+    this.paletteOffset = gamingDarkKeys(this.hasBackgroundPhoto, this.paletteOffset !== 0) ? GAMING_FLOW_STEPS : 0;
   }
 
   aboutToDisappear(): void {

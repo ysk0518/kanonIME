@@ -100,7 +100,7 @@ export struct EmojiPanel {
 
         Row({ space: this.inputStyle.bottomKeyGap }) {
           Column() {
-            KeyItemGray({ keyValue: 'ABC', keyWidth: '100%', keyId: 'emoji_back',
+            KeyItemGray({ keyValue: 'ABC', keyWidth: '100%', keyId: 'emoji_back', photoThemeEnabled: false,
               onActivate: () => { this.submenuType = SubMenuType.NORMAL; } })
           }.layoutWeight(1).height('100%')
           Text($r('app.string.keyboard_space'))
@@ -112,7 +112,7 @@ export struct EmojiPanel {
               kanonIme.keyPaste(' ');
             })
           Column() {
-            DeleteItem({ keyWidth: '100%' })
+            DeleteItem({ keyWidth: '100%', photoThemeEnabled: false })
           }.layoutWeight(1).height('100%')
         }
         .width('100%').height(Math.min(44, this.inputStyle.basicButtonHeight))

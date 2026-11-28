@@ -40,3 +40,11 @@ export function backgroundImageUri(config: BackgroundConfig): string {
 export function backgroundPosterUri(config: BackgroundConfig): string {
   return config.poster.length > 0 ? `data:image/jpeg;base64,${config.poster}` : '';
 }
+
+export function hasBackgroundPhoto(source: string, poster: string): boolean {
+  return source.length > 0 || poster.length > 0;
+}
+
+export function usesDarkKeyPalette(hasPhoto: boolean, systemDark: boolean): boolean {
+  return hasPhoto || systemDark;
+}

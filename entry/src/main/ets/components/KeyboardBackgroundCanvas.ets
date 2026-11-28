@@ -1,4 +1,5 @@
 import { debugLog } from '../common/DebugLog';
+import { hasBackgroundPhoto } from '../common/BackgroundAppearance';
 
 @Component
 export struct KeyboardBackgroundCanvas {
@@ -24,6 +25,7 @@ export struct KeyboardBackgroundCanvas {
   }
 
   private displayedSource(): string {
+    if (this.source.length === 0) { return this.poster; }
     if (this.source.startsWith('data:image/gif;') && (!this.play || !this.active || !this.inViewport)) {
       return this.poster;
     }
@@ -49,7 +51,7 @@ export struct KeyboardBackgroundCanvas {
 
   build() {
     Stack() {
-      if (this.source.length > 0) {
+      if (hasBackgroundPhoto(this.source, this.poster)) {
         Image(this.displayedSource())
           .width(this.imageWidth())
           .height(this.imageHeight()).objectFit(ImageFit.Fill)

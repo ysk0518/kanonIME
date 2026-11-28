@@ -1,3 +1,4 @@
+import { photoKeyColor } from '../common/KeyboardKeyPalette';
 import { backgroundKeyColor } from '../common/KeyboardBackground';
 import { FlickKey } from './FlickKey';
 import { DeleteItem } from './DeleteItem';
@@ -16,6 +17,7 @@ import { GamingPoint } from '../common/GamingEffectModel';
 
 @Component
 export struct FlickMenu {
+  @StorageProp('kanonBackgroundHasPhoto') hasBackgroundPhoto: boolean = false;
   @StorageLink('kanonBackgroundKeyOpacity') backgroundKeyOpacity: number = 100;
   @StorageLink('kanonBackgroundThemeVersion') backgroundThemeVersion: number = 0;
   @StorageLink('inputStyle') inputStyle: KeyStyle = StyleConfiguration.getSavedInputStyle();
@@ -54,12 +56,15 @@ export struct FlickMenu {
       .heightAdaptivePolicy(TextHeightAdaptivePolicy.MIN_FONT_SIZE_FIRST)
       .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       .fontColor(gamingKeyColor(this.gamingPhase, this.gamingTime, this.controlCenters[action],
-        action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text')))
+        photoKeyColor(action === 8 && this.englishUpper ? $r('app.color.candidate_accent') : $r('app.color.key_text'),
+          this.hasBackgroundPhoto)))
       .fontWeight(action === 8 && this.englishUpper ? FontWeight.Medium : FontWeight.Normal)
       .textAlign(TextAlign.Center)
       .width('100%')
       .height('100%')
-      .backgroundColor(backgroundKeyColor(action === 8 && this.englishUpper ? $r('app.color.candidate_selected') : $r('app.color.key_item_gray'), this.backgroundKeyOpacity, this.backgroundThemeVersion))
+      .backgroundColor(backgroundKeyColor(action === 8 && this.englishUpper
+        ? $r('app.color.candidate_selected') : $r('app.color.key_item_gray'),
+        this.backgroundKeyOpacity, this.backgroundThemeVersion, this.hasBackgroundPhoto))
       .accessibilityText(action === 8 ? (this.englishUpper ? '小文字に切り替え' : '次の英字を大文字にする') :
         action === 1 ? '直前の確定を取り消す' : label)
       .borderRadius(6)

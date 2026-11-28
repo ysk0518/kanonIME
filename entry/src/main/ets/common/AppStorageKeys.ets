@@ -8,6 +8,7 @@ export const IS_TEXT_PREVIEW_SUPPORTED: string = 'isTextPreviewSupported';
 export const KANON_BACKGROUND_ANIMATE: string = 'kanonBackgroundAnimate';
 export const KANON_BACKGROUND_APPLIED_REVISION: string = 'kanonBackgroundAppliedRevision';
 export const KANON_BACKGROUND_BRIGHTNESS: string = 'kanonBackgroundBrightness';
+export const KANON_BACKGROUND_HAS_PHOTO: string = 'kanonBackgroundHasPhoto';
 export const KANON_BACKGROUND_IMAGE: string = 'kanonBackgroundImage';
 export const KANON_BACKGROUND_KEY_OPACITY: string = 'kanonBackgroundKeyOpacity';
 export const KANON_BACKGROUND_PEER_VERSION: string = 'kanonBackgroundPeerVersion';

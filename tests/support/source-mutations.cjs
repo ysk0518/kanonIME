@@ -1,4 +1,14 @@
 const mutations = {
+  ignoreBackgroundPoster: {
+    file: 'common/BackgroundAppearance.ets',
+    before: 'return source.length > 0 || poster.length > 0;',
+    after: 'return source.length > 0;'
+  },
+  useSystemPaletteOverPhoto: {
+    file: 'common/BackgroundAppearance.ets',
+    before: 'return hasPhoto || systemDark;',
+    after: 'return systemDark;'
+  },
   autoCapitalSkipsUntypedField: {
     file: 'kanon/SentenceInput.ets',
     before: 'return inputPattern === -1 || inputPattern === 0',

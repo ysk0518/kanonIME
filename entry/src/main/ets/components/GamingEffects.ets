@@ -1,4 +1,4 @@
-import { ColorMetrics } from '@ohos.arkui.node';
+import { gamingDarkKeys } from '../common/KeyboardKeyPalette';
 import { KANON_GAMING_PHASE } from '../common/AppStorageKeys';
 import { DEFAULT_GAMING_SPEED, GAMING_FLOW_PALETTE_OFFSET, GAMING_FLOW_STEPS, GAMING_RIPPLE_MS, GAMING_WAVE_TICK_MS,
   GamingPoint, GamingRipple, GamingRipples,
@@ -6,15 +6,9 @@ import { DEFAULT_GAMING_SPEED, GAMING_FLOW_PALETTE_OFFSET, GAMING_FLOW_STEPS, GA
 import { gamingKeyCenter, gamingPresses, publishGamingWave, setGamingWaveTheme } from '../common/GamingKeyFeedback';
 import { gamingLightingColors } from '../common/GamingLightingModel';
 
-function gamingDarkKeys(fallback: boolean = false): boolean {
-  try {
-    const text: ColorMetrics = ColorMetrics.resourceColor($r('app.color.key_text'));
-    return text.red + text.green + text.blue > 384;
-  } catch (error) { return fallback; }
-}
-
 @Component
 export struct GamingFlowClock {
+  @StorageProp('kanonBackgroundHasPhoto') @Watch('refreshPalette') hasBackgroundPhoto: boolean = false;
   @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshPalette') themeVersion: number = 0;
   @StorageProp('kanonGamingSpeed') @Watch('restartClock') speed: number = DEFAULT_GAMING_SPEED;
   private paletteOffset: number = 0;
@@ -33,7 +27,7 @@ export struct GamingFlowClock {
   }
 
   private refreshPalette(): void {
-    this.paletteOffset = gamingDarkKeys(this.paletteOffset !== 0) ? GAMING_FLOW_STEPS : 0;
+    this.paletteOffset = gamingDarkKeys(this.hasBackgroundPhoto, this.paletteOffset !== 0) ? GAMING_FLOW_STEPS : 0;
     this.publishPhase();
   }
 
@@ -56,6 +50,7 @@ export struct GamingFlowClock {
 
 @Component
 export struct GamingWaveClock {
+  @StorageProp('kanonBackgroundHasPhoto') @Watch('refreshTheme') hasBackgroundPhoto: boolean = false;
   @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshTheme') themeVersion: number = 0;
   @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
   private presses: GamingRipples = new GamingRipples();
@@ -79,7 +74,7 @@ export struct GamingWaveClock {
     gamingPresses.listen(this.onPress);
   }
 
-  private refreshTheme(): void { setGamingWaveTheme(gamingDarkKeys()); }
+  private refreshTheme(): void { setGamingWaveTheme(gamingDarkKeys(this.hasBackgroundPhoto)); }
 
   aboutToDisappear(): void {
     gamingPresses.unlisten(this.onPress);
@@ -156,6 +151,7 @@ struct GamingRippleRing {
 
 @Component
 export struct GamingRippleOverlay {
+  @StorageProp('kanonBackgroundHasPhoto') @Watch('refreshColors') hasBackgroundPhoto: boolean = false;
   @StorageProp('kanonBackgroundThemeVersion') @Watch('refreshColors') themeVersion: number = 0;
   @StorageProp('kanonSettingsGeneration') @Watch('refreshColors') settingsGeneration: number = 0;
   @StorageProp('kanonGamingSpeed') speed: number = DEFAULT_GAMING_SPEED;
@@ -188,7 +184,7 @@ export struct GamingRippleOverlay {
   }
 
   private refreshColors(): void {
-    this.colors = gamingLightingColors.ringRgb(gamingDarkKeys());
+    this.colors = gamingLightingColors.ringRgb(gamingDarkKeys(this.hasBackgroundPhoto));
   }
 
   build() {

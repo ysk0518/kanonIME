@@ -1,5 +1,5 @@
 import {
-  KANON_BACKGROUND_ANIMATE, KANON_BACKGROUND_BRIGHTNESS, KANON_BACKGROUND_IMAGE,
+  KANON_BACKGROUND_ANIMATE, KANON_BACKGROUND_BRIGHTNESS, KANON_BACKGROUND_HAS_PHOTO, KANON_BACKGROUND_IMAGE,
   KANON_BACKGROUND_KEY_OPACITY, KANON_BACKGROUND_PEER_VERSION, KANON_BACKGROUND_POSTER,
   KANON_BACKGROUND_PREVIEW_ERROR, KANON_BACKGROUND_VERSION, KANON_BACKGROUND_X, KANON_BACKGROUND_Y,
   KANON_BACKGROUND_ZOOM
@@ -10,12 +10,13 @@ import image from '@ohos.multimedia.image';
 import util from '@ohos.util';
 import commonEventManager from '@ohos.commonEventManager';
 import { ColorMetrics } from '@ohos.arkui.node';
-import { BackgroundConfig, backgroundImageUri, backgroundPosterUri,
+import { BackgroundConfig, backgroundImageUri, backgroundPosterUri, hasBackgroundPhoto,
   MAX_BACKGROUND_PHOTO, MAX_BACKGROUND_POSTER, MAX_BACKGROUND_PAYLOAD, MAX_BACKGROUND_CHUNKS } from './BackgroundAppearance';
 import { BackgroundLivePreview, PREVIEW_EVENT, END_PREVIEW_EVENT } from './BackgroundLivePreview';
 import { debugLog, debugErrorCode } from './DebugLog';
 import { keyboardConfigDiagnostics } from './KeyboardConfig';
 import { settingsReceipt } from './SettingsReceipt';
+import { initializeKeyboardKeyPalette, photoKeyColor } from './KeyboardKeyPalette';
 export { BackgroundConfig } from './BackgroundAppearance';
 
 const BUNDLE: string = 'local.yplic.kanon';
@@ -25,7 +26,8 @@ const ACK: string = `${BUNDLE}.BACKGROUND_ACK`;
 const CHUNK: number = 32000;
 
 // The theme revision argument makes resource-derived alpha colors reactive to color-mode changes.
-export function backgroundKeyColor(color: ResourceColor, opacity: number, themeRevision: number = 0): ResourceColor {
+export function backgroundKeyColor(resource: Resource, opacity: number, themeRevision: number, hasPhoto: boolean): ResourceColor {
+  const color: ResourceColor = photoKeyColor(resource, hasPhoto);
   if (opacity >= 100) { return color; }
   try {
     const resolved: ColorMetrics = ColorMetrics.resourceColor(color);
@@ -88,6 +90,7 @@ class KeyboardBackgroundStore {
     };
     if (this.ready !== undefined) { return this.ready; }
     this.context = context;
+    initializeKeyboardKeyPalette(context.resourceManager);
     try {
       this.current = normalized(JSON.parse(fs.readTextSync(`${context.filesDir}/keyboard-background.json`)) as BackgroundConfig);
       debugLog.record('background', `disk loaded version=${this.current.version} photoChars=${this.current.photo.length}`);
@@ -151,14 +154,18 @@ class KeyboardBackgroundStore {
     if (this.visiblePreview === undefined) {
       debugLog.record('background', `apply saved version=${config.version} format=${config.format} photoChars=${config.photo.length}`);
     }
-    AppStorage.setOrCreate(KANON_BACKGROUND_IMAGE, backgroundImageUri(config));
-    AppStorage.setOrCreate(KANON_BACKGROUND_POSTER, backgroundPosterUri(config));
+    const source: string = backgroundImageUri(config);
+    const poster: string = backgroundPosterUri(config);
+    const hasPhoto: boolean = hasBackgroundPhoto(source, poster);
+    AppStorage.setOrCreate(KANON_BACKGROUND_IMAGE, source);
+    AppStorage.setOrCreate(KANON_BACKGROUND_POSTER, poster);
+    AppStorage.setOrCreate(KANON_BACKGROUND_HAS_PHOTO, hasPhoto);
     AppStorage.setOrCreate(KANON_BACKGROUND_ANIMATE, config.animate);
     AppStorage.setOrCreate(KANON_BACKGROUND_ZOOM, config.zoom);
     AppStorage.setOrCreate(KANON_BACKGROUND_X, config.x);
     AppStorage.setOrCreate(KANON_BACKGROUND_Y, config.y);
     AppStorage.setOrCreate(KANON_BACKGROUND_BRIGHTNESS, config.brightness);
-    AppStorage.setOrCreate(KANON_BACKGROUND_KEY_OPACITY, config.photo.length > 0 ? config.keyOpacity : 100);
+    AppStorage.setOrCreate(KANON_BACKGROUND_KEY_OPACITY, hasPhoto ? config.keyOpacity : 100);
     AppStorage.setOrCreate(KANON_BACKGROUND_VERSION, this.current.version);
   }
 
