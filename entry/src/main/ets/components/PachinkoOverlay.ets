@@ -362,7 +362,7 @@ export struct PachinkoOverlay {
         this.drawBand('激アツ', width, top, height * 0.15, PachinkoColor.Red, local, 0.9);
         break;
       case PachinkoStageKind.CutIn:
-        this.drawBand('カットイン', width, height * 0.5, height * 0.18, stage.color, local, 1.08);
+        this.drawBand('勝負!!', width, height * 0.5, height * 0.18, stage.color, local, 1.08);
         break;
       case PachinkoStageKind.Push:
         this.drawGoldText('PUSH!', center, height * 0.8, height * (0.2 + 0.045 * Math.sin(local / 48)), width * 0.95);
@@ -429,7 +429,7 @@ export struct PachinkoOverlay {
     const first: number = Math.floor(position);
     const offset: number = (position - first) * height;
     const size: number = Math.min(width * 0.78, height * 0.75);
-    this.context.font = `900 ${Math.round(size)}px sans-serif`;
+    this.context.font = `900 ${Math.round(size)}vp sans-serif`;
     this.context.textAlign = 'center';
     this.context.textBaseline = 'middle';
     this.context.fillStyle = highlighted ? '#ffe16a' : '#fff4d4';
@@ -486,7 +486,7 @@ export struct PachinkoOverlay {
     context.clearRect(0, 0, width, context.height);
     const label: string = this.rushEnding ? 'RUSH 終了' :
       this.rushRemaining > 0 ? 'RUSH 残り ' + this.rushRemaining.toString() : '';
-    context.font = 'bold 12px sans-serif';
+    context.font = 'bold 12vp sans-serif';
     const textWidth: number = label === '' ? 0 : context.measureText(label).width;
     const gap: number = this.holds.length > 0 && label !== '' ? 6 : 0;
     const span: number = Math.max(0, this.holds.length * 15 - 5);
@@ -508,7 +508,7 @@ export struct PachinkoOverlay {
   private drawGoldText(label: string, x: number, y: number, size: number, maxWidth: number, color: string = '#ffdc58'): void {
     if (size <= 0 || maxWidth <= 0) { return; }
     this.context.save();
-    this.context.font = `900 ${Math.round(size)}px sans-serif`;
+    this.context.font = `900 ${Math.round(size)}vp sans-serif`;
     this.context.textAlign = 'center';
     this.context.textBaseline = 'middle';
     this.context.lineJoin = 'round';

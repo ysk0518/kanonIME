@@ -240,8 +240,9 @@ test('P58e: notices advance through every step and pseudo count on an ordered ti
   assert.equal(end, script.duration);
   const sp = buildPachinkoScript(fixedHold(Result.Reach), 0, 1, rolls([0, 0, 0, 0, 0.7, 0.5]));
   assert.deepEqual(sp.stages.map(stage => [stage.kind, stage.duration]),
-    [[Stage.Spin, 400], [Stage.Tenpai, 500], [Stage.SP, 2550], [Stage.CutIn, 450]]);
-  assert.equal(sp.stages.at(-1).color, Color.Green);
+    [[Stage.Spin, 400], [Stage.Tenpai, 500], [Stage.SP, 2550], [Stage.CutIn, 450], [Stage.Result, 600]]);
+  assert.equal(sp.stages.at(-2).color, Color.Green);
+  assert.ok(sp.middleStop <= sp.duration - 600, 'the near miss stays on screen');
 });
 
 test('P58e: all seven debug requests prepare their selected preview', () => {

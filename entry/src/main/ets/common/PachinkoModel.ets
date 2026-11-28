@@ -167,7 +167,7 @@ export function pachinkoReplayHolds(replay: PachinkoReplay): PachinkoHold[] {
 }
 
 export enum PachinkoStageKind {
-  Reveal, Spin, Step, Pseudo, Miss, Tenpai, Normal, SP, SPSP, CutIn, Push, FullRotation, Revival, Jackpot
+  Reveal, Spin, Step, Pseudo, Miss, Tenpai, Normal, SP, SPSP, CutIn, Push, FullRotation, Revival, Jackpot, Result
 }
 
 export interface PachinkoStage {
@@ -261,6 +261,8 @@ export function buildPachinkoScript(hold: PachinkoHold, rushRemaining: number, h
     if (revivalDigit === 0) {
       middleStop = timeline.duration - (result === PachinkoResult.Reach ? 140 : 0);
     }
+    // Hold the near miss on screen long enough to read it.
+    if (result === PachinkoResult.Reach) { timeline.append(PachinkoStageKind.Result, 600); }
     if (result === PachinkoResult.Jackpot) { timeline.append(PachinkoStageKind.Jackpot, 2000, stops.middle); }
   }
   return {
