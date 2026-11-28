@@ -25,8 +25,11 @@ node tests/run.cjs --test-name-pattern "P58f:"
 node tests/run.cjs --test-name-pattern "P60:"
 node tests/run.cjs --test-name-pattern "P61:"
 node tests/run.cjs --test-name-pattern "P62:"
+node tests/run.cjs --test-name-pattern "P63:"
 node tests/mutations.cjs
 ```
+
+P63 のログ形式、表示 1 回につき 1 件のフレーム記録、PowerShell のログ照合と統計を端末なしで検証します。 [P63 入力開始時の性能計測](../docs/PERFORMANCE.md)
 
 ## CI
 

@@ -144,7 +144,9 @@ for (const [mutation, testId, caseName] of [['suggestion', 'R02'], ['modifier', 
   ['omitUrlFieldKeyReset', 'P60', 'immediate URL key edits and reset sync to the IME'],
   ['autoCapitalSkipsUntypedField', 'P61', 'a plain field that declares no input type'],
   ['ignoreBackgroundPoster', 'P62', 'image or poster counts as a photo background'],
-  ['useSystemPaletteOverPhoto', 'P62', 'photo backgrounds select the dark palette']]) {
+  ['useSystemPaletteOverPhoto', 'P62', 'photo backgrounds select the dark palette'],
+  ['perfTraceOmitsSequence', 'P63', 'messages retain the wall clock and sequence'],
+  ['perfFrameRepeatsOnLayout', 'P63', 'one frame per show']]) {
   const label = caseName === undefined ? `${testId}:` : `${testId}: ${caseName}`;
   const result = run({ ...env, KANON_TEST_MUTATION: mutation }, ['--test-name-pattern', label], testId);
   const matchingFailure = new RegExp(`not ok \\d+ - ${label}`).test(result.output);

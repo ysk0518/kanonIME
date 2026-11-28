@@ -170,6 +170,13 @@ function Get-Foreground([string]$Target) {
   ConvertFrom-MissionDump (Invoke-DeviceHdc $Target @('shell', 'aa dump -l'))
 }
 
+function Invoke-KanonDeviceShell {
+  [CmdletBinding()]
+  param([Parameter(Mandatory)][string]$Command, [string]$Target)
+  $device = Assert-KanonDeviceReady -Target $Target -PassThru
+  Invoke-DeviceHdc $device.Target @('shell', $Command)
+}
+
 function Get-CurrentIme([string]$Target) {
   ConvertFrom-ImeOutput (Invoke-DeviceHdc $Target @('shell', 'ime -g'))
 }
@@ -719,7 +726,7 @@ function Use-KanonDeviceSession {
 }
 
 Export-ModuleMember -Function @(
-  'Get-KanonDeviceState', 'Assert-KanonDeviceReady', 'Find-KanonUiNode', 'Invoke-KanonUiTap',
+  'Get-KanonDeviceState', 'Assert-KanonDeviceReady', 'Find-KanonUiNode', 'Invoke-KanonUiTap', 'Invoke-KanonDeviceShell',
   'Save-KanonScreenshot', 'Save-KanonBurst', 'Get-KanonColorMode', 'Set-KanonColorMode',
   'Get-KanonInputMode', 'Set-KanonInputMode',
   'Start-KanonDeviceSession', 'Stop-KanonDeviceSession', 'Use-KanonDeviceSession'

@@ -1,6 +1,7 @@
 import fs from '@ohos.file.fs';
 import { debugLog, debugErrorCode } from '../common/DebugLog';
 import { MozcBridgePort } from './MozcBridgePort';
+import { perfBegin, perfEnd } from '../common/PerfTrace';
 
 interface NativeApi {
   executeAsync(operation: string, text: string, candidateId: number): Promise<string>;
@@ -38,6 +39,7 @@ export class NativeMozcBridge implements MozcBridgePort {
   async prepare(): Promise<boolean> {
     if (this.api !== null) { return true; }
     if (this.initFailed || this.profileDirectory.length === 0) { return false; }
+    const perfId: number = perfBegin('mozc.init.start');
     try {
       const m: ESObject = await import('libkanon_bridge.so');
       const ns: ESObject = m as ESObject;
@@ -48,6 +50,7 @@ export class NativeMozcBridge implements MozcBridgePort {
         await api.executeAsync('init', this.profileDirectory, 0)) as NativeInitResult;
       if (result.ok !== true) { this.initFailed = true; return false; }
       this.api = api;
+      perfEnd('mozc.init.end', perfId);
       return true;
     } catch (error) {
       this.initFailed = true;

@@ -43,6 +43,7 @@ import { openKeyboardPreferences, refreshSharedLayoutOrder, refreshSharedHapticL
 import { keyboardSettingsSync } from '../common/KeyboardSettingsSync';
 import { keyboardBackground } from '../common/KeyboardBackground';
 import { debugLog } from '../common/DebugLog';
+import { perfMark, perfPanelHidden, perfPanelReset, perfPanelShown } from '../common/PerfTrace';
 import { pachinkoKeyNotifications } from '../common/PachinkoModel';
 import { harmonyKeyboardSound } from '../common/HarmonyKeyboardSound';
 import { DEFAULT_CANDIDATE_FONT_SIZE, DEFAULT_CANDIDATE_ROWS } from '../common/CandidateLayout';
@@ -251,6 +252,7 @@ class KeyboardController {
       // Use actual panel visibility for the sound pool lifetime.
       panel.on('show', () => {
         if (this.active && generation === this.panelGeneration) {
+          if (!this.soundPanelVisible) { perfPanelShown(); }
           if (!this.soundPanelVisible) { debugLog.requestPachinkoReplay(); }
           this.soundPanelVisible = true;
           AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, true);
@@ -260,6 +262,7 @@ class KeyboardController {
       });
       panel.on('hide', () => {
         if (this.active && generation === this.panelGeneration) {
+          if (this.soundPanelVisible) { perfPanelHidden(); }
           this.soundPanelVisible = false;
           AppStorage.setOrCreate(KANON_KEYBOARD_VISIBLE, false);
           debugLog.cancelPachinkoReplay();
@@ -278,6 +281,8 @@ class KeyboardController {
   }
 
   private destroyPanel(): void {
+    if (this.soundPanelVisible) { perfPanelHidden(); }
+    perfPanelReset();
     this.soundPanelVisible = false;
     harmonyKeyboardSound.release();
     this.heightAdjustment = false;
@@ -427,6 +432,7 @@ class KeyboardController {
 
     display.on('change', this.displayChanged);
     InputMethodEngine.on('inputStart', (kbController: inputMethodEngine.KeyboardController, textInputClient: inputMethodEngine.InputClient) => {
+      perfMark('ime.inputStart');
       this.inputHandle.addLog('keyboard inputStart');
       debugLog.cancelPachinkoReplay();
       AppStorage.setOrCreate(KANON_PACHINKO_SESSION, (AppStorage.get<number>(KANON_PACHINKO_SESSION) ?? 0) + 1);

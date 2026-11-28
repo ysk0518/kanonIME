@@ -16,11 +16,13 @@ import InputMethodExtensionAbility from '@ohos.InputMethodExtensionAbility';
 import Log from '../model/Log';
 import { keyboardController } from '../model/KeyboardController';
 import Want from '@ohos.app.ability.Want';
+import { perfMark } from '../common/PerfTrace';
 
 const TAG: string = 'ServiceExtAbility->';
 
 export default class ServiceExtAbility extends InputMethodExtensionAbility {
   onCreate(want: Want): void {
+    perfMark('ime.create');
     this.addLog(`onCreate want: ${want.abilityName}`);
     keyboardController.onCreate(this.context);
   }
